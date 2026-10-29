@@ -270,7 +270,7 @@ private struct StatCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             CardTag(icon: icon, text: label, size: .stat)
-            (Text(value) + Text(unit.map { " \($0)" } ?? "").font(Typo.title(15).font))
+            (Text(value.glyphic) + Text(unit.map { " \($0)" } ?? "").font(Typo.title(15).font))
                 .typo(.title(32)).foregroundStyle(Palette.white).lineLimit(1).minimumScaleFactor(0.5).padding(.top, 18)
             Spacer(minLength: 18)
             if let detail { Text(detail).typo(.body(11)).foregroundStyle(Palette.white).lineLimit(2).fixedSize(horizontal: false, vertical: true) }
@@ -541,7 +541,7 @@ private struct Records: View {
     @ViewBuilder
     private func value(_ text: String??) -> some View {
         if let text {
-            Text(text ?? "—").typo(.title(23)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
+            Text((text ?? "—").glyphic).typo(.title(23)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
         } else {
             Text(verbatim: "12 min").typo(.title(23)).lineLimit(1).ghost()
         }

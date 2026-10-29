@@ -26,10 +26,10 @@ struct OverviewPage: View {
         return VStack(spacing: 10) {
             HStack(spacing: 10) {
                 SummaryCard(tag: (.starFour, "Points"), detail: data.rewards.total.map { "\(formatNumber($0)) gagnés au total" } ?? Messages.missing, action: { model.page = .points }) {
-                    Text(data.rewards.balance.map { formatNumber($0) } ?? "—").typo(.title(40))
+                    Text(data.rewards.balance.map { formatNumber($0).glyphic } ?? "—").typo(.title(40))
                 }
                 SummaryCard(tag: (.personSimpleBike, "Trajets"), detail: data.trips == nil ? Messages.missing : minutes >= 60 ? "\(formatNumber(minutes / 60)) h \(minutes % 60) min" : "\(minutes) min", action: { model.page = .trips }) {
-                    Text(data.trips.map { formatNumber($0.count) } ?? "—").typo(.title(40))
+                    Text(data.trips.map { formatNumber($0.count).glyphic } ?? "—").typo(.title(40))
                 }
             }
             SummaryCard(tag: (.ticket, "Abonnement"),

@@ -55,7 +55,7 @@ struct PointsFigure: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Eyebrow(icon: icon, text: label)
-            Text(value).typo(.title(40)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.5)
+            Text(value.glyphic).typo(.title(40)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.5)
         }
         .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -131,7 +131,7 @@ struct EarnRule: View {
         HStack(spacing: 16) {
             Text(label).typo(.body(13)).foregroundStyle(Palette.inkSoft)
             Spacer()
-            Text(verbatim: points).typo(.title(23)).foregroundStyle(Palette.red)
+            Text(verbatim: points.glyphic).typo(.title(23)).foregroundStyle(Palette.red)
         }
         .padding(.horizontal, 18).padding(.vertical, 16).frame(minHeight: 64)
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))

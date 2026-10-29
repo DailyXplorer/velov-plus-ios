@@ -122,9 +122,10 @@ final class StatsTests: XCTestCase {
         XCTAssertFalse(buildStats(partial).complete)
     }
 
-    func testThousandsUseANarrowNoBreakSpace() {
-        XCTAssertEqual(formatNumber(1240), "1\u{202F}240")
-        XCTAssertEqual(formatNumber(123456.0), "123\u{202F}456")
+    func testThousandsUseANoBreakSpace() {
+        XCTAssertEqual(formatNumber(1240), "1\u{00A0}240")
+        XCTAssertEqual(formatNumber(123456.0), "123\u{00A0}456")
+        XCTAssertEqual(formatPrice(123456), "1\u{00A0}234,56\u{00A0}€")
         XCTAssertEqual(formatNumber(999), "999")
     }
 

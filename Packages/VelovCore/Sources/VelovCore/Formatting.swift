@@ -23,6 +23,8 @@ public func stationTitle(_ name: String) -> String {
 private func numberFormatter(_ configure: (NumberFormatter) -> Void) -> NumberFormatter {
     let formatter = NumberFormatter()
     formatter.locale = french
+    formatter.groupingSeparator = "\u{00A0}"
+    formatter.currencyGroupingSeparator = "\u{00A0}"
     configure(formatter)
     return formatter
 }

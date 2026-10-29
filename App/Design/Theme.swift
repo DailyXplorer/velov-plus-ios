@@ -90,6 +90,12 @@ enum Typo {
     }
 }
 
+extension String {
+    var glyphic: String {
+        replacingOccurrences(of: "(?<=\\d)\u{00A0}(?=\\d)", with: "\u{202F}", options: .regularExpression)
+    }
+}
+
 extension View {
     func typo(_ typo: Typo) -> some View {
         modifier(TypoModifier(typo: typo))

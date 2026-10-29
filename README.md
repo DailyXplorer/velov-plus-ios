@@ -5,11 +5,12 @@ Vélo’v+ est une application iPhone native qui accompagne le compte Vélo’v,
 Il s’agit d’un projet personnel et non officiel. Il n’est affilié ni à Vélo’v, ni à la Métropole de Lyon, ni à JCDecaux ou Cyclocity.
 
 <p align="center">
-  <img src="docs/screenshots/accueil.png" width="18%" alt="Vue d’ensemble">
-  <img src="docs/screenshots/stations.png" width="18%" alt="Carte des stations">
-  <img src="docs/screenshots/reservation.png" width="18%" alt="Confirmation d’une réservation">
-  <img src="docs/screenshots/activite-en-direct.png" width="18%" alt="Activité en direct sur l’écran verrouillé">
-  <img src="docs/screenshots/statistiques.png" width="18%" alt="Statistiques">
+  <img src="docs/screenshots/accueil.png" width="15%" alt="Vue d’ensemble">
+  <img src="docs/screenshots/stations.png" width="15%" alt="Carte des stations">
+  <img src="docs/screenshots/reservation.png" width="15%" alt="Confirmation d’une réservation">
+  <img src="docs/screenshots/activite-en-direct.png" width="15%" alt="Activité en direct sur l’écran verrouillé">
+  <img src="docs/screenshots/dynamic-island.png" width="15%" alt="Trajet en cours dans la Dynamic Island">
+  <img src="docs/screenshots/statistiques.png" width="15%" alt="Statistiques">
 </p>
 
 ## Ce que fait l’application

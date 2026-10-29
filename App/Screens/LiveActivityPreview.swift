@@ -13,7 +13,7 @@ struct LiveActivityPreview: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            LinearGradient(colors: [Color(hex: 0x2b2d42), Color(hex: 0x6d597a), Color(hex: 0xb56576)], startPoint: .top, endPoint: .bottom).ignoresSafeArea()
+            Wallpaper()
             if island { expandedIsland } else { lockScreen }
         }
         .statusBarHidden(island)
@@ -71,4 +71,46 @@ struct LiveActivityPreview: View {
                 .frame(width: 37, height: 37).background(Circle().fill(.black))
         }
     }
+}
+
+private struct Wallpaper: View {
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            ZStack {
+                MeshGradient(width: 3, height: 3, points: [
+                    [0, 0], [0.5, 0], [1, 0],
+                    [0, 0.5], [0.6, 0.42], [1, 0.5],
+                    [0, 1], [0.5, 1], [1, 1],
+                ], colors: [
+                    Color(hex: 0x161c27), Color(hex: 0x1b2330), Color(hex: 0x212b3a),
+                    Color(hex: 0x293648), Color(hex: 0x3a4a60), Color(hex: 0x2b3747),
+                    Color(hex: 0x171d27), Color(hex: 0x222d3d), Color(hex: 0x141922),
+                ])
+                glow(Color(hex: 0x3d5070), opacity: 0.45, width: w * 0.9, height: w * 0.9, angle: 0, blur: 80, at: CGPoint(x: w * 0.05, y: h * 0.1))
+                glow(Color(hex: 0x7d94ad), opacity: 0.42, width: w * 1.7, height: w * 0.55, angle: -38, blur: 60, at: CGPoint(x: w * 0.66, y: h * 0.5))
+                glow(Color(hex: 0x4b6380), opacity: 0.5, width: w * 1.5, height: w * 0.36, angle: -38, blur: 50, at: CGPoint(x: w * 0.28, y: h * 0.8))
+                glow(Color(hex: 0xdde6ef), opacity: 0.15, width: w * 1.3, height: w * 0.09, angle: -38, blur: 22, at: CGPoint(x: w * 0.74, y: h * 0.43))
+                RadialGradient(colors: [.clear, .black.opacity(0.4)], center: UnitPoint(x: 0.55, y: 0.45), startRadius: w * 0.3, endRadius: h * 0.75)
+                Image(decorative: Self.grain, scale: 3).resizable(resizingMode: .tile).blendMode(.overlay).opacity(0.12)
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    private func glow(_ color: Color, opacity: Double, width: CGFloat, height: CGFloat, angle: Double, blur: CGFloat, at point: CGPoint) -> some View {
+        Ellipse().fill(color.opacity(opacity)).frame(width: width, height: height).rotationEffect(.degrees(angle)).blur(radius: blur).position(point)
+    }
+
+    private static let grain: CGImage = {
+        let side = 256
+        var state: UInt64 = 0x9e3779b97f4a7c15
+        let bytes = (0..<side * side).map { _ -> UInt8 in
+            state = state &* 6364136223846793005 &+ 1442695040888963407
+            return UInt8(truncatingIfNeeded: state >> 56)
+        }
+        let provider = CGDataProvider(data: Data(bytes) as CFData)!
+        return CGImage(width: side, height: side, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: side, space: CGColorSpaceCreateDeviceGray(),
+                       bitmapInfo: CGBitmapInfo(rawValue: 0), provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
+    }()
 }

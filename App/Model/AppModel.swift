@@ -46,6 +46,8 @@ enum SnapshotScreen: String {
     case tripEnded, tripEndedStars
     case stats, statsCharts, statsHeatmap, statsRecords, statsBike, statsEnd
 
+    var isLiveActivity: Bool { [.liveActivityLock, .liveActivityIsland, .tripActivityLock, .tripActivityIsland].contains(self) }
+
     var withBooking: Bool { [.bookingBanner, .unlockConfirm, .unlockUncertain].contains(self) }
 }
 

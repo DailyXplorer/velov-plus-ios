@@ -21,7 +21,7 @@ struct VelovApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
-                .preferredColorScheme(.light)
+                .preferredColorScheme(model.snapshot?.isLiveActivity == true ? .dark : .light)
                 .tint(Palette.red)
                 .task { await model.start() }
         }
@@ -41,7 +41,7 @@ struct RootView: View {
         case .guest(let message):
             LoginView(notice: message)
         default:
-            if let screen = model.snapshot, [.liveActivityLock, .liveActivityIsland, .tripActivityLock, .tripActivityIsland].contains(screen) {
+            if let screen = model.snapshot, screen.isLiveActivity {
                 LiveActivityPreview(trip: [.tripActivityLock, .tripActivityIsland].contains(screen), island: [.liveActivityIsland, .tripActivityIsland].contains(screen))
             } else {
                 Shell()

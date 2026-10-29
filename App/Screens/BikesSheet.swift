@@ -252,6 +252,7 @@ struct BikeDetail: View {
         }
         .scrollIndicators(.hidden)
         .toolbar(.hidden, for: .navigationBar)
+        .heldWhile(model.operations.sending)
         .task { if preloaded == nil { await load() } }
         .sheet(item: $pending) { BikeActionSheet(place: $0.place, bookingId: $0.bookingId, action: $0.action) }
     }

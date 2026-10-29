@@ -37,32 +37,34 @@ struct PillButton<Label: View>: View {
             .background(Capsule().fill(background))
             .overlay(Capsule().strokeBorder(ring, lineWidth: 1))
             .contentShape(Capsule())
-            .opacity(enabled || pending ? 1 : 0.55)
         }
         .buttonStyle(.plain)
         .disabled(pending)
     }
 
+    private var muted: Bool { !enabled && !pending }
+
     private var foreground: Color {
+        if muted { return Palette.inkSoft }
         switch variant {
-        case .primary: Palette.white
-        case .secondary: Palette.ink
-        case .ghost: Palette.inkSoft
-        case .onRed: Palette.red
+        case .primary: return Palette.white
+        case .secondary: return Palette.ink
+        case .ghost: return Palette.inkSoft
+        case .onRed: return Palette.red
         }
     }
 
     private var background: Color {
         switch variant {
-        case .primary: Palette.red
-        case .onRed: Palette.white
+        case .primary: muted ? Palette.mist : Palette.red
+        case .onRed: muted ? Palette.mist : Palette.white
         default: .clear
         }
     }
 
     private var ring: Color {
         switch variant {
-        case .secondary: Palette.secondaryRing
+        case .secondary: muted ? Palette.inkLine : Palette.secondaryRing
         default: .clear
         }
     }
@@ -204,8 +206,9 @@ extension SectionHeading where Trailing == EmptyView {
 struct TextButton: View {
     let title: String
     let action: () -> Void
+    @Environment(\.isEnabled) private var enabled
     var body: some View {
-        Button(action: action) { Text(title).typo(.caps(14)).foregroundStyle(Palette.redDeep).lineLimit(1).fixedSize().frame(minHeight: 40) }.buttonStyle(.plain)
+        Button(action: action) { Text(title).typo(.caps(14)).foregroundStyle(enabled ? Palette.redDeep : Palette.inkSoft).lineLimit(1).fixedSize().frame(minHeight: 40) }.buttonStyle(.plain)
     }
 }
 
@@ -217,9 +220,10 @@ struct IconButton: View {
     var color: Color = Palette.inkSoft
     let label: String
     let action: () -> Void
+    @Environment(\.isEnabled) private var enabled
     var body: some View {
         Button(action: action) {
-            Icon(icon, weight, size: size).foregroundStyle(color).frame(width: frame, height: frame).contentShape(Circle())
+            Icon(icon, weight, size: size).foregroundStyle(enabled ? color : Palette.inkSoft).frame(width: frame, height: frame).contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -335,12 +339,12 @@ struct VelovSwitch: View {
     @Environment(\.isEnabled) private var enabled
     var body: some View {
         Button(action: action) {
-            Capsule().fill(on ? Palette.red : Palette.ink.opacity(0.2)).frame(width: 52, height: 30)
+            Capsule().fill(!enabled ? Palette.mist : on ? Palette.red : Palette.ink.opacity(0.2)).frame(width: 52, height: 30)
+                .overlay(Capsule().strokeBorder(enabled ? .clear : Palette.inkLine, lineWidth: 1))
                 .overlay(alignment: on ? .trailing : .leading) {
                     Circle().fill(Palette.white).frame(width: 24, height: 24)
                         .overlay(Circle().strokeBorder(Palette.inkLine, lineWidth: 1)).padding(3)
                 }
-                .opacity(enabled ? 1 : 0.55)
         }
         .buttonStyle(.plain)
     }
@@ -389,4 +393,65 @@ struct Disclosure<Content: View>: View {
 struct SoonNote: View {
     var text = "Bientôt disponible"
     var body: some View { Text(text).typo(.body(12)).foregroundStyle(Palette.inkSoft) }
+}
+
+extension View {
+    func heldWhile(_ held: Bool) -> some View {
+        navigationBarBackButtonHidden(held)
+            .interactiveDismissDisabled(held)
+            .background(PopGestureLock(locked: held).frame(width: 0, height: 0))
+    }
+}
+
+private struct PopGestureLock: UIViewControllerRepresentable {
+    let locked: Bool
+
+    func makeUIViewController(context: Context) -> Probe { Probe() }
+
+    func updateUIViewController(_ probe: Probe, context: Context) {
+        probe.locked = locked
+    }
+
+    static func dismantleUIViewController(_ probe: Probe, coordinator: ()) {
+        probe.locked = false
+    }
+
+    final class Probe: UIViewController {
+        var locked = false { didSet { apply() } }
+        private weak var held: UINavigationController?
+
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            apply()
+        }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            apply()
+        }
+
+        override func viewDidDisappear(_ animated: Bool) {
+            super.viewDidDisappear(animated)
+            release()
+        }
+
+        private func apply() {
+            guard locked else { return release() }
+            guard let navigation = navigationController ?? held else { return }
+            held = navigation
+            gestures(of: navigation).forEach { $0.isEnabled = false }
+        }
+
+        private func release() {
+            guard let navigation = held else { return }
+            held = nil
+            gestures(of: navigation).forEach { $0.isEnabled = true }
+        }
+
+        private func gestures(of navigation: UINavigationController) -> [UIGestureRecognizer] {
+            var gestures = [navigation.interactivePopGestureRecognizer]
+            if #available(iOS 26, *) { gestures.append(navigation.interactiveContentPopGestureRecognizer) }
+            return gestures.compactMap { $0 }
+        }
+    }
 }

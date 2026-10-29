@@ -12,7 +12,7 @@ struct TripsStack: View {
         NavigationStack(path: $path) {
             PageScaffold(page: .trips)
                 .toolbar(.hidden, for: .navigationBar)
-                .navigationDestination(for: TripsRoute.self) { _ in StatsPage() }
+                .navigationDestination(for: TripsRoute.self) { _ in StatsPage().heldWhile(model.operations.sending) }
                 .navigationDestination(for: BikeRoute.self) { route in BikeDetail(route: route) }
         }
         .task { if let snapshot = model.snapshot, snapshot.showsStats, path.isEmpty { path.append(TripsRoute.stats) } }

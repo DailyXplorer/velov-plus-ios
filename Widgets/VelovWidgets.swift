@@ -22,11 +22,11 @@ struct BookingLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.trailing) { BookingIslandTrailing(endsAt: context.state.endsAt) }
                 DynamicIslandExpandedRegion(.bottom) { BookingIslandBottom(attributes: context.attributes) }
             } compactLeading: {
-                Image(systemName: "bicycle").foregroundStyle(ActivityStyle.red)
+                Icon(.personSimpleBike, size: 18).foregroundStyle(ActivityStyle.red)
             } compactTrailing: {
                 BookingCountdown(endsAt: context.state.endsAt, size: 14, color: ActivityStyle.red).frame(width: 46)
             } minimal: {
-                Image(systemName: "bicycle").foregroundStyle(ActivityStyle.red)
+                Icon(.personSimpleBike, size: 18).foregroundStyle(ActivityStyle.red)
             }
             .keylineTint(ActivityStyle.red)
         }

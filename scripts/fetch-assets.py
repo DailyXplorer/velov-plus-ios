@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
-"""Download the bundled fonts (google/fonts, OFL) and Phosphor icons (phosphor-icons/core, MIT) into the app.
+"""Download the bundled fonts (google/fonts, OFL) and build the icon assets from the free Hugeicons package
+(@hugeicons/core-free-icons on npm, MIT) into the app.
 
-Idempotent: files already present are kept. Standard library only.
+Idempotent: fonts already present are kept; the icon catalogue is rewritten from the pinned package. Standard library only.
 """
+import base64
+import hashlib
+import io
 import json
 import pathlib
+import re
+import shutil
 import sys
+import tarfile
 import urllib.parse
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 FONTS = ROOT / "App" / "Resources" / "Fonts"
-ICONS = ROOT / "App" / "Resources" / "Assets.xcassets" / "Phosphor"
 LICENSES = ROOT / "App" / "Resources" / "Licenses"
+ICON_TABLE = ROOT / "Shared" / "Icons.swift"
+CATALOG = ROOT / "Shared" / "Icons.xcassets"
+ICONS = CATALOG / "Hugeicons"
+CACHE = ROOT / "build"
 
 FONT_FILES = {
     "FacultyGlyphic-Regular.ttf": "ofl/facultyglyphic/FacultyGlyphic-Regular.ttf",
@@ -21,18 +31,16 @@ FONT_FILES = {
 }
 FONT_LICENSES = {"OFL-FacultyGlyphic.txt": "ofl/facultyglyphic/OFL.txt", "OFL-DMSans.txt": "ofl/dmsans/OFL.txt", "OFL-AzeretMono.txt": "ofl/azeretmono/OFL.txt"}
 
-# Phosphor names used by the web app, with the weights it draws them in.
-ICON_WEIGHTS = {
-    "house": ["light"], "person-simple-bike": ["light", "bold"], "star-four": ["light", "bold"], "map-pin": ["light"],
-    "user-circle": ["light"], "sign-out": ["light", "regular"], "arrow-clockwise": ["light"], "warning-circle": ["light"],
-    "x": ["light", "bold"], "lightning": ["light", "bold"], "letter-circle-p": ["light"], "caret-right": ["light", "bold"],
-    "caret-down": ["light", "bold"], "magnifying-glass": ["light"], "navigation-arrow": ["light"], "timer": ["light"],
-    "star": ["light", "fill"], "star-half": ["fill"], "ticket": ["bold"], "trend-up": ["bold"], "arrow-right": ["bold"],
-    "arrow-up-right": ["bold"], "arrow-left": ["light"], "check": ["bold"], "spinner-gap": ["regular"], "copy": ["light"],
-    "thumbs-up": ["light", "bold", "fill"], "thumbs-down": ["light"], "battery-empty": ["light"], "battery-full": ["light"],
-    "battery-high": ["light"], "battery-low": ["light"], "battery-medium": ["light"], "warning": ["bold", "fill"],
-    "clock": ["bold"], "lock-open": ["light", "bold"], "download-simple": ["light"], "envelope-simple": ["light"],
-}
+HUGEICONS_VERSION = "4.4.0"
+HUGEICONS_INTEGRITY = "sha512-7Mz8bmGoY6tZ6l3C2TXwNMLVSr0I8HPwjjFIERAuJFj3rWwLxdF2ZLkDqdrVuEE1dx5b/VXyIsP4WoSU6Q40KQ=="
+HUGEICONS_TARBALL = f"https://registry.npmjs.org/@hugeicons/core-free-icons/-/core-free-icons-{HUGEICONS_VERSION}.tgz"
+
+# Stroke width per variant: `<name>` is light, `<name>-bold` bold. Stars also get `<name>-fill` for ratings and favourites.
+STROKES = {"": "1.5", "-bold": "2"}
+FILLED = {"star", "star-half"}
+
+ELEMENT = re.compile(r'\[\s*"(\w+)",\s*\{([^}]*)\}\s*\]')
+ATTRIBUTE = re.compile(r'(\w+):\s*"([^"]*)"')
 
 
 def fetch(url: str) -> bytes:
@@ -53,28 +61,99 @@ def google(path: str) -> str:
     return "https://raw.githubusercontent.com/google/fonts/main/" + urllib.parse.quote(path)
 
 
+def hugeicons_package() -> tarfile.TarFile:
+    """The pinned npm tarball, checked against its registry integrity and cached under build/."""
+    tarball = CACHE / f"hugeicons-core-free-icons-{HUGEICONS_VERSION}.tgz"
+    data = tarball.read_bytes() if tarball.exists() else fetch(HUGEICONS_TARBALL)
+    digest = "sha512-" + base64.b64encode(hashlib.sha512(data).digest()).decode()
+    if digest != HUGEICONS_INTEGRITY:
+        tarball.unlink(missing_ok=True)
+        raise SystemExit(f"{HUGEICONS_TARBALL}: integrity mismatch")
+    if not tarball.exists():
+        CACHE.mkdir(exist_ok=True)
+        tarball.write_bytes(data)
+    return tarfile.open(fileobj=io.BytesIO(data))
+
+
+def icon_names() -> list[str]:
+    """The kebab-case Hugeicons names in the raw values of `IconName`."""
+    return re.findall(r'^\s*case \w+ = "([a-z0-9-]+)"', ICON_TABLE.read_text(), re.MULTILINE)
+
+
+def elements(package: tarfile.TarFile, name: str) -> list[tuple[str, dict[str, str]]]:
+    """The SVG elements of a free icon, from `dist/esm/<Name>Icon.js` (`[["path", { d: "…", strokeWidth: "1.5", … }], …]`)."""
+    component = "".join(part.capitalize() for part in name.split("-")) + "Icon"
+    try:
+        source = package.extractfile(f"package/dist/esm/{component}.js").read().decode()
+    except KeyError:
+        raise SystemExit(f"{component} is not in @hugeicons/core-free-icons {HUGEICONS_VERSION}")
+    found = []
+    for tag, attributes in ELEMENT.findall(source):
+        pairs = {re.sub(r"[A-Z]", lambda m: "-" + m.group().lower(), key): value for key, value in ATTRIBUTE.findall(attributes) if key != "key"}
+        found.append((tag, {key: "#000000" if value == "currentColor" else value for key, value in pairs.items()}))
+    if not found:
+        raise SystemExit(f"{component}: no SVG elements found")
+    return found
+
+
+def svg(shapes: list[tuple[str, dict[str, str]]], stroke: str) -> str:
+    body = "".join(
+        f"<{tag} " + " ".join(f'{key}="{stroke if key == "stroke-width" else value}"' for key, value in attributes.items()) + "/>"
+        for tag, attributes in shapes
+    )
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">{body}</svg>\n'
+
+
+def filled(package: tarfile.TarFile, name: str) -> list[tuple[str, dict[str, str]]]:
+    """The star outline filled whole, or on its left half for `star-half` (the star path from its bottom point round the left side to its top)."""
+    (tag, star), = elements(package, "star")
+    if name == "star":
+        return [(tag, {**star, "fill": "#000000"})]
+    bottom, top = "11.9993 18.7917", "11.9999 2.5"
+    path = star["d"]
+    left = "M" + bottom + path[path.index(bottom) + len(bottom):path.index(top) + len(top)] + "Z"
+    return [(tag, {"d": left, "fill": "#000000"}), *elements(package, "star-half")]
+
+
+def write_imageset(name: str, content: str) -> None:
+    imageset = ICONS / f"{name}.imageset"
+    imageset.mkdir(parents=True, exist_ok=True)
+    (imageset / f"{name}.svg").write_text(content)
+    (imageset / "Contents.json").write_text(json.dumps({
+        "images": [{"filename": f"{name}.svg", "idiom": "universal"}],
+        "info": {"author": "xcode", "version": 1},
+        "properties": {"preserves-vector-representation": True, "template-rendering-intent": "template"},
+    }, indent=2) + "\n")
+
+
+def build_icons() -> None:
+    package = hugeicons_package()
+    names = icon_names()
+    if not names:
+        raise SystemExit(f"no icon names in {ICON_TABLE.relative_to(ROOT)}")
+    wanted = set()
+    for name in names:
+        shapes = elements(package, name)
+        for suffix, stroke in STROKES.items():
+            write_imageset(name + suffix, svg(shapes, stroke))
+            wanted.add(name + suffix)
+        if name in FILLED:
+            write_imageset(name + "-fill", svg(filled(package, name), STROKES[""]))
+            wanted.add(name + "-fill")
+    for stale in ICONS.glob("*.imageset"):
+        if stale.name.removesuffix(".imageset") not in wanted:
+            shutil.rmtree(stale)
+    (ICONS / "Contents.json").write_text(json.dumps({"info": {"author": "xcode", "version": 1}, "properties": {"provides-namespace": True}}, indent=2) + "\n")
+    (CATALOG / "Contents.json").write_text(json.dumps({"info": {"author": "xcode", "version": 1}}, indent=2) + "\n")
+    (LICENSES / "Hugeicons-LICENSE.txt").write_bytes(package.extractfile("package/LICENSE.md").read())
+
+
 def main() -> int:
     for name, path in FONT_FILES.items():
         save(FONTS / name, google(path))
     for name, path in FONT_LICENSES.items():
         save(LICENSES / name, google(path))
-    save(LICENSES / "Phosphor-LICENSE.txt", "https://raw.githubusercontent.com/phosphor-icons/core/main/LICENSE")
-
-    ICONS.mkdir(parents=True, exist_ok=True)
-    (ICONS / "Contents.json").write_text(json.dumps({"info": {"author": "xcode", "version": 1}, "properties": {"provides-namespace": True}}, indent=2))
-    for icon, weights in ICON_WEIGHTS.items():
-        for weight in weights:
-            file = f"{icon}.svg" if weight == "regular" else f"{icon}-{weight}.svg"
-            imageset = ICONS / f"{icon}-{weight}.imageset"
-            save(imageset / file, f"https://raw.githubusercontent.com/phosphor-icons/core/main/assets/{weight}/{file}")
-            (imageset / "Contents.json").write_text(json.dumps({
-                "images": [{"filename": file, "idiom": "universal"}],
-                "info": {"author": "xcode", "version": 1},
-                "properties": {"preserves-vector-representation": True, "template-rendering-intent": "template"},
-            }, indent=2))
-    catalog = ICONS.parent / "Contents.json"
-    if not catalog.exists():
-        catalog.write_text(json.dumps({"info": {"author": "xcode", "version": 1}}, indent=2))
+    build_icons()
     return 0
 
 

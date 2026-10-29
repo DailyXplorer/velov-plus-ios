@@ -61,7 +61,7 @@ struct PointsPage: View {
     }
 
     /// `.points-summary > div`: one of two equal mist cards sharing the row.
-    private func figure(_ icon: Ph, _ label: String, _ value: String, accent: Bool) -> some View {
+    private func figure(_ icon: IconName, _ label: String, _ value: String, accent: Bool) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Eyebrow(icon: icon, text: label)
             HStack(alignment: .firstTextBaseline, spacing: 6) {

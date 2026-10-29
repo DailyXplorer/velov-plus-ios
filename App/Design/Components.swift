@@ -73,7 +73,7 @@ struct Spinner: View {
     @State private var turning = false
     var size: CGFloat = 18
     var body: some View {
-        Icon(.spinnerGap, .regular, size: size)
+        Icon(.spinnerGap, .light, size: size)
             .rotationEffect(.degrees(turning ? 360 : 0))
             .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: turning)
             .onAppear { turning = true }
@@ -97,7 +97,7 @@ struct CircleArrow: View {
 
 /// `.eyebrow`: mist pill with a red icon circle.
 struct Eyebrow: View {
-    let icon: Ph
+    let icon: IconName
     let text: String
     var body: some View {
         HStack(spacing: 10) {
@@ -111,7 +111,7 @@ struct Eyebrow: View {
 
 /// `.card-tag`: white pill with a red icon circle.
 struct CardTag: View {
-    let icon: Ph
+    let icon: IconName
     let text: String
     var compact = false
     var body: some View {
@@ -143,7 +143,7 @@ struct DottedTexture: View {
 
 /// `.summary-card`: red, dotted, a tag, a big number and a detail line with an arrow.
 struct SummaryCard<Value: View>: View {
-    let tag: (Ph, String)
+    let tag: (IconName, String)
     let detail: String
     var minHeight: CGFloat = 168
     let action: () -> Void
@@ -199,8 +199,8 @@ struct TextButton: View {
 }
 
 struct IconButton: View {
-    let icon: Ph
-    var weight: Ph.Weight = .light
+    let icon: IconName
+    var weight: IconWeight = .light
     var size: CGFloat = 20
     var frame: CGFloat = 40
     var color: Color = Palette.inkSoft

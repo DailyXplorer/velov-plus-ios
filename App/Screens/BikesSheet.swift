@@ -7,7 +7,7 @@ struct BikeRoute: Hashable {
     let station: Station?
 }
 
-private func typeLabel(_ type: Bike.Kind) -> (String, Ph) {
+private func typeLabel(_ type: Bike.Kind) -> (String, IconName) {
     switch type {
     case .mechanical: ("Mécanique", .personSimpleBike)
     case .electrical: ("Électrique", .lightning)
@@ -142,7 +142,7 @@ struct BikeRow: View {
 struct BatteryLevel: View {
     let percent: Int
     var body: some View {
-        let icon: Ph = percent >= 90 ? .batteryFull : percent >= 60 ? .batteryHigh : percent >= 30 ? .batteryMedium : percent >= 10 ? .batteryLow : .batteryEmpty
+        let icon: IconName = percent >= 90 ? .batteryFull : percent >= 60 ? .batteryHigh : percent >= 30 ? .batteryMedium : percent >= 10 ? .batteryLow : .batteryEmpty
         HStack(spacing: 5) {
             Icon(icon, .light, size: 18).foregroundStyle(Palette.inkSoft)
             Text(verbatim: "\(percent) %")
@@ -172,7 +172,7 @@ struct VerdictMark: View {
     var body: some View {
         if verdict != .neutral {
             let recommended = verdict == .recommended
-            Icon(recommended ? .thumbsUp : .warning, .fill, size: 18)
+            Icon(recommended ? .thumbsUp : .warning, .bold, size: 18)
                 .foregroundStyle(recommended ? Palette.white : Palette.inkSoft)
                 .frame(width: 34, height: 34)
                 .background(Circle().fill(recommended ? Palette.red : Palette.mist))

@@ -14,7 +14,7 @@ struct BookingActivityAttributes: ActivityAttributes {
 }
 
 // The views are shared so the app can draw them for the snapshots; the widget extension puts them in its regions.
-// SF Symbols and system fonts: the extension bundles neither the Phosphor catalogue nor the web fonts.
+// Hugeicons from the shared catalogue and system fonts: the extension does not bundle the web fonts.
 
 enum ActivityStyle {
     static let red = Color(red: 0xdf / 255, green: 0x25 / 255, blue: 0x37 / 255)
@@ -43,7 +43,7 @@ struct BookingCountdown: View {
 struct ReservedPill: View {
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "clock.fill").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
+            Icon(.clock, .bold, size: 11).foregroundStyle(.white)
                 .frame(width: 20, height: 20).background(Circle().fill(ActivityStyle.red))
             Text("RÉSERVÉ").font(ActivityStyle.mono(11)).foregroundStyle(ActivityStyle.ink)
         }
@@ -99,7 +99,7 @@ struct BookingIslandBottom: View {
     let attributes: BookingActivityAttributes
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "bicycle").foregroundStyle(ActivityStyle.red)
+            Icon(.personSimpleBike, size: 16).foregroundStyle(ActivityStyle.red)
             Text("Borne \(attributes.standNumber.map(String.init) ?? "—") · \(attributes.stationName)").foregroundStyle(.white.opacity(0.85)).lineLimit(1)
         }
         .font(.footnote)

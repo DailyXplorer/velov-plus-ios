@@ -34,4 +34,4 @@ A native SwiftUI client for the Lyon bike-share account, a port of the companion
 - The booking Live Activity is started and ended by the app only (no push).
 - Light mode only; red is the only accent colour.
 
-Fonts: Faculty Glyphic, DM Sans and Azeret Mono (SIL Open Font License). Icons: Phosphor (MIT). Licences are in `App/Resources/Licenses`.
+Fonts: Faculty Glyphic, DM Sans and Azeret Mono (SIL Open Font License). Icons: Hugeicons free set (MIT), built by `scripts/fetch-assets.py` from the pinned `@hugeicons/core-free-icons` npm package. Licences are in `App/Resources/Licenses`.

@@ -19,7 +19,7 @@ enum Page: String, CaseIterable, Identifiable {
     /// The bottom bar's shorter labels.
     var tab: String { self == .overview ? "Accueil" : title }
 
-    var icon: Ph {
+    var icon: IconName {
         switch self {
         case .overview: .house
         case .trips: .personSimpleBike

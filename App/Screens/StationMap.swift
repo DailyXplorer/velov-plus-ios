@@ -76,7 +76,7 @@ struct StationNumbers: View {
         }
     }
 
-    private func count(_ icon: Ph, _ value: Int, _ label: String, size: CGFloat) -> some View {
+    private func count(_ icon: IconName, _ value: Int, _ label: String, size: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
                 Icon(icon, .light, size: compact ? 16 : size).foregroundStyle(Palette.inkSoft)

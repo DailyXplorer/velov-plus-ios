@@ -17,6 +17,10 @@ struct RawStatus: View {
     }
 }
 
+func messageLine(_ outcome: Outcome) -> String {
+    "HTTP \(outcome.httpStatus == 0 ? "aucune réponse" : String(outcome.httpStatus)) · Code \(outcome.code ?? "—") · \(capitalize(outcome.detail ?? outcome.message ?? "—"))"
+}
+
 struct FormError: View {
     let text: String
     init(_ text: String) { self.text = text }
@@ -35,16 +39,6 @@ struct PairedActions<Content: View>: View {
     @ViewBuilder let content: () -> Content
     var body: some View {
         HStack(spacing: 10) { content() }.fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-struct DoneLine: View {
-    let text: String
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Icon(.check, .bold, size: 16).foregroundStyle(Palette.red).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
-            Text(text).typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
-        }
     }
 }
 
@@ -82,62 +76,125 @@ extension View {
     func fitSheet() -> some View { modifier(FitSheet()) }
 }
 
-struct WriteDialog<Question: View>: View {
-    enum Step { case confirm, sending, failed(Outcome) }
-
+struct Restart {
     let title: String
-    let run: () async -> Outcome
-    @ViewBuilder let question: () -> Question
-    @Environment(\.dismiss) private var dismiss
-    @State private var step = Step.confirm
+    let action: () -> Void
+}
 
-    private var sending: Bool { if case .sending = step { true } else { false } }
-    private var failure: Outcome? { if case .failed(let outcome) = step { outcome } else { nil } }
+struct WriteDialog<Question: View>: View {
+    let title: String
+    let key: String?
+    let keep: Bool
+    let ready: Bool
+    let run: () async -> Outcome
+    let check: (() async throws -> Check)?
+    let verified: () -> Void
+    let restart: Restart?
+    let question: () -> Question
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State private var refused: Outcome?
+    @State private var notice: String?
+    @State private var checking = false
+
+    init(title: String, key: String?, keep: Bool = false, ready: Bool = true, run: @escaping () async -> Outcome, check: (() async throws -> Check)? = nil,
+         verified: @escaping () -> Void = {}, restart: Restart? = nil, @ViewBuilder question: @escaping () -> Question) {
+        self.title = title; self.key = key; self.keep = keep; self.ready = ready; self.run = run
+        self.check = check; self.verified = verified; self.restart = restart; self.question = question
+    }
+
+    private var entry: Operations.Entry? { key.flatMap { model.operations.get($0) } }
+    private var sending: Bool { entry?.status == .sending }
+    private var busy: Bool { sending || checking }
+    private var failure: Outcome? { entry?.status == .uncertain ? entry?.outcome : refused }
+    private var uncertain: Bool { failure?.isUncertain == true }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: title, closeDisabled: sending) { dismiss() }
+            SheetHeading(title: title, closeDisabled: busy) { dismiss() }
             if Question.self != EmptyView.self {
                 question().typo(.body(15)).foregroundStyle(Palette.ink).padding(.top, 14)
             }
             if let failure {
                 VStack(alignment: .leading, spacing: 6) {
-                    FormError(failure.message ?? "La modification n’a pas abouti.")
+                    FormError(failure.message ?? (failure.isUncertain ? Messages.unverified : "La modification n’a pas abouti."))
                     RawStatus(outcome: failure)
                     if failure.isUncertain { UncertainNote().padding(.top, 4) }
                 }
                 .padding(.top, 14)
             }
+            if let notice { FormError(notice).padding(.top, 12) }
             PairedActions {
-                if failure?.isUncertain == true {
-                    PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }
+                if uncertain {
+                    PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }.disabled(busy)
+                    if check != nil {
+                        PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { if let failure { verify(failure) } }
+                    } else if let restart {
+                        PillButton(restart.title, variant: .secondary, fullWidth: true) { restart.action() }
+                    }
                 } else {
-                    PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(sending)
-                    PillButton("Confirmer", pending: sending, fullWidth: true) { confirm() }
+                    PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(busy)
+                    PillButton("Confirmer", pending: sending, fullWidth: true) { confirm() }.disabled(!ready || key == nil)
                 }
             }
             .padding(.top, 24)
         }
         .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
         .fitSheet()
-        .interactiveDismissDisabled(sending)
+        .interactiveDismissDisabled(busy)
     }
 
     private func confirm() {
-        guard !sending else { return }
+        guard let key, ready, !busy else { return }
         Haptics.confirm()
-        step = .sending
+        refused = nil
+        notice = nil
+        let operations = model.operations
         Task {
-            let outcome = await run()
-            Haptics.result(outcome.ok)
-            if outcome.ok { dismiss() } else { step = .failed(outcome) }
+            switch await operations.runOnce(key, keep: keep, run) {
+            case .unsaved:
+                notice = Messages.unsaved
+            case .busy:
+                if operations.get(key) == nil { notice = Messages.busy }
+            case .finished(let outcome):
+                Haptics.result(outcome.ok)
+                if outcome.ok {
+                    dismiss()
+                } else if !outcome.isUncertain {
+                    refused = outcome
+                } else if check != nil {
+                    verify(outcome)
+                }
+            }
+        }
+    }
+
+    private func verify(_ outcome: Outcome) {
+        guard let key, let check, !checking else { return }
+        checking = true
+        let operations = model.operations
+        Task {
+            let settled = await settle(outcome, check: check)
+            checking = false
+            switch settled {
+            case .done:
+                operations.clear(key)
+                verified()
+                dismiss()
+            case .refused(let answer):
+                operations.clear(key)
+                refused = answer
+            case .uncertain:
+                break
+            }
         }
     }
 }
 
 extension WriteDialog where Question == EmptyView {
-    init(title: String, run: @escaping () async -> Outcome) {
-        self.init(title: title, run: run) { EmptyView() }
+    init(title: String, key: String?, keep: Bool = false, ready: Bool = true, run: @escaping () async -> Outcome, check: (() async throws -> Check)? = nil,
+         verified: @escaping () -> Void = {}, restart: Restart? = nil) {
+        self.init(title: title, key: key, keep: keep, ready: ready, run: run, check: check, verified: verified, restart: restart) { EmptyView() }
     }
 }
 
@@ -150,7 +207,7 @@ struct FormField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft)
+            Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft)
             TextField("", text: $text)
                 .typo(.body(16)).foregroundStyle(Palette.ink)
                 .keyboardType(keyboard).textContentType(content).autocorrectionDisabled()

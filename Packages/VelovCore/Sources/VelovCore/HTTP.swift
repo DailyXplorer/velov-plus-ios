@@ -180,13 +180,17 @@ public func getWithAppToken(_ client: ReadClient, _ tokens: AppToken, _ url: URL
 }
 
 public actor Memo<Value: Sendable> {
-    private let ttl: TimeInterval
+    private let ttl: @Sendable (Value) -> TimeInterval
     private let stale: Bool
     private let now: @Sendable () -> Date
     private var values: [String: (value: Value, expiresAt: Date)] = [:]
     private var pending: [String: Task<Value, Error>] = [:]
 
     public init(ttl: TimeInterval, stale: Bool = false, now: @escaping @Sendable () -> Date = { Date() }) {
+        self.init(ttl: { _ in ttl }, stale: stale, now: now)
+    }
+
+    public init(ttl: @escaping @Sendable (Value) -> TimeInterval, stale: Bool = false, now: @escaping @Sendable () -> Date = { Date() }) {
         self.ttl = ttl; self.stale = stale; self.now = now
     }
 
@@ -203,7 +207,7 @@ public actor Memo<Value: Sendable> {
         defer { pending[key] = nil }
         do {
             let value = try await task.value
-            values[key] = (value, now().addingTimeInterval(ttl))
+            values[key] = (value, now().addingTimeInterval(ttl(value)))
             return value
         } catch {
             if stale, let last = values[key] { return last.value }

@@ -50,6 +50,7 @@ public final class DockWatch {
     public static let interval: TimeInterval = 20
     public static let cap: TimeInterval = 3 * 3600
     public static let unlockGrace: TimeInterval = 2 * 60
+    public static let backoffCap: TimeInterval = 2 * 60
 
     public typealias Scheduler = @MainActor (TimeInterval, @escaping @MainActor () async -> Void) -> () -> Void
 
@@ -75,6 +76,8 @@ public final class DockWatch {
     private var cancelTimer: (() -> Void)?
     private var inFlight = false
     private var generation = 0
+    private var delay = DockWatch.interval
+    private var nextCheckAt: Date?
 
     public init(check: @escaping @MainActor () async throws -> TripCheck, docked: @escaping @MainActor (String, Trip?) -> Void,
                 visible: @escaping @MainActor () -> Bool, now: @escaping () -> Date = Date.init, schedule: Scheduler? = nil) {
@@ -103,15 +106,19 @@ public final class DockWatch {
         if cancelTimer == nil && !inFlight { plan() }
     }
 
-    public func becameVisible() async {
-        guard active else { return }
+    public func visibilityChanged() async {
+        guard active, !inFlight else { return }
         cancel()
-        await tick()
+        guard visible() else { return }
+        let wait = nextCheckAt.map { $0.timeIntervalSince(now()) } ?? 0
+        if wait > 0 { plan(wait) } else { await tick() }
     }
 
     public func stop() {
         state = .idle
         generation += 1
+        delay = Self.interval
+        nextCheckAt = nil
         cancel()
     }
 
@@ -120,10 +127,12 @@ public final class DockWatch {
         cancelTimer = nil
     }
 
-    private func plan() {
+    private func plan(_ wait: TimeInterval? = nil) {
         cancel()
         guard active else { return }
-        cancelTimer = schedule(Self.interval) { [weak self] in await self?.tick() }
+        let wait = wait ?? delay
+        nextCheckAt = now().addingTimeInterval(wait)
+        cancelTimer = schedule(wait) { [weak self] in await self?.tick() }
     }
 
     private func tick() async {
@@ -134,7 +143,11 @@ public final class DockWatch {
         inFlight = true
         let answer = try? await check()
         inFlight = false
-        guard sent == generation else { return }
+        guard sent == generation else {
+            if cancelTimer == nil { plan() }
+            return
+        }
+        delay = answer?.ongoing != nil ? Self.interval : min(delay * 2, Self.backoffCap)
         if let ongoing = answer?.ongoing, let first = ongoing.first {
             state = .riding(tripId: first.id, startedAt: startedAt)
         } else if answer?.ongoing != nil, case .riding(let tripId, _) = state {

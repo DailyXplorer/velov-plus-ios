@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 public protocol PromoBacking: Sendable {
@@ -57,8 +56,7 @@ public struct SavedPromo: Codable, Equatable, Sendable {
 
 public enum PromoStore {
     public static func key(account: String) -> String {
-        let digest = SHA256.hash(data: Data(account.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().utf8))
-        return "velov:promocodes:v1:" + digest.map { String(format: "%02x", $0) }.joined()
+        "velov:promocodes:v1:" + accountDigest(account)
     }
 
     public static func read(_ backing: PromoBacking, key: String) throws -> [SavedPromo] {

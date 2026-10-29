@@ -36,7 +36,7 @@ public func formatNumber(_ value: Double, maximumFractionDigits: Int = 3, minimu
         $0.numberStyle = .decimal
         $0.maximumFractionDigits = maximumFractionDigits
         $0.minimumFractionDigits = minimumFractionDigits
-    }.string(from: NSNumber(value: value)) ?? String(value)
+    }.string(from: NSNumber(value: value)).map { $0.replacingOccurrences(of: "\u{202F}", with: "\u{00A0}") } ?? String(value)
 }
 
 public func capitalize(_ text: String) -> String {

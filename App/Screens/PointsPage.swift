@@ -13,8 +13,8 @@ struct PointsPage: View {
         let invite = rewards.rules.first { $0.name == "PROMOCODE" }
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 10) {
-                figure(.starFour, "Solde actuel", rewards.balance.map { formatNumber($0) } ?? "—")
-                figure(.trendUp, "Total gagné", rewards.total.map { formatNumber($0) } ?? "—")
+                PointsFigure(icon: .starFour, label: "Solde actuel", value: rewards.balance.map { formatNumber($0) } ?? "—")
+                PointsFigure(icon: .trendUp, label: "Total gagné", value: rewards.total.map { formatNumber($0) } ?? "—")
             }
             .fixedSize(horizontal: false, vertical: true)
             .padding(.bottom, 16)
@@ -26,29 +26,15 @@ struct PointsPage: View {
                 SectionHeading("Gagner des points").padding(.top, 40)
                 VStack(spacing: 8) {
                     ForEach(rules, id: \.name) { rule in
-                        HStack(spacing: 16) {
-                            Text(rule.label == "Vélo évalué" ? "Évaluation d’un vélo après un trajet" : rule.label).typo(.body(13)).foregroundStyle(Palette.inkSoft)
-                            Spacer()
-                            Text(verbatim: "+\(formatNumber(rule.points))").typo(.title(23)).foregroundStyle(Palette.red)
-                        }
-                        .padding(.horizontal, 18).padding(.vertical, 16).frame(minHeight: 64)
-                        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
+                        EarnRule(label: rule.label == "Vélo évalué" ? "Évaluation d’un vélo après un trajet" : rule.label, points: "+\(formatNumber(rule.points))")
                     }
                 }
             }
             SectionHeading("Historique").padding(.top, 40)
             VStack(spacing: 0) {
                 ForEach(rewards.movements.prefix(limit)) { movement in
-                    HStack(spacing: 20) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(rewardLabel(movement.label)).typo(.body(13, medium: true)).foregroundStyle(Palette.ink)
-                            Text(formatDate(movement.date, .dayLongMonthYear)).typo(.body(11)).foregroundStyle(Palette.inkSoft)
-                        }
-                        Spacer()
-                        Text(verbatim: "\(movement.amount > 0 ? "+" : "")\(formatNumber(movement.amount))").typo(.body(15, medium: true))
-                            .foregroundStyle(movement.amount > 0 ? Palette.red : Palette.ink)
-                    }
-                    .padding(.vertical, 16).frame(minHeight: 76)
+                    MovementRow(label: rewardLabel(movement.label), date: formatDate(movement.date, .dayLongMonthYear),
+                                amount: "\(movement.amount > 0 ? "+" : "")\(formatNumber(movement.amount))", credit: movement.amount > 0)
                     Hairline()
                 }
                 if rewards.movements.isEmpty { EmptyState("Aucun mouvement de points.") }
@@ -59,20 +45,116 @@ struct PointsPage: View {
         }
     }
 
-    private func figure(_ icon: IconName, _ label: String, _ value: String) -> some View {
+}
+
+struct PointsFigure: View {
+    let icon: IconName
+    let label: String
+    let value: String
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Eyebrow(icon: icon, text: label)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(value).typo(.title(40)).foregroundStyle(Palette.ink)
-                Text("points").typo(.label(13)).foregroundStyle(Palette.inkSoft)
-            }
-            .lineLimit(1).minimumScaleFactor(0.5)
+            Text(value).typo(.title(40)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.5)
         }
         .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
     }
+}
 
+private let ghostRules = ["Départ d’une station pleine", "Arrivée dans une station vide", "Évaluation d’un vélo après un trajet"]
+private let ghostMovements = ["Bonus de trajet", "Évaluation", "Arrivée dans une station vide", "Réduction sur un trajet"]
+
+struct PointsSkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 10) {
+                PointsFigure(icon: .starFour, label: "Solde actuel", value: "0").skeleton()
+                PointsFigure(icon: .trendUp, label: "Total gagné", value: "0").skeleton()
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.bottom, 16)
+            SettingRow(label: "Utilisation automatique", value: "Activée") { VelovSwitch(on: true) }.skeleton()
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Inviter un ami").typo(.caps(13))
+                    Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(13))
+                    SoonNote(text: "Il vous manque 255 points.")
+                }
+                Spacer(minLength: 0)
+                PillButton("Obtenir un code", variant: .secondary) {}
+            }
+            .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
+            .skeleton()
+            .padding(.top, 12)
+            SectionHeading("Gagner des points").padding(.top, 40)
+            VStack(spacing: 8) {
+                ForEach(ghostRules, id: \.self) { EarnRule(label: $0, points: "+5").skeleton() }
+            }
+            SectionHeading("Historique").padding(.top, 40)
+            VStack(spacing: 0) {
+                ForEach(0..<8, id: \.self) { index in
+                    MovementRow(label: ghostMovements[index % ghostMovements.count], date: "12 octobre 2026", amount: "+5", credit: false, ghost: true)
+                    Hairline()
+                }
+                PillButton("Voir plus", variant: .secondary) {}.skeleton(21).frame(maxWidth: .infinity).padding(.vertical, 24)
+            }
+        }
+        .accessibilityLabel("Chargement des points")
+    }
+}
+
+struct SettingRow<Control: View>: View {
+    let label: String
+    let value: String
+    @ViewBuilder let control: () -> Control
+
+    var body: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft)
+                Text(value).typo(.title(20)).foregroundStyle(Palette.ink)
+            }
+            Spacer(minLength: 0)
+            control()
+        }
+        .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
+        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
+    }
+}
+
+struct EarnRule: View {
+    let label: String
+    let points: String
+    var body: some View {
+        HStack(spacing: 16) {
+            Text(label).typo(.body(13)).foregroundStyle(Palette.inkSoft)
+            Spacer()
+            Text(verbatim: points).typo(.title(23)).foregroundStyle(Palette.red)
+        }
+        .padding(.horizontal, 18).padding(.vertical, 16).frame(minHeight: 64)
+        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
+    }
+}
+
+struct MovementRow: View {
+    let label: String
+    let date: String
+    let amount: String
+    let credit: Bool
+    var ghost = false
+    var body: some View {
+        HStack(spacing: 20) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(label).typo(.body(13, medium: true)).foregroundStyle(Palette.ink).ghost(ghost)
+                Text(date).typo(.body(11)).foregroundStyle(Palette.inkSoft).ghost(ghost)
+            }
+            Spacer()
+            Text(verbatim: amount).typo(.body(15, medium: true)).foregroundStyle(credit ? Palette.red : Palette.ink).ghost(ghost)
+        }
+        .padding(.vertical, 16).frame(minHeight: 76)
+    }
 }
 
 struct AutoSpendSetting: View {
@@ -84,7 +166,7 @@ struct AutoSpendSetting: View {
     var body: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Utilisation automatique").typo(.label(13)).foregroundStyle(Palette.inkSoft)
+                Text("Utilisation automatique").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
                 Text(value == nil ? Messages.missing : value! ? "Activée" : "Désactivée").typo(.title(20)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
@@ -96,7 +178,7 @@ struct AutoSpendSetting: View {
         .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
         .sheet(isPresented: $asking) {
-            WriteDialog(title: next ? "Activer l’utilisation automatique ?" : "Désactiver l’utilisation automatique ?") { [next] in
+            WriteDialog(title: next ? "Activer l’utilisation automatique ?" : "Désactiver l’utilisation automatique ?", key: OperationKey.autoSpend, run: { [next] in
                 var answered: Bool?
                 let outcome = await attempt {
                     let result = try await model.service.setAutoSpend(next)
@@ -105,7 +187,11 @@ struct AutoSpendSetting: View {
                 }
                 if outcome.ok { model.setAutoSpend(answered ?? next) }
                 return outcome
-            } question: {
+            }, check: { [next] in
+                autoSpendCheck(try await model.service.dashboard(), next)
+            }, verified: { [next] in
+                model.setAutoSpend(next)
+            }) {
                 Text(next ? "Vos points régleront automatiquement les minutes au-delà de la période gratuite."
                           : "Vos points ne régleront plus les minutes au-delà de la période gratuite.")
             }

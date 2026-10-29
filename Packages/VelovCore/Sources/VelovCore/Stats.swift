@@ -23,6 +23,7 @@ public struct StatsBucket: Equatable, Sendable {
 public struct StationCount: Equatable, Sendable {
     public var name: String
     public var count: Int
+    public init(name: String, count: Int) { self.name = name; self.count = count }
 }
 
 public struct DistanceEstimate: Equatable, Sendable {
@@ -66,6 +67,7 @@ public struct Stats: Equatable, Sendable {
     public var months12: PeriodStats
     public var all: PeriodStats
     public var balance: Double?
+    public var complete: Bool
 
     public subscript(period: StatsPeriod) -> PeriodStats {
         switch period {
@@ -88,8 +90,9 @@ public struct StatsInput: Sendable {
     public var movements: [StatsMovement]?
     public var balance: Double?
     public var now: Date
-    public init(trips: [Trip], coords: [Int: GeoPoint], movements: [StatsMovement]?, balance: Double?, now: Date) {
-        self.trips = trips; self.coords = coords; self.movements = movements; self.balance = balance; self.now = now
+    public var complete: Bool
+    public init(trips: [Trip], coords: [Int: GeoPoint], movements: [StatsMovement]?, balance: Double?, now: Date, complete: Bool = true) {
+        self.trips = trips; self.coords = coords; self.movements = movements; self.balance = balance; self.now = now; self.complete = complete
     }
 }
 
@@ -274,5 +277,5 @@ public func periodStats(_ period: StatsPeriod, _ input: StatsInput) -> PeriodSta
 
 public func buildStats(_ input: StatsInput) -> Stats {
     Stats(days30: periodStats(.days30, input), months12: periodStats(.months12, input), all: periodStats(.all, input),
-          balance: input.balance ?? input.movements?.reduce(0) { $0 + $1.amount })
+          balance: input.balance ?? input.movements?.reduce(0) { $0 + $1.amount }, complete: input.complete)
 }

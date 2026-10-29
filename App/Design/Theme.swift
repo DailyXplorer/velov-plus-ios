@@ -69,19 +69,21 @@ enum Typo {
     case title(CGFloat)
     case body(CGFloat, medium: Bool = false)
     case label(CGFloat)
+    case caps(CGFloat)
     case countdown(CGFloat)
 
     var font: Font {
         switch self {
         case .title(let size), .countdown(let size): FontBook.font("FacultyGlyphic-Regular", size: size)
         case .body(let size, let medium): FontBook.font("DMSans", size: size, weight: medium ? 500 : 400, optical: true)
-        case .label(let size): FontBook.font("DMSans", size: size, weight: 500, optical: true)
+        case .label(let size), .caps(let size): FontBook.font("DMSans", size: size, weight: 500, optical: true)
         }
     }
 
     var tracking: CGFloat {
         switch self {
         case .title(let size): -0.03 * size
+        case .caps(let size): 0.02 * size
         case .body(let size, _), .label(let size), .countdown(let size): -0.02 * size
         }
     }
@@ -98,7 +100,8 @@ private struct TypoModifier: ViewModifier {
     func body(content: Content) -> some View {
         switch typo {
         case .countdown: content.font(typo.font).tracking(typo.tracking).monospacedDigit()
-        default: content.font(typo.font).tracking(typo.tracking)
+        case .caps: content.font(typo.font).tracking(typo.tracking).textCase(.uppercase)
+        default: content.font(typo.font).tracking(typo.tracking).textCase(nil)
         }
     }
 }

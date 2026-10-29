@@ -31,27 +31,45 @@ func knownDistance(to place: Place) async -> Double? {
 
 struct BikeActionSheet: View {
     let place: Place
-    let action: BikeAction
+    let chosen: BikeAction
     let bookingId: String?
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @State private var sending = false
-    @State private var failure: Outcome?
+    @State private var refused: Outcome?
+    @State private var notice: String?
+    @State private var checking = false
     @State private var distance: Double?
 
     init(place: Place, bookingId: String? = nil, action: BikeAction) {
         self.place = place
         self.bookingId = bookingId
-        self.action = action
+        chosen = action
     }
 
+    private func key(_ action: BikeAction) -> String {
+        action == .book ? OperationKey.book(place.bikeNumber) : OperationKey.unlock(place.bikeNumber)
+    }
+
+    private var held: (action: BikeAction, entry: Operations.Entry)? {
+        if let entry = model.operations.get(key(.unlock)) { return (.unlock, entry) }
+        if chosen == .book, let entry = model.operations.get(key(.book)) { return (.book, entry) }
+        return nil
+    }
+
+    private var action: BikeAction { held?.action ?? chosen }
+    private var sending: Bool { held?.entry.status == .sending }
+    private var failure: Outcome? {
+        if let held { return held.entry.outcome }
+        return refused
+    }
     private var uncertain: Bool { failure?.isUncertain == true }
+    private var booked: Bool { model.bookings.contains { $0.bikeNumber == place.bikeNumber } }
 
     var body: some View {
         let far = action == .unlock && (distance ?? 0) > Rules.releaseDistance
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: "Vélo \(place.bikeNumber)", closeDisabled: sending) { dismiss() }
-            Text(action == .book ? "Réserver ce vélo ?" : "Déverrouiller ce vélo ?").typo(.title(20)).foregroundStyle(Palette.ink).padding(.top, 10)
+            Text(action == .book ? "Réserver ce vélo\u{a0}?" : "Déverrouiller ce vélo\u{a0}?").typo(.title(20)).foregroundStyle(Palette.ink).padding(.top, 10)
             Group {
                 if action == .book {
                     Text("\(Rules.bookingPoints) points pour garder ce vélo \(Rules.bookingMinutes) minutes.").foregroundStyle(Palette.inkSoft)
@@ -67,10 +85,9 @@ struct BikeActionSheet: View {
                         .typo(.body(13)).fixedSize(horizontal: false, vertical: true)
                 }
                 .foregroundStyle(Palette.formError)
-                .padding(12)
-                .background(RoundedRectangle(cornerRadius: 12).fill(Palette.redTint))
                 .padding(.top, 12)
             }
+            if let notice { FormError(notice).padding(.top, 14) }
             if let failure {
                 VStack(alignment: .leading, spacing: 6) {
                     FormError(failure.message ?? (action == .book ? "Réservation impossible." : "Déverrouillage impossible."))
@@ -82,6 +99,7 @@ struct BikeActionSheet: View {
             PairedActions {
                 if uncertain {
                     PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }
+                    PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify(action) }
                 } else {
                     PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(sending)
                     PillButton("Confirmer", pending: sending, fullWidth: true) { send() }
@@ -92,6 +110,12 @@ struct BikeActionSheet: View {
         .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
         .fitSheet()
         .interactiveDismissDisabled(sending)
+        .onChange(of: booked, initial: true) { _, now in
+            if now, held?.action == .book, held?.entry.status == .uncertain {
+                model.operations.clear(key(.book))
+                dismiss()
+            }
+        }
         .task {
             distance = model.snapshot == nil ? await knownDistance(to: place) : 640
             if model.snapshot == .unlockUncertain { send() }
@@ -100,42 +124,63 @@ struct BikeActionSheet: View {
 
     private func send() {
         guard !sending else { return }
+        let action = action
+        let key = key(action)
+        let model = model
+        let place = place
+        let bookingId = bookingId
         Haptics.confirm()
-        sending = true
-        failure = nil
+        refused = nil
+        notice = nil
         Task {
+            var booking: Booking?
+            var ongoing: [Trip]?
+            let result = await model.operations.runOnce(key) {
+                await attempt {
+                    switch action {
+                    case .book:
+                        let answer = try await model.service.book(stationNumber: place.stationNumber, bikeNumber: place.bikeNumber)
+                        booking = answer.booking
+                        return answer.outcome
+                    case .unlock:
+                        let answer = try await model.service.unlock(stationNumber: place.stationNumber, standNumber: place.standNumber, bikeNumber: place.bikeNumber)
+                        ongoing = answer.ongoing
+                        return answer.outcome
+                    }
+                }
+            }
+            guard case .finished(let outcome) = result else {
+                if model.operations.get(key) == nil { notice = Messages.busy }
+                return
+            }
+            Haptics.result(outcome.ok)
+            if outcome.ok {
+                if action == .book { model.booked(booking) } else { model.unlocked(bookingId: bookingId, tripId: ongoing?.first?.id) }
+                dismiss()
+            } else if !outcome.isUncertain {
+                refused = outcome
+            } else if model.snapshot == nil {
+                verify(action)
+            }
+        }
+    }
+
+    private func verify(_ action: BikeAction) {
+        guard !checking else { return }
+        checking = true
+        let model = model
+        let key = key(action)
+        let bookingId = bookingId
+        Task {
+            defer { checking = false }
             switch action {
             case .book:
-                var booking: Booking?
-                let outcome = await attempt {
-                    let answer = try await model.service.book(stationNumber: place.stationNumber, bikeNumber: place.bikeNumber)
-                    booking = answer.booking
-                    return answer.outcome
-                }
-                Haptics.result(outcome.ok)
-                sending = false
-                if outcome.ok {
-                    model.booked(booking)
-                    dismiss()
-                } else {
-                    failure = outcome
-                    if outcome.isUncertain { Task { await model.loadBookings() } }
-                }
+                await model.loadBookings()
             case .unlock:
-                var ongoing: [Trip]?
-                let outcome = await attempt {
-                    let answer = try await model.service.unlock(stationNumber: place.stationNumber, standNumber: place.standNumber, bikeNumber: place.bikeNumber)
-                    ongoing = answer.ongoing
-                    return answer.outcome
-                }
-                Haptics.result(outcome.ok)
-                sending = false
-                if outcome.ok {
-                    model.unlocked(bookingId: bookingId, tripId: ongoing?.first?.id)
-                    dismiss()
-                } else {
-                    failure = outcome
-                }
+                guard let trip = try? await model.service.tripCheck().ongoing?.first else { return }
+                model.operations.clear(key)
+                model.unlocked(bookingId: bookingId, tripId: trip.id)
+                dismiss()
             }
         }
     }

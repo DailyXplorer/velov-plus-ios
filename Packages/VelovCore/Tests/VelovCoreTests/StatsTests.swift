@@ -116,6 +116,35 @@ final class StatsTests: XCTestCase {
         XCTAssertEqual(buildStats(input([], movements: movements, balance: 100)).balance, 100)
         XCTAssertEqual(buildStats(input([], movements: movements)).balance, 1045)
         XCTAssertNil(buildStats(input([])).balance)
+        XCTAssertTrue(buildStats(input([])).complete)
+        var partial = input([])
+        partial.complete = false
+        XCTAssertFalse(buildStats(partial).complete)
+    }
+
+    func testThousandsUseAVisibleNoBreakSpace() {
+        XCTAssertEqual(formatNumber(1240), "1\u{00A0}240")
+        XCTAssertEqual(formatNumber(123456), "123\u{00A0}456")
+    }
+
+    func testPartialStatsAreKeptOneMinuteAndCompleteOnesTenMinutes() async throws {
+        let clock = StatsClock()
+        let memo = Memo<Stats>(ttl: { $0.complete ? 10 * 60 : 60 }, now: { clock.now })
+        var partial = buildStats(input([]))
+        partial.complete = false
+        let loads = StatsLoads()
+        _ = try await memo.get("a") { await loads.add(); return partial }
+        clock.now = clock.now.addingTimeInterval(59)
+        _ = try await memo.get("a") { await loads.add(); return partial }
+        var count = await loads.value
+        XCTAssertEqual(count, 1)
+        clock.now = clock.now.addingTimeInterval(2)
+        let complete = buildStats(input([]))
+        _ = try await memo.get("a") { await loads.add(); return complete }
+        clock.now = clock.now.addingTimeInterval(9 * 60)
+        _ = try await memo.get("a") { await loads.add(); return complete }
+        count = await loads.value
+        XCTAssertEqual(count, 2)
     }
 
     struct Boom: Error {}
@@ -210,4 +239,13 @@ final class StatsTests: XCTestCase {
             XCTFail("unexpected \(error)")
         }
     }
+}
+
+private final class StatsClock: @unchecked Sendable {
+    var now = Date(timeIntervalSince1970: 1_800_000_000)
+}
+
+private actor StatsLoads {
+    var value = 0
+    func add() { value += 1 }
 }

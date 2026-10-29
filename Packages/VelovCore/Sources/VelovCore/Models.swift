@@ -62,7 +62,10 @@ public struct RewardMovement: Equatable, Sendable, Identifiable {
     public var date: Date?
     public var label: String
     public var amount: Double
-    public init(id: String, date: Date?, label: String, amount: Double) { self.id = id; self.date = date; self.label = label; self.amount = amount }
+    public var dateOnly: Bool
+    public init(id: String, date: Date?, label: String, amount: Double, dateOnly: Bool = false) {
+        self.id = id; self.date = date; self.label = label; self.amount = amount; self.dateOnly = dateOnly
+    }
 }
 
 public struct RewardRule: Equatable, Sendable {
@@ -214,7 +217,7 @@ public struct Booking: Equatable, Sendable, Identifiable {
     }
 }
 
-public struct Outcome: Equatable, Sendable {
+public struct Outcome: Codable, Equatable, Sendable {
     public var ok: Bool
     public var httpStatus: Int
     public var transactionState: String?

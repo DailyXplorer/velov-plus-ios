@@ -27,15 +27,19 @@ struct ProfileCoordinates: View {
         }
         .task { if model.snapshot == .accountEdit, draft == nil { draft = ProfileDraft(profile) } }
         .sheet(item: $review) { review in
-            WriteDialog(title: "Enregistrer les modifications ?") {
+            WriteDialog(title: "Enregistrer les modifications ?", key: OperationKey.profile, run: {
                 let outcome = await attempt { try await model.service.updateProfile(review.body) }
-                if outcome.ok {
-                    draft = nil
-                    Task { await model.loadDashboard() }
-                }
+                if outcome.ok { saved() }
                 return outcome
-            }
+            }, check: { [profile] in
+                profileCheck(before: profile, after: try await model.service.dashboard().profile, body: review.body)
+            }, verified: saved)
         }
+    }
+
+    private func saved() {
+        draft = nil
+        Task { await model.loadDashboard() }
     }
 
     private var summary: some View {
@@ -96,8 +100,6 @@ struct AutoRenewalSetting: View {
     let subscription: Subscription
     @Environment(AppModel.self) private var model
     @State private var asking = false
-    @State private var pending = false
-    @State private var failure: Outcome?
     @State private var saved: AutoRenewalResult?
 
     private var actual: Bool? { saved.map(\.autoRenewal) ?? subscription.autoRenewal }
@@ -107,65 +109,44 @@ struct AutoRenewalSetting: View {
     var body: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Renouvellement automatique").typo(.label(13)).foregroundStyle(Palette.inkSoft)
+                Text("Renouvellement automatique").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
                 Text(actual == nil ? "Indisponible pour le moment" : actual! ? "Activé" : "Désactivé").typo(.body(15, medium: true)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
             if canChange, subscription.id != nil, let actual {
-                VelovSwitch(on: actual) { failure = nil; asking = true }
+                VelovSwitch(on: actual) { asking = true }
                     .accessibilityLabel("Renouvellement automatique").accessibilityValue(actual ? "Activé" : "Désactivé")
             }
         }
         .padding(.top, 20)
         .onChange(of: subscription) { saved = nil }
-        .sheet(isPresented: $asking) { sheet }
+        .sheet(isPresented: $asking) { dialog }
     }
 
-    private var sheet: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: next ? "Activer le renouvellement automatique ?" : "Désactiver le renouvellement automatique ?", closeDisabled: pending) { asking = false }
-            if next {
-                Text("Votre abonnement sera renouvelé et facturé à son échéance.")
-                    .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
-            }
-            if let failure {
-                VStack(alignment: .leading, spacing: 6) {
-                    FormError(failure.message ?? "Vélo’v n’a pas enregistré le renouvellement automatique.")
-                    RawStatus(outcome: failure)
+    @ViewBuilder
+    private var dialog: some View {
+        if let id = subscription.id {
+            let next = next
+            WriteDialog(title: next ? "Activer le renouvellement automatique ?" : "Désactiver le renouvellement automatique ?", key: OperationKey.autoRenewal(id), run: {
+                let value: AutoRenewalResult
+                do {
+                    value = try await model.service.setAutoRenewal(subscriptionId: id, autoRenewal: next)
+                } catch {
+                    let outcome = await attempt { throw error }
+                    value = AutoRenewalResult(outcome: outcome, autoRenewal: nil, autoRenewalAllowed: false, verified: false)
                 }
-                .padding(.top, 14)
+                if value.outcome.ok {
+                    if value.verified, value.autoRenewal != nil { saved = value }
+                    Task { await model.loadDashboard() }
+                }
+                return value.outcome
+            }, check: {
+                renewalCheck(try await model.service.dashboard(), subscriptionId: id, wanted: next)
+            }, verified: {
+                Task { await model.loadDashboard() }
+            }) {
+                if next { Text("Votre abonnement sera renouvelé et facturé à son échéance.").fixedSize(horizontal: false, vertical: true) }
             }
-            PairedActions {
-                PillButton("Annuler", variant: .secondary, fullWidth: true) { asking = false }.disabled(pending)
-                PillButton("Confirmer", pending: pending, fullWidth: true) { confirm() }
-            }
-            .padding(.top, 24)
-        }
-        .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
-        .fitSheet()
-        .interactiveDismissDisabled(pending)
-    }
-
-    private func confirm() {
-        guard !pending, let id = subscription.id else { return }
-        let next = next
-        Haptics.confirm()
-        pending = true
-        failure = nil
-        Task {
-            let value: AutoRenewalResult
-            do {
-                value = try await model.service.setAutoRenewal(subscriptionId: id, autoRenewal: next)
-            } catch {
-                let outcome = await attempt { throw error }
-                value = AutoRenewalResult(outcome: outcome, autoRenewal: nil, autoRenewalAllowed: false, verified: false)
-            }
-            Haptics.result(value.outcome.ok)
-            pending = false
-            guard value.outcome.ok else { failure = value.outcome; return }
-            if value.verified, value.autoRenewal != nil { saved = value }
-            asking = false
-            Task { await model.loadDashboard() }
         }
     }
 }
@@ -252,30 +233,28 @@ struct ContactSupport: View {
     @State private var message = ""
     @State private var tripId = "none"
     @State private var error: String?
-    @State private var draft: ContactDraft?
-
-    struct ContactDraft: Identifiable {
-        let body: ContactBody
-        let id = UUID()
-    }
+    @State private var draft: ContactBody?
+    @State private var asking = false
 
     private var recent: [Trip] { Array((trips ?? []).filter { $0.token != nil }.prefix(15)) }
     private var contact: ContactBody { ContactBody(complaintType: subject, message: message, tripToken: recent.first { $0.id == tripId }?.token) }
+    private var operationKey: String? { model.operations.digest.map(OperationKey.contact) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if !open {
-                PillButton(variant: .secondary, action: { open = true }) { Icon(.envelopeSimple, .light, size: 18); Text("Écrire au service client") }
+                PillButton(variant: .secondary, action: start) { Icon(.envelopeSimple, .light, size: 18); Text("Écrire au service client") }
             } else {
                 form
             }
         }
-        .sheet(item: $draft) { draft in
-            WriteDialog(title: "Envoyer au service client ?") {
-                let outcome = await attempt { try await model.service.contactSupport(draft.body) }
-                if outcome.ok { message = ""; tripId = "none"; open = false }
+        .sheet(isPresented: $asking, onDismiss: { draft = nil }) {
+            WriteDialog(title: "Envoyer au service client ?", key: operationKey, keep: true, ready: draft != nil, run: { [draft] in
+                guard let draft else { return Outcome.refusal("local.empty", "Votre message est vide ou trop long.") }
+                let outcome = await attempt { try await model.service.contactSupport(draft) }
+                if outcome.ok { message = ""; tripId = "none"; open = false; self.draft = nil }
                 return outcome
-            }
+            }, restart: Restart(title: "Écrire un nouveau message", action: writeAgain))
         }
     }
 
@@ -288,7 +267,7 @@ struct ContactSupport: View {
                             layout: .stacked).zIndex(2)
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("Message").typo(.label(13)).foregroundStyle(Palette.inkSoft)
+                Text("Message").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
                 TextEditor(text: $message).typo(.body(16)).frame(minHeight: 110).scrollContentBackground(.hidden)
                     .padding(.horizontal, 13).padding(.vertical, 4)
                     .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
@@ -302,6 +281,10 @@ struct ContactSupport: View {
         }
     }
 
+    private func start() {
+        if operationKey.flatMap({ model.operations.get($0) }) != nil { asking = true } else { open = true }
+    }
+
     private func review() {
         let body = contact
         guard body.isValid else {
@@ -309,6 +292,16 @@ struct ContactSupport: View {
             return
         }
         error = nil
-        draft = ContactDraft(body: body)
+        draft = body
+        asking = true
+    }
+
+    private func writeAgain() {
+        if let operationKey { model.operations.clear(operationKey) }
+        message = ""
+        tripId = "none"
+        draft = nil
+        asking = false
+        open = true
     }
 }

@@ -40,7 +40,7 @@ struct StationPin: View {
     var body: some View {
         let size: CGFloat = selected ? 38 : 28
         Text(verbatim: "\(total)")
-            .typo(.label(selected ? 13 : 11))
+            .typo(.caps(selected ? 13 : 11))
             .foregroundStyle(total == 0 && !selected ? Palette.inkSoft : Palette.white)
             .frame(width: size, height: size)
             .background(Circle().fill(total == 0 && !selected ? Palette.white : Palette.red))
@@ -63,11 +63,12 @@ struct StationNumbers: View {
     let station: Station
     var compact = false
     var body: some View {
-        HStack(spacing: compact ? 10 : 8) {
+        HStack(alignment: .top, spacing: compact ? 18 : 24) {
             count(.personSimpleBike, station.mechanical, "Mécaniques", size: 18)
             count(.lightning, station.electrical, "Électriques", size: 17)
-            count(.letterCircleP, station.stands, "Places libres", size: 18)
+            count(.letterCircleP, station.stands, "Places", size: 18)
         }
+        .fixedSize()
     }
 
     private func count(_ icon: IconName, _ value: Int, _ label: String, size: CGFloat) -> some View {
@@ -76,10 +77,9 @@ struct StationNumbers: View {
                 Icon(icon, .light, size: compact ? 16 : size).foregroundStyle(Palette.inkSoft)
                 Text(verbatim: "\(value)").typo(.body(compact ? 13 : 15, medium: !compact)).foregroundStyle(Palette.ink)
             }
-            if !compact { Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft) }
+            if !compact { Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1) }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(value) \(label.lowercased())")
+        .accessibilityLabel("\(value) \(label == "Places" ? "places libres" : label.lowercased())")
     }
 }

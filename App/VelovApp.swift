@@ -13,7 +13,8 @@ struct VelovApp: App {
         let sample = defaults.bool(forKey: "VelovSample") || snapshot != nil
         let service: VelovService = sample ? SampleService(booking: snapshot?.withBooking == true ? SampleData.booking() : nil, failUnlock: snapshot == .unlockUncertain) : LiveService()
         let promos: PromoBacking = sample ? InMemoryPromoBacking() : FilePromoBacking(directory: AppModel.promoDirectory())
-        _model = State(initialValue: AppModel(service: service, snapshot: snapshot, promoBacking: promos))
+        let operations: OperationBacking = sample ? InMemoryOperationBacking() : DefaultsOperationBacking()
+        _model = State(initialValue: AppModel(service: service, snapshot: snapshot, promoBacking: promos, operationBacking: operations))
     }
 
     var body: some Scene {

@@ -36,14 +36,14 @@ struct BikesSheet: View {
                                 .foregroundStyle(Palette.inkSoft).frame(width: 40, height: 40)
                         }
                         .buttonStyle(.plain).disabled(refreshing).accessibilityLabel("Actualiser les vélos")
-                        IconButton(icon: .x, label: "Fermer") { dismiss() }
+                        IconButton(icon: .x, label: "Fermer") { dismiss() }.disabled(model.operations.sending)
                     }
                     .padding(.top, 14).padding(.bottom, 10)
                     Text(assessed.map { "\($0.count) vélo\($0.count > 1 ? "s" : "") à la station" } ?? "Chargement des vélos…")
-                        .typo(.label(13)).foregroundStyle(Palette.inkMuted).padding(.bottom, 8)
+                        .typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1).padding(.bottom, 8)
                     switch bikes {
                     case .loading:
-                        VStack(spacing: 10) { ForEach(0..<4, id: \.self) { _ in Skeleton(height: 64) } }.padding(.top, 6)
+                        BikesSkeleton(station: station)
                     case .failed(let message):
                         ErrorNotice(message: message, pending: refreshing) { Task { await load() } }.padding(.top, 12)
                     case .ready:
@@ -71,6 +71,7 @@ struct BikesSheet: View {
             }
         }
         .presentationDetents([.large])
+        .interactiveDismissDisabled(model.operations.sending)
         .presentationBackground(Palette.white)
         .sheetCorners()
         .task {
@@ -101,21 +102,8 @@ struct BikeRow: View {
 
     var body: some View {
         let bike = item.bike
-        HStack(spacing: 14) {
-            TripIcon(electrical: bike.type == .electrical, size: 36)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(verbatim: "\(bike.number)").typo(.title(24)).foregroundStyle(Palette.ink)
-                HStack(spacing: 8) {
-                    Text(bike.standNumber.map { "Borne \($0)" } ?? "Borne inconnue").typo(.label(13)).foregroundStyle(Palette.inkSoft)
-                    if bike.isReserved || mine { OutlinePill(text: "Réservé") }
-                }
-                .padding(.top, 5)
-                if item.verdict == .recommended {
-                    CardTag(icon: .thumbsUp, text: "Recommandé", compact: true).padding(.top, 8)
-                }
-            }
-            .opacity(item.verdict == .avoid ? 0.6 : 1)
-            Spacer(minLength: 0)
+        BikeRowLayout(number: "\(bike.number)", stand: bike.standNumber.map { "Borne \($0)" } ?? "Borne inconnue",
+                      reserved: bike.isReserved || mine, recommended: item.verdict == .recommended, electrical: bike.type == .electrical, ghost: false) {
             VStack(alignment: .trailing, spacing: 4) {
                 if let rating = bike.rating {
                     HStack(spacing: 5) { Icon(.star, .fill, size: 15).foregroundStyle(Palette.red); Text(outOfFive(rating.value)) }
@@ -124,14 +112,67 @@ struct BikeRow: View {
             }
             .typo(.body(13))
             .foregroundStyle(Palette.ink)
-            .opacity(item.verdict == .avoid ? 0.6 : 1)
-            Icon(.caretRight, .light, size: 16).foregroundStyle(Palette.inkSoft)
+        }
+        .opacity(item.verdict == .avoid ? 0.6 : 1)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(item.verdict == .avoid ? "À éviter" : "")
+    }
+}
+
+struct BikeRowLayout<Facts: View>: View {
+    let number: String
+    let stand: String
+    let reserved: Bool
+    let recommended: Bool
+    let electrical: Bool
+    let ghost: Bool
+    @ViewBuilder let facts: () -> Facts
+
+    var body: some View {
+        HStack(spacing: 14) {
+            if ghost { Color.clear.frame(width: 36, height: 36).skeleton(18) } else { TripIcon(electrical: electrical, size: 36) }
+            VStack(alignment: .leading, spacing: 0) {
+                Text(verbatim: number).typo(.title(24)).foregroundStyle(Palette.ink).ghost(ghost)
+                HStack(spacing: 8) {
+                    Text(stand).typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1).ghost(ghost)
+                    if reserved { OutlinePill(text: "Réservé") }
+                }
+                .padding(.top, 5)
+                if recommended {
+                    Group {
+                        if ghost { CardTag(icon: .thumbsUp, text: "Recommandé", size: .pick).skeleton(13) } else { CardTag(icon: .thumbsUp, text: "Recommandé", size: .pick) }
+                    }
+                    .padding(.top, 8)
+                }
+            }
+            Spacer(minLength: 0)
+            facts()
+            if ghost { Color.clear.frame(width: 16) } else { Icon(.caretRight, .light, size: 16).foregroundStyle(Palette.inkSoft) }
         }
         .padding(.vertical, 12)
         .frame(minHeight: 76)
         .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityHint(item.verdict == .avoid ? "À éviter" : "")
+    }
+}
+
+struct BikesSkeleton: View {
+    let station: Station
+    var body: some View {
+        let count = station.mechanical + station.electrical
+        let picks = (station.mechanical > 0 ? 1 : 0) + (station.electrical > 0 ? 1 : 0)
+        if count == 0 {
+            Text("Aucun vélo à cette station.").typo(.body(14)).ghost().frame(maxWidth: .infinity).padding(.vertical, 44).padding(.horizontal, 20)
+        } else {
+            VStack(spacing: 0) {
+                ForEach(0..<count, id: \.self) { index in
+                    BikeRowLayout(number: "\(12000 + index * 731)", stand: "Borne \(index + 1)", reserved: false, recommended: index < picks, electrical: false, ghost: true) {
+                        Text(verbatim: "4,5").typo(.body(13)).ghost()
+                    }
+                    if index < count - 1 { Hairline() }
+                }
+            }
+            .accessibilityLabel("Chargement des vélos")
+        }
     }
 }
 
@@ -191,7 +232,7 @@ struct BikeDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 8) {
-                    IconButton(icon: .arrowLeft, label: route.station == nil ? "Retour au trajet" : "Retour à la liste des vélos") { dismiss() }.padding(.leading, -10)
+                    IconButton(icon: .arrowLeft, label: route.station == nil ? "Retour au trajet" : "Retour à la liste des vélos") { dismiss() }.padding(.leading, -10).disabled(model.operations.sending)
                     HStack(spacing: 12) {
                         Text(verbatim: "\(route.number)").typo(.title(34)).foregroundStyle(Palette.ink)
                         if let item, !own.contains(route.number) { VerdictMark(verdict: item.verdict) }
@@ -204,7 +245,7 @@ struct BikeDetail: View {
                 } else if case .failed(let message) = loaded {
                     ErrorNotice(message: message) { Task { await load() } }.padding(.top, 12)
                 } else {
-                    VStack(spacing: 10) { ForEach(0..<3, id: \.self) { _ in Skeleton(height: 64) } }
+                    BikeSheetSkeleton()
                 }
             }
             .padding(.horizontal, 22).padding(.bottom, 24)
@@ -251,7 +292,7 @@ struct BikeDetail: View {
                             Stars(value: rating.value / 20)
                             Text(outOfFive(rating.value)) + Text("/5").foregroundStyle(Palette.inkSoft)
                         }
-                        Text(verbatim: "\(rating.count) avis\(fromNow(rating.lastAt).map { " · Dernier avis \($0)" } ?? "")").typo(.body(12)).foregroundStyle(Palette.inkSoft)
+                        Text(verbatim: "\(rating.count) avis\(fromNow(rating.lastAt).map { " · Dernier avis \($0)" } ?? "")").typo(.caps(12)).foregroundStyle(Palette.inkSoft)
                     }
                 } else {
                     Text("Pas encore d’avis")
@@ -275,7 +316,7 @@ struct BikeDetail: View {
                 dateRow("Dernier contrôle", bike.lastControlAt, withAgo: true)
                 dateRow("Dernier signal", bike.lastSignalAt, withAgo: true)
                 dateRow("Prochaine révision", bike.nextReviewAt, withAgo: false)
-                DetailRow(label: "Cadre", last: true) { Text(bike.frameId ?? "Non renseigné").typo(.label(13)) }
+                DetailRow("Cadre", bike.frameId ?? "Non renseigné", last: true)
             }
         }
     }
@@ -288,7 +329,7 @@ struct BikeDetail: View {
     private func dateValue(_ date: Date?, withAgo: Bool) -> some View {
         let exact = date.map { formatDate($0, withAgo ? .dayMonthYearTime : .dayMonthYear) }
         if let exact {
-            if withAgo, let since = fromNow(date) { StackedValue(value: capitalize(since), small: exact) } else { Text(exact) }
+            if withAgo, let since = fromNow(date) { StackedValue(value: capitalize(since), small: exact, caps: true) } else { Text(exact) }
         } else {
             Text("Non renseigné")
         }
@@ -298,19 +339,32 @@ struct BikeDetail: View {
         let booking = model.bookings.first { $0.bikeNumber == bike.number }
         let place = Place(stationNumber: station.number, stationName: station.name, standNumber: bike.standNumber ?? 0, bikeNumber: bike.number, lat: station.lat, lon: station.lon)
         return VStack(alignment: .leading, spacing: 10) {
-            if mine, let endsAt = booking?.endsAt {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    let left = max(0, Int(endsAt.timeIntervalSince(context.date).rounded()))
-                    (Text("Vélo réservé jusqu’à ") + Text(formatDate(endsAt, .time)) + Text(left > 0 ? " · Il reste " : " · Réservation expirée") + Text(left > 0 ? clock(left) : ""))
-                        .typo(.body(14, medium: true)).foregroundStyle(Palette.ink)
+            if mine {
+                if let endsAt = booking?.endsAt {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        let left = max(0, Int(endsAt.timeIntervalSince(context.date).rounded()))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(verbatim: "Vélo réservé jusqu’à \(formatDate(endsAt, .time))").typo(.title(20)).foregroundStyle(Palette.ink).monospacedDigit()
+                            HStack(spacing: 6) {
+                                Icon(.clock, .bold, size: 15)
+                                Text(left > 0 ? "Il reste \(clock(left))" : "Réservation expirée").typo(.caps(13)).monospacedDigit()
+                            }
+                            .foregroundStyle(Palette.redDeep)
+                        }
+                        .padding(.bottom, 2)
+                    }
+                } else {
+                    Text(verbatim: "Vélo réservé pour \(Rules.bookingMinutes) minutes").typo(.title(20)).foregroundStyle(Palette.ink).padding(.bottom, 2)
                 }
             }
-            if !mine {
-                PillButton(variant: .secondary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: nil, action: .book) }) {
-                    Icon(.timer, .light, size: 17); Text("Réserver")
+            PairedActions {
+                if !mine {
+                    PillButton(variant: .secondary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: nil, action: .book) }) {
+                        Icon(.timer, .light, size: 17); Text("Réserver")
+                    }
                 }
+                PillButton(variant: .primary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: booking?.id, action: .unlock) }) { Icon(.lockOpen, .light, size: 17); Text("Déverrouiller") }
             }
-            PillButton(variant: .primary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: booking?.id, action: .unlock) }) { Icon(.lockOpen, .light, size: 17); Text("Déverrouiller") }
         }
         .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 16)
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
@@ -319,6 +373,35 @@ struct BikeDetail: View {
             guard model.snapshot == .bookConfirm, !mine else { return }
             try? await Task.sleep(nanoseconds: 500_000_000)
             pending = PendingAction(place: place, bookingId: nil, action: .book)
+        }
+    }
+}
+
+struct BikeSheetSkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Eyebrow(icon: .personSimpleBike, text: "Mécanique").skeleton(17).padding(.top, 4)
+            VStack(spacing: 0) {
+                DetailRow(label: "Note") {
+                    VStack(alignment: .trailing, spacing: 3) {
+                        HStack(spacing: 8) { Stars(value: 4.5); Text(verbatim: "4,5/5") }.ghost()
+                        Text(verbatim: "12 avis · Dernier avis il y a 3 j").typo(.caps(12)).ghost()
+                    }
+                }
+                DetailRow(label: "Dernier trajet") { ghostDate }
+                DetailRow(label: "Prochain contrôle") { ghostDate }
+                DetailRow(label: "Borne", last: true) { Text(verbatim: "12").ghost() }
+            }
+            .padding(.top, 12)
+            Disclosure { EmptyView() }.disabled(true)
+        }
+        .accessibilityLabel("Chargement du vélo")
+    }
+
+    private var ghostDate: some View {
+        VStack(alignment: .trailing, spacing: 3) {
+            Text(verbatim: "Il y a 2 h").ghost()
+            Text(verbatim: "12 oct. 2026, 08:42").typo(.caps(12)).ghost()
         }
     }
 }

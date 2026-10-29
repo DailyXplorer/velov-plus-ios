@@ -40,12 +40,8 @@ struct OverviewPage: View {
         }
     }
 
-    private func section<Content: View>(_ title: String, padding: CGFloat, link: Page = .stations, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SectionHeading(title: title) { TextButton(title: "Tout voir") { model.page = link } }
-            content()
-        }
-        .padding(.top, padding)
+    private func section<Content: View>(_ title: String, padding: CGFloat, link: Page = .stations, @ViewBuilder content: @escaping () -> Content) -> some View {
+        OverviewSection(title: title, padding: padding, link: { model.page = link }, content: content)
     }
 
     private var mapCard: some View {
@@ -65,11 +61,48 @@ struct OverviewPage: View {
                     .accessibilityLabel("Explorer les stations")
             }
         }
-        .frame(height: 310)
+        .frame(height: overviewMapHeight)
         .clipShape(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
         .padding(.bottom, Concentric.gap)
         .id("stations-map")
+    }
+}
+
+private let overviewMapHeight: CGFloat = 310
+
+struct OverviewSection<Content: View>: View {
+    let title: String
+    let padding: CGFloat
+    var ghost = false
+    let link: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionHeading(title: title) { TextButton(title: "Tout voir", action: link).ghost(ghost) }
+            content()
+        }
+        .padding(.top, padding)
+    }
+}
+
+struct OverviewSkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    SummaryCard(tag: (.starFour, "Points"), detail: "1 380 gagnés au total", action: {}) { Text(verbatim: "0").typo(.title(40)) }.skeleton()
+                    SummaryCard(tag: (.personSimpleBike, "Trajets"), detail: "12 h 40 min", action: {}) { Text(verbatim: "0").typo(.title(40)) }.skeleton()
+                }
+                SummaryCard(tag: (.ticket, "Abonnement"), detail: "Jusqu’au 1 mars 2027", minHeight: 150, action: {}) { Text(verbatim: "Plus 1 an").typo(.title(20)).lineLimit(2) }.skeleton()
+            }
+            OverviewSection(title: "Stations", padding: 32, ghost: true, link: {}) {
+                Skeleton(height: overviewMapHeight).padding(.bottom, Concentric.gap)
+            }
+            OverviewSection(title: "Derniers trajets", padding: 32, ghost: true, link: {}) { GhostTrips(rows: 4) }
+        }
+        .accessibilityLabel("Chargement du compte")
     }
 }
 

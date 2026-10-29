@@ -2,41 +2,46 @@ import SwiftUI
 import UIKit
 import VelovCore
 
+private func ratingLine(_ outcome: Outcome) -> String {
+    let code = outcome.code.flatMap { $0.hasPrefix("local.") || $0 == "network" ? nil : "Code \($0)" }
+    return ["HTTP \(outcome.httpStatus == 0 ? "aucune réponse" : String(outcome.httpStatus))", code].compactMap { $0 }.joined(separator: " · ")
+}
+
 struct RateBike: View {
     let trip: Trip
     let bikeNumber: Int
+    let onRated: () -> Void
     let onLater: () -> Void
     @Environment(AppModel.self) private var model
     @State private var stars: Int?
-    @State private var sending = false
-    @State private var failure: Outcome?
+    @State private var refused: Outcome?
+    @State private var checking = false
+    @State private var notice: String?
+
+    init(trip: Trip, bikeNumber: Int, onRated: @escaping () -> Void = {}, onLater: @escaping () -> Void) {
+        self.trip = trip; self.bikeNumber = bikeNumber; self.onRated = onRated; self.onLater = onLater
+    }
+
+    private var key: String { OperationKey.rate(trip.id) }
+    private var entry: Operations.Entry? { model.operations.get(key) }
+    private var uncertain: Outcome? { entry?.status == .uncertain ? entry?.outcome : nil }
+    private var sending: Bool { entry != nil || checking }
+    private var failure: Outcome? { uncertain ?? refused }
 
     var body: some View {
-        if model.ratedHere.contains(trip.id) {
-            HStack(spacing: 8) {
-                Icon(.check, .bold, size: 16)
-                Text("Merci ! +5 points").typo(.body(14))
-            }
-            .foregroundStyle(Palette.redDeep)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16).padding(.vertical, 12)
-            .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.redTint))
-            .padding(.top, 14)
-        } else {
-            card
-        }
+        if !model.ratedHere.contains(trip.id) { card }
     }
 
     private var card: some View {
         VStack(spacing: 0) {
-            Text("Noter ce vélo").typo(.label(13)).foregroundStyle(Palette.ink).frame(maxWidth: .infinity, alignment: .leading)
+            Text("Noter ce vélo").typo(.caps(13)).foregroundStyle(Palette.ink).frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 2) {
                 ForEach(1...5, id: \.self) { value in
                     let on = stars.map { value <= $0 } ?? false
                     Button {
                         UISelectionFeedbackGenerator().selectionChanged()
                         stars = value
-                        failure = nil
+                        refused = nil
                     } label: {
                         Icon(.star, on ? .fill : .light, size: 34)
                             .foregroundStyle(on ? Palette.red : Palette.inkSoft)
@@ -55,14 +60,21 @@ struct RateBike: View {
             if let failure {
                 VStack(alignment: .leading, spacing: 4) {
                     FormError(failure.message ?? "La note n’a pas pu être envoyée.")
-                    RawStatus(line: rawLine(failure, withState: false))
+                    RawStatus(line: ratingLine(failure))
+                    if uncertain != nil { UncertainNote().padding(.top, 4) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 8)
             }
+            if let notice { FormError(notice).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8) }
             VStack(spacing: 2) {
-                PillButton("Envoyer · +5 points", pending: sending, fullWidth: true) { send() }.disabled(stars == nil)
-                if !sending { TextButton(title: "Plus tard", action: onLater) }
+                if let uncertain {
+                    PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify(uncertain) }
+                    TextButton(title: "Plus tard", action: onLater)
+                } else {
+                    PillButton("Envoyer · +5 points", pending: sending, fullWidth: true) { send() }.disabled(stars == nil)
+                    if !sending { TextButton(title: "Plus tard", action: onLater) }
+                }
             }
             .padding(.top, 14)
         }
@@ -75,14 +87,50 @@ struct RateBike: View {
     private func send() {
         guard let stars, !sending else { return }
         Haptics.confirm()
-        sending = true
-        failure = nil
+        refused = nil
+        notice = nil
+        let model = model
+        let trip = trip
+        let bikeNumber = bikeNumber
+        let key = key
         Task {
-            let outcome = await attempt { try await model.service.rate(tripId: trip.id, bikeNumber: bikeNumber, vote: StarRating.vote(stars)) }
+            let result = await model.operations.runOnce(key) {
+                await attempt { try await model.service.rate(tripId: trip.id, bikeNumber: bikeNumber, vote: StarRating.vote(stars)) }
+            }
+            guard case .finished(let outcome) = result else {
+                if model.operations.get(key) == nil { notice = Messages.busy }
+                return
+            }
             Haptics.result(outcome.ok)
-            sending = false
-            if outcome.ok { model.ratedHere.insert(trip.id) } else { failure = outcome }
+            if outcome.ok { rated() } else if outcome.isUncertain { verify(outcome) } else { refused = outcome }
         }
+    }
+
+    private func verify(_ failure: Outcome) {
+        guard !checking else { return }
+        checking = true
+        let model = model
+        let trip = trip
+        let key = key
+        Task {
+            let settled = await settle(failure) { ratingCheck(try await model.service.dashboard(), tripId: trip.id) }
+            checking = false
+            switch settled {
+            case .done:
+                model.operations.clear(key)
+                rated()
+            case .refused(let answer):
+                model.operations.clear(key)
+                refused = answer
+            case .uncertain:
+                break
+            }
+        }
+    }
+
+    private func rated() {
+        model.ratedHere.insert(trip.id)
+        onRated()
     }
 }
 
@@ -100,13 +148,13 @@ struct TripEndedSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: "Trajet terminé") { dismiss() }
+            SheetHeading(title: "Trajet terminé", closeDisabled: rating) { dismiss() }
             tripTimes(trip).padding(.top, 4)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Station d’arrivée").typo(.label(13)).foregroundStyle(Palette.inkSoft)
+                Text("Station d’arrivée").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(trip.endStation ?? "Non renseignée").typo(.body(15)).foregroundStyle(Palette.ink)
-                    if let stand = trip.endStand { Text(verbatim: "Borne \(stand)").typo(.label(13)).foregroundStyle(Palette.inkSoft).fixedSize() }
+                    if let stand = trip.endStand { Text(verbatim: "Borne \(stand)").typo(.caps(13)).foregroundStyle(Palette.inkSoft).fixedSize() }
                 }
             }
             .padding(.top, 20)
@@ -121,22 +169,25 @@ struct TripEndedSheet: View {
             }
             .padding(.top, 18)
             if rateable ?? isRateable, let bike = trip.bikeNumber {
-                RateBike(trip: trip, bikeNumber: bike) { dismiss() }
+                RateBike(trip: trip, bikeNumber: bike, onRated: { dismiss() }, onLater: { dismiss() })
             } else {
                 PillButton("Fermer", variant: .secondary, fullWidth: true) { dismiss() }.padding(.top, 22)
             }
         }
         .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 16)
         .fitSheet()
+        .interactiveDismissDisabled(rating)
         .onAppear { if rateable == nil { rateable = isRateable } }
         .onDisappear { model.closeEnded(trip) }
     }
+
+    private var rating: Bool { model.operations.get(OperationKey.rate(trip.id))?.status == .sending }
 
     private var isRateable: Bool { trip.isRated != true && !model.ratedHere.contains(trip.id) && canRate(trip) }
 
     private func fact(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft)
+            Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft)
             Text(value).typo(.title(20)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

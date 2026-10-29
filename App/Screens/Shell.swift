@@ -77,7 +77,7 @@ struct Header: View {
         HStack(spacing: 3) {
             Text(title).typo(.title(28)).foregroundStyle(Palette.ink).lineLimit(1)
             Spacer(minLength: 8)
-            Button { model.refreshAll() } label: {
+            Button { Task { await model.manualRefresh() } } label: {
                 Group {
                     if model.refreshing { Spinner(size: 20) } else { Icon(.arrowClockwise, .light, size: 20) }
                 }
@@ -139,7 +139,7 @@ struct PageScaffold: View {
                         }
                         .frame(maxWidth: .infinity).padding(.vertical, 100).padding(.horizontal, 20)
                     default:
-                        DashboardSkeleton()
+                        PageSkeleton(page: page)
                     }
                 }
                 .padding(.horizontal, 22)
@@ -148,12 +148,7 @@ struct PageScaffold: View {
             }
         }
         .scrollIndicators(.hidden)
-        .refreshable {
-            async let dashboard: Void = model.loadDashboard()
-            async let stations: Void = model.loadStations()
-            async let bookings: Void = model.loadBookings()
-            _ = await (dashboard, stations, bookings)
-        }
+        .refreshable { await model.manualRefresh() }
     }
 
     @ViewBuilder
@@ -168,14 +163,16 @@ struct PageScaffold: View {
     }
 }
 
-struct DashboardSkeleton: View {
+struct PageSkeleton: View {
+    let page: Page
     var body: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 10) { Skeleton(height: 168); Skeleton(height: 168) }
-            Skeleton(height: 150)
-            Skeleton(height: 310).padding(.top, 40)
+        switch page {
+        case .overview: OverviewSkeleton()
+        case .trips: TripsSkeleton()
+        case .points: PointsSkeleton()
+        case .account: AccountSkeleton()
+        case .stations: EmptyView()
         }
-        .accessibilityLabel("Chargement du compte")
     }
 }
 
@@ -183,7 +180,7 @@ struct DataNotice: View {
     let warnings: [String]
     var body: some View {
         if !warnings.isEmpty {
-            Disclosure(title: "Certaines informations sont indisponibles") {
+            Disclosure(title: "Certaines informations sont indisponibles", icon: .warningCircle) {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(warnings, id: \.self) { Text(verbatim: "• \($0)").typo(.body(13)) }
                 }
@@ -206,17 +203,11 @@ struct BookingBanners: View {
                 let left = booking.endsAt.map { max(0, Int($0.timeIntervalSince(context.date).rounded())) }
                 if left != 0 {
                     HStack(spacing: 8) {
-                        HStack(spacing: 8) {
-                            Icon(.clock, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
-                            Text("Réservé").typo(.label(13)).foregroundStyle(Palette.ink)
-                        }
-                        .padding(.leading, 5).padding(.trailing, 12).padding(.vertical, 5)
-                        .background(Capsule().fill(Palette.white))
-                        .fixedSize()
+                        CardTag(icon: .clock, text: "Réservé", size: .banner)
                         if let left { Text(clock(left)).typo(.countdown(22)).foregroundStyle(Palette.white).fixedSize().accessibilityLabel("Reste \(clock(left))") }
                         Spacer(minLength: 0)
                         if Place(booking) != nil {
-                            PillButton(variant: .onRed, height: 40, action: { model.unlocking = booking }) { Text("Déverrouiller").typo(.label(14)) }
+                            PillButton(variant: .onRed, height: 40, action: { model.unlocking = booking }) { Text("Déverrouiller") }
                                 .fixedSize()
                         }
                     }

@@ -106,6 +106,7 @@ final class TripEndTests: XCTestCase {
         await fire(harness)
         await fire(harness)
         XCTAssertEqual(harness.checks, 2)
+        XCTAssertEqual(harness.timers.map(\.delay), [20, 40, 80])
         XCTAssertTrue(harness.docked.isEmpty)
         XCTAssertTrue(watch.active)
         XCTAssertEqual(harness.pending, 1)
@@ -141,7 +142,7 @@ final class TripEndTests: XCTestCase {
         XCTAssertEqual(harness.pending, 0, "paused until the app comes back")
         harness.visible = true
         harness.answers = [.success(TripCheck(ongoing: [], latest: nil))]
-        await watch.becameVisible()
+        await watch.visibilityChanged()
         XCTAssertEqual(harness.checks, 1)
         XCTAssertEqual(harness.docked.map(\.0), ["t-1"])
     }
@@ -170,14 +171,60 @@ final class TripEndTests: XCTestCase {
             return {}
         })
         watch.follow("t-1")
-        let first = Task { await watch.becameVisible() }
+        harness.clock += 20
+        let first = Task { await watch.visibilityChanged() }
         while release == nil { await Task.yield() }
-        await watch.becameVisible()
+        await watch.visibilityChanged()
         XCTAssertEqual(harness.checks, 1, "a second check waits for the first")
         watch.stop()
         release?.resume()
         await first.value
         XCTAssertTrue(harness.docked.isEmpty)
+    }
+
+    func testComingBackWaitsOnlyForWhatIsLeftOfTheDelay() async {
+        let harness = Harness(clock: now)
+        let watch = watch(harness)
+        watch.follow("t-1")
+        harness.clock += 5
+        harness.visible = false
+        await watch.visibilityChanged()
+        XCTAssertEqual(harness.pending, 0)
+        harness.clock += 5
+        harness.visible = true
+        await watch.visibilityChanged()
+        XCTAssertEqual(harness.checks, 0, "no check sooner than 20 s after the last plan")
+        XCTAssertEqual(harness.timers.last?.delay, 10)
+        harness.answers = [.success(riding("t-1"))]
+        await fire(harness)
+        XCTAssertEqual(harness.checks, 1)
+        XCTAssertEqual(harness.timers.last?.delay, 20)
+    }
+
+    func testErrorsAndRateLimitsBackOffToTwoMinutesAndAnAnswerResetsTheRhythm() async {
+        let harness = Harness(clock: now)
+        let watch = watch(harness)
+        watch.follow("t-1")
+        harness.answers = Array(repeating: .failure(VelovError(.unavailable, "429")), count: 4) + [.success(TripCheck(ongoing: nil, latest: nil)), .success(riding("t-1"))]
+        for _ in 0..<6 { await fire(harness) }
+        XCTAssertEqual(harness.timers.map(\.delay), [20, 40, 80, 120, 120, 120, 20])
+        XCTAssertTrue(harness.docked.isEmpty)
+        watch.stop()
+        watch.follow("t-1")
+        XCTAssertEqual(harness.timers.last?.delay, 20)
+    }
+
+    func testARateLimitedPollAnswersNoOngoingListSoTheWatchBacksOff() async throws {
+        let identity = Identity(accessToken: "user-access", email: "person@example.com")
+        let accountId = WriteFlowsTests.accountId
+        let server = MockServer { call, _ in
+            if call.url.hasSuffix("/client_tokens") { return .json(["accessToken": "app"]) }
+            if call.url.hasSuffix("/id") { return .json(accountId) }
+            return call.url.hasSuffix("/trips/ongoing") ? .status(429, headers: ["Retry-After": "60"]) : .status(404)
+        }
+        let check = try await VelovAPI(transport: server.transport, pause: noPause).tripCheck(identity)
+        XCTAssertNil(check.ongoing)
+        XCTAssertFalse(server.calls.contains { $0.url.contains("status=FINISHED") })
     }
 
     func testOnlyASureRefusalMayBeConfirmedAgain() {

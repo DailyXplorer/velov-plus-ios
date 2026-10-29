@@ -85,12 +85,15 @@ final class AppModel {
         docked: { [unowned self] tripId, latest in tripDocked(tripId, latest: latest) },
         visible: { [unowned self] in foreground })
     let promoBacking: PromoBacking
+    let operations: Operations
+    @ObservationIgnored private let refreshGate = RefreshGate()
     private let activities = BookingActivities()
 
-    init(service: VelovService, snapshot: SnapshotScreen? = nil, promoBacking: PromoBacking) {
+    init(service: VelovService, snapshot: SnapshotScreen? = nil, promoBacking: PromoBacking, operationBacking: OperationBacking) {
         self.service = service
         self.snapshot = snapshot
         self.promoBacking = promoBacking
+        operations = Operations(backing: operationBacking)
         switch snapshot {
         case .trips?, .tripSheet?, .rateCard?: page = .trips
         case .stats?, .statsCharts?, .statsHeatmap?, .statsRecords?, .statsEnd?: page = .trips
@@ -126,12 +129,21 @@ final class AppModel {
         Task { await loadBookings() }
     }
 
+    func manualRefresh() async {
+        guard refreshGate.allow(busy: refreshing || stationsPending) else { return }
+        async let dashboard: Void = loadDashboard()
+        async let stations: Void = loadStations()
+        async let bookings: Void = loadBookings()
+        _ = await (dashboard, stations, bookings)
+    }
+
     func loadDashboard() async {
         guard !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
         do {
             let data = try await service.dashboard()
+            operations.use(account: data.profile.email)
             phase = .ready(data)
             watchTrips(data)
         } catch let error as VelovError where error.code == .expired {
@@ -161,11 +173,12 @@ final class AppModel {
         foreground = true
         guard dashboard != nil else { return }
         Task { await loadBookings() }
-        Task { await dockWatch.becameVisible() }
+        Task { await dockWatch.visibilityChanged() }
     }
 
     func resignedActive() {
         foreground = false
+        Task { await dockWatch.visibilityChanged() }
     }
 
     private func watchTrips(_ data: Dashboard) {
@@ -245,6 +258,7 @@ final class AppModel {
         unlocking = nil
         ended = nil
         activities.endAll()
+        operations.use(account: nil)
         page = .overview
         phase = .guest(confirmed ? nil : Messages.remoteLogoutUnconfirmed)
     }

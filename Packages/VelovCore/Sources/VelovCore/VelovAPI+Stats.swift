@@ -22,7 +22,7 @@ extension VelovAPI {
             let stations = await stationsByNumber()
             return buildStats(StatsInput(
                 trips: history.items.map { normalizeTrip($0, stations: stations) }, coords: stations.mapValues(\.point),
-                movements: movements?.items.map { $0.movement }, balance: balance, now: now()))
+                movements: movements?.items.map { $0.movement }, balance: balance, now: now(), complete: history.complete))
         }
     }
 }

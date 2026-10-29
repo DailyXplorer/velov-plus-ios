@@ -1,40 +1,30 @@
 import SwiftUI
 import VelovCore
 
-enum TripSort: String, Hashable { case recent, oldest, longest, priciest }
 enum TripFilter: String, Hashable { case all, mechanical, electrical }
+
+private let tripFilters: [SelectOption<TripFilter>] = [
+    .init(value: .all, label: "Tous les vélos"), .init(value: .mechanical, label: "Vélos mécaniques"), .init(value: .electrical, label: "Vélos électriques")
+]
 
 struct TripsPage: View {
     let data: Dashboard
     @Environment(AppModel.self) private var model
     @State private var filter = TripFilter.all
-    @State private var sort = TripSort.recent
     @State private var limit = 10
 
     var body: some View {
         if let all = data.trips {
-            let trips = sorted(all.filter { filter == .all || $0.bikeType.rawValue == filter.rawValue })
+            let trips = all.filter { filter == .all || $0.bikeType.rawValue == filter.rawValue }
             VStack(alignment: .leading, spacing: 0) {
                 StatsLink().padding(.bottom, 20)
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        SelectField(label: "Type de vélo", hideLabel: true, value: $filter, options: [
-                            .init(value: .all, label: "Tous les vélos"), .init(value: .mechanical, label: "Vélos mécaniques"), .init(value: .electrical, label: "Vélos électriques")
-                        ])
-                        Spacer(minLength: 8)
-                        Text(verbatim: "\(trips.count) trajet\(trips.count > 1 ? "s" : "")").typo(.label(13)).foregroundStyle(Palette.inkMuted)
-                    }
-                    .zIndex(2)
-                    SelectField(label: "Trier par", value: $sort, options: [
-                        .init(value: .recent, label: "Plus récents"), .init(value: .oldest, label: "Plus anciens"),
-                        .init(value: .longest, label: "Plus longs"), .init(value: .priciest, label: "Plus chers")
-                    ])
-                    .zIndex(1)
+                TripsFilterLine {
+                    SelectField(label: "Type de vélo", hideLabel: true, value: $filter, options: tripFilters)
+                } count: {
+                    Text(verbatim: "\(trips.count) trajet\(trips.count > 1 ? "s" : "")")
                 }
                 .zIndex(1)
-                .padding(.bottom, 20)
                 .onChange(of: filter) { limit = 10 }
-                .onChange(of: sort) { limit = 10 }
                 TripsList(trips: Array(trips.prefix(limit)), openFirst: model.snapshot == .tripSheet || model.snapshot == .rateCard)
                 if trips.count > limit {
                     PillButton("Voir plus", variant: .secondary) { limit += 10 }.frame(maxWidth: .infinity).padding(.vertical, 24)
@@ -47,13 +37,48 @@ struct TripsPage: View {
             }
         }
     }
+}
 
-    private func sorted(_ trips: [Trip]) -> [Trip] {
-        switch sort {
-        case .recent: trips
-        case .oldest: trips.reversed()
-        case .longest: trips.sorted { ($0.duration ?? -1) > ($1.duration ?? -1) }
-        case .priciest: trips.sorted { ($0.price ?? -1) > ($1.price ?? -1) }
+struct TripsFilterLine<Select: View, Count: View>: View {
+    @ViewBuilder let select: () -> Select
+    @ViewBuilder let count: () -> Count
+    var body: some View {
+        HStack {
+            select()
+            Spacer(minLength: 8)
+            count().typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize()
+        }
+        .padding(.bottom, 20)
+    }
+}
+
+struct TripsSkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            StatsLink().skeleton(21).padding(.bottom, 20)
+            TripsFilterLine {
+                SelectField(label: "Type de vélo", hideLabel: true, value: .constant(TripFilter.all), options: tripFilters).skeleton(21)
+            } count: {
+                Text(verbatim: "10 trajets").ghost()
+            }
+            GhostTrips(rows: 10)
+            PillButton("Voir plus", variant: .secondary) {}.skeleton(21).frame(maxWidth: .infinity).padding(.vertical, 24)
+        }
+        .accessibilityLabel("Chargement des trajets")
+    }
+}
+
+private let ghostRoutes = [("Bellecour", "Part-Dieu Villette"), ("Hôtel de Ville", "Saxe-Gambetta"), ("Croix-Rousse", "Terreaux"), ("Perrache", "Jean Macé")]
+
+struct GhostTrips: View {
+    let rows: Int
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(0..<rows, id: \.self) { index in
+                let route = ghostRoutes[index % ghostRoutes.count]
+                TripRowLayout(start: route.0, end: route.1, date: "12 oct.", time: "08:42", duration: "14 min", price: "0,00 €", electrical: false, ghost: true)
+                if index < rows - 1 { Hairline() }
+            }
         }
     }
 }
@@ -92,26 +117,44 @@ struct TripIcon: View {
 struct TripRow: View {
     let trip: Trip
     var body: some View {
+        TripRowLayout(start: trip.startStation ?? "Trajet Vélo’v",
+                      end: trip.endStation ?? (trip.bikeType == .electrical ? "Électrique" : trip.bikeType == .mechanical ? "Mécanique" : "Stations non renseignées"),
+                      date: formatDate(trip.startedAt), time: formatDate(trip.startedAt, .time),
+                      duration: trip.duration.map { "\(Int($0)) min" } ?? "—", price: trip.price.map(formatPrice) ?? "—",
+                      electrical: trip.bikeType == .electrical, ghost: false)
+    }
+}
+
+struct TripRowLayout: View {
+    let start: String
+    let end: String
+    let date: String
+    let time: String
+    let duration: String
+    let price: String
+    let electrical: Bool
+    let ghost: Bool
+
+    var body: some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 10) {
-                    TripIcon(electrical: trip.bikeType == .electrical)
+                    if ghost { Color.clear.frame(width: 32, height: 32).skeleton(16) } else { TripIcon(electrical: electrical) }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(trip.startStation ?? "Trajet Vélo’v").typo(.body(13, medium: true)).foregroundStyle(Palette.ink).lineLimit(1)
-                        Text(trip.endStation ?? (trip.bikeType == .electrical ? "Électrique" : trip.bikeType == .mechanical ? "Mécanique" : "Stations non renseignées"))
-                            .typo(.body(11)).foregroundStyle(Palette.inkSoft).lineLimit(1)
+                        Text(start).typo(.body(13, medium: true)).foregroundStyle(Palette.ink).lineLimit(1).ghost(ghost)
+                        Text(end).typo(.body(11)).foregroundStyle(Palette.inkSoft).lineLimit(1).ghost(ghost)
                     }
                 }
                 HStack(spacing: 5) {
-                    Text(formatDate(trip.startedAt)).typo(.body(11))
-                    Text(formatDate(trip.startedAt, .time)).typo(.body(11))
+                    Text(date).typo(.body(11)).ghost(ghost)
+                    Text(time).typo(.body(11)).ghost(ghost)
                 }
                 .foregroundStyle(Palette.inkSoft)
                 .padding(.leading, 42)
             }
             Spacer(minLength: 0)
-            Text(trip.duration.map { "\(Int($0)) min" } ?? "—").typo(.body(11)).foregroundStyle(Palette.inkSoft).frame(width: 43, alignment: .leading)
-            Text(trip.price.map(formatPrice) ?? "—").typo(.body(12)).foregroundStyle(Palette.ink).frame(width: 59, alignment: .trailing)
+            Text(duration).typo(.body(11)).foregroundStyle(Palette.inkSoft).ghost(ghost).frame(width: 43, alignment: .leading)
+            Text(price).typo(.body(12)).foregroundStyle(Palette.ink).ghost(ghost).frame(width: 59, alignment: .trailing)
         }
         .padding(.vertical, 16)
         .contentShape(Rectangle())

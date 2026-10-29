@@ -8,7 +8,7 @@ public final class VelovAPI: Sendable {
     private let accountIds = Memo<String>(ttl: 10 * 60)
     private let offers = Memo<[JSON]>(ttl: 10 * 60)
     private let rules = Memo<[JSON]>(ttl: 10 * 60)
-    let statsMemo = Memo<Stats>(ttl: 10 * 60)
+    let statsMemo = Memo<Stats>(ttl: { $0.complete ? 10 * 60 : 60 })
 
     public init(transport: HTTPTransport, pause: @escaping @Sendable (Double) async -> Void = { try? await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }) {
         let client = ReadClient(transport: transport, pause: pause)
@@ -213,7 +213,8 @@ public func assembleDashboard(_ parts: DashboardParts, warnings: [String], now: 
         guard let id = movement["id"]?.string, let amount = movement["amount"]?.number else { return nil }
         return RewardMovement(id: id, date: cyclocityDate(movement["createdAt"]?.string),
                               label: Messages.rewardReasons[movement["reason"]?.string ?? ""] ?? "Mouvement de points",
-                              amount: amount * (movement["direction"]?.string == "DEBIT" ? -1 : 1))
+                              amount: amount * (movement["direction"]?.string == "DEBIT" ? -1 : 1),
+                              dateOnly: movement["createdAt"]?.string?.count == 10)
     }
     let rules = (parts.rules ?? []).compactMap { rule -> RewardRule? in
         guard rule["enable"]?.bool == true, let name = rule["name"]?.string, let label = Messages.rewardReasons[name], let points = rule["reward"]?.number else { return nil }

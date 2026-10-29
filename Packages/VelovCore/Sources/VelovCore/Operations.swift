@@ -1,0 +1,187 @@
+import CryptoKit
+import Foundation
+import Observation
+
+public func accountDigest(_ account: String) -> String {
+    SHA256.hash(data: Data(account.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().utf8)).map { String(format: "%02x", $0) }.joined()
+}
+
+public func noAnswer(_ message: String) -> Outcome {
+    Outcome(ok: false, httpStatus: 0, code: "network", message: message)
+}
+
+public protocol OperationBacking: AnyObject {
+    func read(_ key: String) throws -> Data?
+    func write(_ key: String, _ value: Data?) throws
+}
+
+public final class DefaultsOperationBacking: OperationBacking {
+    private let defaults: UserDefaults
+    public init(_ defaults: UserDefaults = .standard) { self.defaults = defaults }
+    public func read(_ key: String) -> Data? { defaults.data(forKey: key) }
+    public func write(_ key: String, _ value: Data?) {
+        if let value { defaults.set(value, forKey: key) } else { defaults.removeObject(forKey: key) }
+    }
+}
+
+public final class InMemoryOperationBacking: OperationBacking {
+    public var values: [String: Data] = [:]
+    public var failing: Bool
+    public init(failing: Bool = false) { self.failing = failing }
+    public func read(_ key: String) throws -> Data? {
+        if failing { throw CocoaError(.fileReadNoPermission) }
+        return values[key]
+    }
+    public func write(_ key: String, _ value: Data?) throws {
+        if failing { throw CocoaError(.fileWriteNoPermission) }
+        values[key] = value
+    }
+}
+
+public enum OperationKey {
+    public static func unlock(_ bike: Int) -> String { "unlock:\(bike)" }
+    public static func book(_ bike: Int) -> String { "book:\(bike)" }
+    public static func invite(_ digest: String) -> String { "invite:\(digest)" }
+    public static func contact(_ digest: String) -> String { "contact:\(digest)" }
+    public static func via(_ digest: String, tripId: String) -> String { "via:\(digest):\(tripId)" }
+    public static func rate(_ tripId: String) -> String { "rate:\(tripId)" }
+    public static func favorite(_ station: Int) -> String { "favorite:\(station)" }
+    public static func autoRenewal(_ subscriptionId: String) -> String { "autoRenewal:\(subscriptionId)" }
+    public static let profile = "profile"
+    public static let autoSpend = "autoSpend"
+}
+
+@MainActor
+@Observable
+public final class Operations {
+    public static let storageKey = "velov:operations:v1"
+    public static let sendingLimit: TimeInterval = 2 * 60
+    public static let uncertainHold: TimeInterval = 2 * 60
+
+    public struct Entry: Codable, Equatable, Sendable {
+        public enum Status: String, Codable, Sendable { case sending, uncertain }
+        public var status: Status
+        public var at: Date
+        public var keep: Bool
+        public var outcome: Outcome?
+        public var meta: [String: String]
+    }
+
+    public enum Began: Equatable, Sendable { case started, busy, unsaved }
+    public enum Run: Equatable, Sendable { case busy, unsaved, finished(Outcome) }
+
+    @ObservationIgnored private let backing: OperationBacking?
+    @ObservationIgnored private let now: () -> Date
+    @ObservationIgnored private var running: Set<String> = []
+    @ObservationIgnored private var memory: [String: Entry] = [:]
+    public private(set) var digest: String?
+    public private(set) var version = 0
+
+    public init(backing: OperationBacking?, account: String? = nil, now: @escaping () -> Date = Date.init) {
+        self.backing = backing
+        self.now = now
+        digest = account.map(accountDigest)
+    }
+
+    public func use(account: String?) {
+        let next = account.map(accountDigest)
+        guard next != digest else { return }
+        digest = next
+        memory = [:]
+        changed()
+    }
+
+    private func saved() -> [String: Entry]? {
+        guard let backing, let digest else { return nil }
+        do {
+            guard let raw = try backing.read("\(Self.storageKey):\(digest)") else { return [:] }
+            return try JSONDecoder().decode([String: Entry].self, from: raw)
+        } catch {
+            return nil
+        }
+    }
+
+    private func live(_ entry: Entry?) -> Entry? {
+        guard var entry else { return nil }
+        let age = now().timeIntervalSince(entry.at)
+        if entry.status == .sending && age > Self.sendingLimit {
+            guard entry.keep else { return nil }
+            entry.status = .uncertain
+            entry.outcome = entry.outcome ?? noAnswer(Messages.lost)
+            return entry
+        }
+        if entry.status == .uncertain && !entry.keep && age > Self.uncertainHold { return nil }
+        return entry
+    }
+
+    private func changed() { version += 1 }
+
+    private func write(_ key: String, _ entry: Entry?, required: Bool) throws {
+        let previous = memory[key]
+        memory[key] = entry
+        do {
+            guard let backing, let digest, var all = saved() else { throw CocoaError(.fileWriteUnknown) }
+            all[key] = entry
+            try backing.write("\(Self.storageKey):\(digest)", all.isEmpty ? nil : try JSONEncoder().encode(all))
+        } catch {
+            guard required else { return }
+            memory[key] = previous
+            throw error
+        }
+    }
+
+    public func get(_ key: String) -> Entry? {
+        _ = version
+        let all = saved()
+        let entry = live(all.map { $0[key] } ?? memory[key])
+        if running.contains(key) && entry?.status != .sending {
+            return Entry(status: .sending, at: now(), keep: false, outcome: nil, meta: [:])
+        }
+        return entry
+    }
+
+    public func busy() -> Bool {
+        _ = version
+        if !running.isEmpty { return true }
+        return (saved() ?? memory).values.contains { live($0)?.status == .sending }
+    }
+
+    public var sending: Bool {
+        _ = version
+        return !running.isEmpty
+    }
+
+    public func begin(_ key: String, keep: Bool = false, meta: [String: String] = [:]) -> Began {
+        if busy() || get(key) != nil { return .busy }
+        do { try write(key, Entry(status: .sending, at: now(), keep: keep, outcome: nil, meta: meta), required: keep) } catch { return .unsaved }
+        running.insert(key)
+        changed()
+        return .started
+    }
+
+    public func finish(_ key: String, _ outcome: Outcome) {
+        running.remove(key)
+        let entry = memory[key] ?? saved()?[key]
+        let next = outcome.ok || !outcome.isUncertain ? nil : Entry(status: .uncertain, at: now(), keep: entry?.keep ?? false, outcome: outcome, meta: entry?.meta ?? [:])
+        try? write(key, next, required: false)
+        changed()
+    }
+
+    public func clear(_ key: String) {
+        guard !running.contains(key) else { return }
+        try? write(key, nil, required: false)
+        changed()
+    }
+
+    public func runOnce(_ key: String, keep: Bool = false, meta: [String: String] = [:], _ send: () async throws -> Outcome) async -> Run {
+        switch begin(key, keep: keep, meta: meta) {
+        case .busy: return .busy
+        case .unsaved: return .unsaved
+        case .started: break
+        }
+        let outcome: Outcome
+        do { outcome = try await send() } catch { outcome = noAnswer("Le serveur ne répond pas.") }
+        finish(key, outcome)
+        return .finished(outcome)
+    }
+}

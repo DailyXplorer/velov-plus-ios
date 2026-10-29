@@ -27,7 +27,7 @@ struct PillButton<Label: View>: View {
                 HStack(spacing: 10) { label() }.opacity(pending ? 0 : 1)
                 if pending { Spinner() }
             }
-            .typo(.label(14))
+            .typo(.caps(14))
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             .padding(.horizontal, 16)
@@ -105,7 +105,7 @@ struct Eyebrow: View {
     var body: some View {
         HStack(spacing: 10) {
             Icon(icon, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
-            Text(text).typo(.label(13)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.8)
+            Text(text).typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
         }
         .padding(.leading, 4).padding(.trailing, 14).padding(.vertical, 4)
         .background(Capsule().fill(Palette.mist))
@@ -113,18 +113,31 @@ struct Eyebrow: View {
 }
 
 struct CardTag: View {
+    enum Size { case regular, banner, stat, pick }
     let icon: IconName
     let text: String
-    var compact = false
-    var body: some View {
-        HStack(spacing: compact ? 6 : 10) {
-            Icon(icon, .bold, size: compact ? 11 : 13).foregroundStyle(Palette.white)
-                .frame(width: compact ? 20 : 28, height: compact ? 20 : 28).background(Circle().fill(Palette.red))
-            Text(text).typo(.label(compact ? 12 : 13)).foregroundStyle(Palette.ink)
+    var size = Size.regular
+
+    private var metrics: (gap: CGFloat, icon: CGFloat, glyph: CGFloat, font: CGFloat, leading: CGFloat, trailing: CGFloat, vertical: CGFloat) {
+        switch size {
+        case .regular: (10, 28, 13, 13, 7, 16, 7)
+        case .banner: (8, 26, 13, 13, 5, 12, 5)
+        case .stat: (7, 22, 12, 12, 4, 10, 4)
+        case .pick: (6, 20, 11, 12, 3, 10, 3)
         }
-        .padding(.leading, compact ? 3 : 7).padding(.trailing, compact ? 10 : 16).padding(.vertical, compact ? 3 : 7)
+    }
+
+    var body: some View {
+        let metrics = metrics
+        HStack(spacing: metrics.gap) {
+            Icon(icon, .bold, size: metrics.glyph).foregroundStyle(Palette.white)
+                .frame(width: metrics.icon, height: metrics.icon).background(Circle().fill(Palette.red))
+            Text(text).typo(.caps(metrics.font)).foregroundStyle(Palette.ink).lineLimit(1)
+        }
+        .padding(.leading, metrics.leading).padding(.trailing, metrics.trailing).padding(.vertical, metrics.vertical)
         .background(Capsule().fill(Palette.white))
-        .overlay(Capsule().strokeBorder(compact ? Palette.inkLine : .clear, lineWidth: 1))
+        .overlay(Capsule().strokeBorder(size == .pick ? Palette.inkLine : .clear, lineWidth: 1))
+        .fixedSize()
     }
 }
 
@@ -192,7 +205,7 @@ struct TextButton: View {
     let title: String
     let action: () -> Void
     var body: some View {
-        Button(action: action) { Text(title).typo(.label(14)).foregroundStyle(Palette.redDeep).frame(minHeight: 40) }.buttonStyle(.plain)
+        Button(action: action) { Text(title).typo(.caps(14)).foregroundStyle(Palette.redDeep).lineLimit(1).fixedSize().frame(minHeight: 40) }.buttonStyle(.plain)
     }
 }
 
@@ -235,22 +248,49 @@ struct ErrorNotice: View {
     }
 }
 
-struct Skeleton: View {
-    var height: CGFloat
+struct Shimmer: View {
     var radius: CGFloat = Palette.radius
+    @Environment(\.accessibilityReduceMotion) private var still
     @State private var phase: CGFloat = -1
     var body: some View {
         GeometryReader { geometry in
-            RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Palette.mist)
-                .overlay(
-                    LinearGradient(colors: [.clear, Palette.red.opacity(0.08), .clear], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: geometry.size.width)
-                        .offset(x: phase * geometry.size.width)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+            let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+            shape.fill(Palette.mist)
+                .overlay(alignment: .leading) {
+                    if !still {
+                        LinearGradient(stops: [.init(color: .clear, location: 0.25), .init(color: .white.opacity(0.7), location: 0.5), .init(color: .clear, location: 0.75)],
+                                       startPoint: .leading, endPoint: .trailing)
+                            .frame(width: geometry.size.width * 2)
+                            .offset(x: phase * geometry.size.width)
+                    }
+                }
+                .clipShape(shape)
         }
-        .frame(height: height)
-        .onAppear { withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) { phase = 1 } }
+        .onAppear { withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) { phase = 1 } }
+        .allowsHitTesting(false)
+    }
+}
+
+struct Skeleton: View {
+    var height: CGFloat
+    var radius: CGFloat = Palette.radius
+    var body: some View { Shimmer(radius: radius).frame(height: height).accessibilityHidden(true) }
+}
+
+extension View {
+    func skeleton(_ radius: CGFloat = Palette.radius) -> some View {
+        opacity(0).background(Shimmer(radius: radius)).accessibilityHidden(true).allowsHitTesting(false)
+    }
+
+    func ghost() -> some View { skeleton(6) }
+
+    func ghost(_ on: Bool) -> some View { modifier(Ghosted(on: on)) }
+}
+
+private struct Ghosted: ViewModifier {
+    let on: Bool
+    func body(content: Content) -> some View {
+        if on { content.ghost() } else { content }
     }
 }
 
@@ -261,7 +301,7 @@ struct DetailRow<Value: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 16) {
-                Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft)
+                Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize()
                 Spacer(minLength: 0)
                 value().typo(.body(14)).foregroundStyle(Palette.ink).multilineTextAlignment(.trailing)
             }
@@ -280,10 +320,11 @@ extension DetailRow where Value == Text {
 struct StackedValue: View {
     let value: String
     let small: String?
+    var caps = false
     var body: some View {
         VStack(alignment: .trailing, spacing: 3) {
             Text(value)
-            if let small, !small.isEmpty { Text(small).typo(.body(12)).foregroundStyle(Palette.inkSoft) }
+            if let small, !small.isEmpty { Text(small).typo(caps ? .caps(12) : .body(12)).foregroundStyle(Palette.inkSoft) }
         }
     }
 }
@@ -308,7 +349,7 @@ struct VelovSwitch: View {
 struct OutlinePill: View {
     let text: String
     var body: some View {
-        Text(text).typo(.label(12)).foregroundStyle(Palette.redDeep)
+        Text(text).typo(.caps(12)).foregroundStyle(Palette.redDeep).lineLimit(1).fixedSize()
             .padding(.horizontal, 8).padding(.vertical, 3)
             .overlay(Capsule().strokeBorder(Palette.red, lineWidth: 1))
     }
@@ -321,16 +362,23 @@ struct Hairline: View {
 
 struct Disclosure<Content: View>: View {
     var title = "Détails"
+    var icon: IconName?
     @State private var open = false
     @ViewBuilder let content: () -> Content
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button { withAnimation(.easeOut(duration: 0.2)) { open.toggle() } } label: {
                 HStack(spacing: 8) {
-                    Text(title).typo(.label(13))
-                    Icon(.caretDown, .bold, size: 14).rotationEffect(.degrees(open ? 180 : 0))
+                    if let icon {
+                        Icon(icon, .light, size: 17)
+                        Text(title).typo(.caps(13))
+                    } else {
+                        Text(title).typo(.caps(13))
+                        Icon(.caretDown, .bold, size: 14).rotationEffect(.degrees(open ? 180 : 0))
+                    }
                 }
-                .foregroundStyle(Palette.inkSoft).padding(.top, 18).padding(.bottom, 4)
+                .foregroundStyle(icon == nil ? Palette.inkSoft : Palette.dataNotice)
+                .padding(.top, icon == nil ? 18 : 8).padding(.bottom, icon == nil ? 4 : 8)
             }
             .buttonStyle(.plain)
             if open { content() }

@@ -5,6 +5,8 @@ import VelovCore
 private let storageWarning = "Ce téléphone ne peut pas garder le code. Copiez-le maintenant."
 
 struct InviteFriend: View {
+    enum Verification { case checking, debited, notDebited, unknown, failed }
+
     let cost: Int?
     let balance: Int?
     let account: String
@@ -13,14 +15,20 @@ struct InviteFriend: View {
     @State private var codes: [SavedPromo] = []
     @State private var warning: String?
     @State private var asking = false
-    @State private var pending = false
-    @State private var outcome: PromoResult?
+    @State private var outcome: Outcome?
+    @State private var verification: Verification?
     @State private var copied: String?
 
-    private var settled: Bool { outcome.map { $0.outcome.ok || $0.outcome.isUncertain } ?? false }
+    private var operationKey: String? { model.operations.digest.map(OperationKey.invite) }
+    private var operation: Operations.Entry? { operationKey.flatMap { model.operations.get($0) } }
+    private var pending: Bool { operation?.status == .sending }
+    private var blocked: Bool { pending && model.operations.sending }
+    private var uncertain: Outcome? { operation?.status == .uncertain ? operation?.outcome : nil }
+    private var shown: Outcome? { uncertain ?? outcome }
+    private var settled: Bool { shown.map { $0.ok || $0.isUncertain } == true || verification == .debited }
 
     private var canObtain: Bool {
-        guard let cost, let balance, key != nil else { return false }
+        guard let cost, let balance, key != nil, operationKey != nil else { return false }
         return cost >= 0 && balance >= cost
     }
 
@@ -28,7 +36,7 @@ struct InviteFriend: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Inviter un ami").typo(.label(13)).foregroundStyle(Palette.inkSoft)
+                    Text("Inviter un ami").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
                     Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(13)).foregroundStyle(Palette.inkSoft)
                     if cost == nil {
                         SoonNote(text: "L’offre est momentanément indisponible.")
@@ -37,8 +45,8 @@ struct InviteFriend: View {
                     }
                 }
                 Spacer(minLength: 0)
-                PillButton(codes.isEmpty ? "Obtenir un code" : "Obtenir un autre code", variant: .secondary) { outcome = nil; asking = true }
-                    .disabled(!canObtain || pending)
+                PillButton(codes.isEmpty ? "Obtenir un code" : "Obtenir un autre code", variant: .secondary) { open() }
+                    .disabled(operation == nil && !canObtain)
             }
             .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
             .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
@@ -53,7 +61,7 @@ struct InviteFriend: View {
     private var codeList: some View {
         if !codes.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Code à transmettre à votre ami").typo(.label(13)).foregroundStyle(Palette.inkSoft)
+                Text("Code à transmettre à votre ami").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
                 ForEach(codes, id: \.code) { entry in
                     HStack(spacing: 12) {
                         Text(entry.code).typo(.label(15)).foregroundStyle(Palette.ink).textSelection(.enabled)
@@ -68,32 +76,49 @@ struct InviteFriend: View {
 
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: "Échanger \(cost ?? 0) points ?", closeDisabled: pending) { asking = false }
+            SheetHeading(title: "Échanger \(cost ?? 0) points ?", closeDisabled: blocked) { close() }
             Text("Les \(cost ?? 0) points sont débités dès la création du code, même s’il n’est jamais utilisé.")
                 .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
-            if let outcome {
+            if verification == .debited {
+                FormError("Vos points ont été débités, mais aucun code n’a été reçu. Contactez Vélo’v pour le récupérer.").padding(.top, 14)
+            } else if let shown {
                 VStack(alignment: .leading, spacing: 6) {
-                    if outcome.outcome.ok {
-                        DoneLine(text: "Code créé. Copiez-le pour l’envoyer à votre ami.")
+                    if shown.ok {
+                        Text("Code créé. Copiez-le pour l’envoyer à votre ami.").typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
                     } else {
-                        FormError(outcome.outcome.message ?? "Le code n’a pas pu être obtenu.")
-                        RawStatus(outcome: outcome.outcome)
-                        if outcome.outcome.isUncertain { UncertainNote().padding(.top, 4) }
+                        FormError(shown.message ?? "Le code n’a pas pu être créé.")
+                        RawStatus(line: messageLine(shown))
                     }
+                    if shown.isUncertain { UncertainNote().padding(.top, 4) }
                     codeList.padding(.top, 8)
                 }
                 .padding(.top, 14)
             }
+            Group {
+                switch verification {
+                case .notDebited?: SoonNote(text: "Aucun débit de \(cost ?? 0) points n’apparaît sur votre compte.")
+                case .unknown?: SoonNote(text: "Votre solde ne permet pas encore de savoir si vos points ont été débités. Vérifiez de nouveau dans un instant.")
+                case .failed?: FormError("Votre solde n’a pas pu être lu. Réessayez dans un instant.")
+                default: EmptyView()
+                }
+            }
+            .padding(.top, 12)
             if let warning { FormError(warning).padding(.top, 12) }
             PairedActions {
-                PillButton(settled ? "Fermer" : "Annuler", variant: .ghost, fullWidth: true) { asking = false }.disabled(pending)
-                if !settled { PillButton("Confirmer", pending: pending, fullWidth: true) { confirm() }.disabled(!canObtain) }
+                PillButton(settled ? "Fermer" : "Annuler", variant: .ghost, fullWidth: true) { close() }.disabled(blocked)
+                if uncertain != nil, verification == .notDebited {
+                    PillButton("Je n’ai pas été débité, réessayer", fullWidth: true) { retry() }
+                } else if uncertain != nil {
+                    PillButton("Vérifier mon solde", variant: .secondary, pending: verification == .checking, fullWidth: true) { verify() }
+                } else if !settled {
+                    PillButton("Confirmer", pending: pending, fullWidth: true) { confirm() }.disabled(!canObtain)
+                }
             }
             .padding(.top, 24)
         }
         .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
         .fitSheet()
-        .interactiveDismissDisabled(pending)
+        .interactiveDismissDisabled(blocked)
     }
 
     private func load() {
@@ -106,38 +131,88 @@ struct InviteFriend: View {
         }
     }
 
+    private func open() {
+        if operation == nil { outcome = nil }
+        verification = nil
+        asking = true
+    }
+
+    private func close() {
+        guard !model.operations.sending else { return }
+        asking = false
+    }
+
     private func confirm() {
-        guard let cost, let key, !pending, !settled else { return }
+        guard let cost, let key, let operationKey, canObtain else { return }
         do { _ = try PromoStore.prepare(model.promoBacking, key: key) } catch {
             warning = "Ce téléphone ne peut pas enregistrer le code. Vos points n’ont pas été utilisés."
             return
         }
         Haptics.confirm()
-        pending = true
+        outcome = nil
         warning = nil
+        verification = nil
+        let model = model
+        let meta = ["cost": String(cost), "balance": String(balance ?? -1)]
         Task {
-            let result: PromoResult
-            do {
-                result = try await model.service.consumePromoCode(expectedCost: cost)
-            } catch let error as VelovError {
-                result = PromoResult(outcome: Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: "local.\(error.code.rawValue)", message: error.message), promoCode: nil)
-            } catch {
-                result = PromoResult(outcome: Outcome(ok: false, httpStatus: 0, code: "network", message: "Vélo’v ne répond pas. Vos points ont peut-être été débités."), promoCode: nil)
-            }
-            if let code = result.promoCode {
-                do { codes = try PromoStore.save(model.promoBacking, key: key, code: code) } catch {
-                    if !codes.contains(where: { $0.code == code }) { codes.append(SavedPromo(code: code, createdAt: ISO8601DateFormatter().string(from: Date()))) }
-                    warning = storageWarning
+            let result = await model.operations.runOnce(operationKey, keep: true, meta: meta) {
+                let answer: PromoResult
+                do {
+                    answer = try await model.service.consumePromoCode(expectedCost: cost)
+                } catch let error as VelovError {
+                    answer = PromoResult(outcome: Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: "local.\(error.code.rawValue)", message: error.message), promoCode: nil)
+                } catch {
+                    answer = PromoResult(outcome: noAnswer("Vélo’v ne répond pas. Vos points ont peut-être été débités."), promoCode: nil)
                 }
+                if let code = answer.promoCode {
+                    do { codes = try PromoStore.save(model.promoBacking, key: key, code: code) } catch {
+                        if !codes.contains(where: { $0.code == code }) { codes.append(SavedPromo(code: code, createdAt: ISO8601DateFormatter().string(from: Date()))) }
+                        warning = storageWarning
+                    }
+                }
+                return answer.outcome
             }
-            Haptics.result(result.outcome.ok)
-            outcome = result
-            pending = false
+            switch result {
+            case .unsaved: warning = Messages.unsaved
+            case .busy: if model.operations.get(operationKey) == nil { warning = Messages.busy }
+            case .finished(let answer):
+                Haptics.result(answer.ok)
+                outcome = answer
+            }
         }
     }
 
+    private func verify() {
+        guard let operation, operation.status == .uncertain, let operationKey, verification != .checking else { return }
+        let balance = Double(operation.meta["balance"] ?? "").flatMap { $0 >= 0 ? $0 : nil }
+        let before = DebitBefore(at: operation.at, balance: balance, cost: Int(operation.meta["cost"] ?? "") ?? cost ?? 0)
+        verification = .checking
+        let model = model
+        Task {
+            do {
+                let data = try await model.service.dashboard()
+                let check = inviteDebit(before, after: data.rewards)
+                if check == .debited { model.operations.clear(operationKey) }
+                verification = switch check {
+                case .debited: .debited
+                case .notDebited: .notDebited
+                case .unknown: .unknown
+                }
+            } catch {
+                verification = .failed
+            }
+        }
+    }
+
+    private func retry() {
+        guard let operationKey, verification == .notDebited else { return }
+        model.operations.clear(operationKey)
+        confirm()
+    }
+
     private func closed() {
-        if outcome != nil { Task { await model.loadDashboard() } }
+        if outcome != nil || verification != nil { Task { await model.loadDashboard() } }
+        verification = nil
     }
 
     private func copy(_ code: String) {

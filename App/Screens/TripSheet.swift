@@ -19,7 +19,7 @@ struct TripSheet: View {
                     HStack {
                         Text("Trajet").typo(.title(26)).foregroundStyle(Palette.ink)
                         Spacer()
-                        IconButton(icon: .x, label: "Fermer les détails") { dismiss() }.padding(.trailing, -10)
+                        IconButton(icon: .x, label: "Fermer les détails") { dismiss() }.padding(.trailing, -10).disabled(model.operations.sending)
                     }
                     times.padding(.top, 6)
                     VStack(alignment: .leading, spacing: 14) {
@@ -30,7 +30,7 @@ struct TripSheet: View {
                     facts.padding(.top, 22)
                     if let points = pointsLine { Text(points).typo(.label(13)).foregroundStyle(Palette.inkSoft).padding(.top, 10) }
                     if trip.litigious { litigious }
-                    if let bike = trip.bikeNumber, canRate(trip) || model.ratedHere.contains(trip.id) {
+                    if let bike = trip.bikeNumber, !rated, canRate(trip) {
                         RateBike(trip: trip, bikeNumber: bike) {
                             model.closeEnded(trip)
                             dismiss()
@@ -45,6 +45,7 @@ struct TripSheet: View {
             .navigationDestination(for: BikeRoute.self) { route in BikeDetail(route: route) }
         }
         .presentationDetents(model.snapshot == .rateCard ? [.large] : [.medium, .large])
+        .interactiveDismissDisabled(model.operations.sending)
         .presentationBackground(Palette.white)
         .presentationDragIndicator(.visible)
         .sheetCorners()
@@ -64,10 +65,10 @@ struct TripSheet: View {
 
     private func stop(_ label: String, _ station: String?, _ stand: Int?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft)
+            Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(station ?? "Non renseignée").typo(.body(15)).foregroundStyle(Palette.ink)
-                if let stand { Text(verbatim: "Borne \(stand)").typo(.label(13)).foregroundStyle(Palette.inkSoft).fixedSize() }
+                if let stand { Text(verbatim: "Borne \(stand)").typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize() }
             }
         }
     }
@@ -93,7 +94,7 @@ struct TripSheet: View {
 
     private func fact(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft)
+            Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1)
             Text(value).typo(.title(20)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -120,7 +121,7 @@ struct TripSheet: View {
                 components.queryItems = [URLQueryItem(name: "subject", value: subject)]
                 if let url = components.url { openURL(url) }
             } label: {
-                Text("Contacter le service client").typo(.label(13)).foregroundStyle(Palette.redDeep).multilineTextAlignment(.trailing)
+                Text("Contacter le service client").typo(.caps(13)).foregroundStyle(Palette.redDeep).multilineTextAlignment(.trailing)
             }
             .buttonStyle(.plain)
         }
@@ -139,7 +140,7 @@ struct TripSheet: View {
                     if let number = trip.bikeNumber {
                         NavigationLink(value: BikeRoute(number: number, station: nil)) {
                             HStack(spacing: 6) { Text(verbatim: "Vélo n° \(number)"); Icon(.caretRight, .bold, size: 14) }
-                                .typo(.label(13)).foregroundStyle(Palette.redDeep).frame(minHeight: 36)
+                                .typo(.caps(14)).foregroundStyle(Palette.redDeep).frame(minHeight: 36)
                         }
                         .buttonStyle(.plain)
                     }

@@ -40,7 +40,7 @@ struct ReservedPill: View {
         HStack(spacing: 6) {
             Icon(.clock, .bold, size: 11).foregroundStyle(.white)
                 .frame(width: 20, height: 20).background(Circle().fill(ActivityStyle.red))
-            Text("Réservé").font(ActivityStyle.label(13)).foregroundStyle(ActivityStyle.ink)
+            Text("Réservé").font(ActivityStyle.label(13)).tracking(0.26).textCase(.uppercase).foregroundStyle(ActivityStyle.ink)
         }
         .padding(.leading, 3).padding(.trailing, 10).padding(.vertical, 3)
         .background(Capsule().fill(.white))

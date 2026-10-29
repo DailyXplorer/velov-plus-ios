@@ -20,45 +20,61 @@ private struct ViaSheet: View {
     @State private var locationError = ""
     @State private var locationRaw = ""
     @State private var reviewing = false
-    @State private var pending = false
-    @State private var failure: Outcome?
+    @State private var refused: Outcome?
+    @State private var notice: String?
 
     private var choices: [Station] { fullStations(model.stations.value?.stations ?? [], query: query, position: position) }
-    private var station: Station? { choices.first { $0.number == selected } }
+    private var operationKey: String? {
+        guard let digest = model.operations.digest, let tripId = model.dashboard?.ongoing?.first?.id else { return nil }
+        return OperationKey.via(digest, tripId: tripId)
+    }
+    private var operation: Operations.Entry? { operationKey.flatMap { model.operations.get($0) } }
+    private var held: (number: Int, name: String)? {
+        guard let operation, let number = Int(operation.meta["number"] ?? "") else { return nil }
+        return (number, operation.meta["name"] ?? "")
+    }
+    private var target: (number: Int, name: String)? {
+        if let held { return held }
+        return choices.first { $0.number == selected }.map { ($0.number, $0.name) }
+    }
+    private var failure: Outcome? { operation?.outcome ?? refused }
+    private var pending: Bool { operation?.status == .sending }
+    private var blocked: Bool { pending && model.operations.sending }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: "15 minutes de plus", closeDisabled: pending) { dismiss() }
+            SheetHeading(title: "15 minutes de plus", closeDisabled: blocked) { close() }
             Group {
-                if reviewing, let station { review(station) } else { pick }
+                if reviewing || held != nil, let target { review(target) } else { pick }
             }
             .padding(.top, 14)
         }
         .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
         .fitSheet()
-        .interactiveDismissDisabled(pending)
+        .interactiveDismissDisabled(blocked)
     }
 
-
-    private func review(_ station: Station) -> some View {
+    private func review(_ station: (number: Int, name: String)) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             (Text("La station ") + Text(verbatim: "\(station.name) (n° \(station.number))").fontWeight(.semibold)
-             + Text(" est pleine. Demander 15 minutes de plus pour rejoindre une autre station ?"))
+             + Text(" est pleine. Demander 15 minutes de plus pour rejoindre une autre station\u{a0}?"))
                 .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             if let failure {
                 VStack(alignment: .leading, spacing: 6) {
                     FormError(failure.message ?? "Les 15 minutes supplémentaires n’ont pas été accordées.")
-                    RawStatus(outcome: failure)
+                    RawStatus(line: messageLine(failure))
                     if failure.isUncertain { UncertainNote().padding(.top, 4) }
                 }
                 .padding(.top, 14)
             }
+            if let notice { FormError(notice).padding(.top, 12) }
             PairedActions {
                 if failure?.isUncertain == true {
-                    PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }
+                    PillButton("Fermer", variant: .ghost, fullWidth: true) { close() }
+                    PillButton("Nouvelle demande", variant: .secondary, fullWidth: true) { startOver() }
                 } else {
-                    PillButton("Retour", variant: .ghost, fullWidth: true) { failure = nil; reviewing = false }.disabled(pending)
-                    PillButton("Confirmer", pending: pending, fullWidth: true) { confirm(station) }
+                    PillButton("Retour", variant: .ghost, fullWidth: true) { refused = nil; notice = nil; reviewing = false }.disabled(pending)
+                    PillButton("Confirmer", pending: pending, fullWidth: true) { confirm(station) }.disabled(operationKey == nil)
                 }
             }
             .padding(.top, 24)
@@ -70,7 +86,7 @@ private struct ViaSheet: View {
             Text("Choisissez la station pleine où vous vouliez rendre votre vélo.")
                 .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 6) {
-                Text("Rechercher une station pleine").typo(.label(13)).foregroundStyle(Palette.inkSoft)
+                Text("Rechercher une station pleine").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
                 TextField("", text: $query, prompt: Text("Nom, adresse ou numéro").foregroundStyle(Palette.inkSoft))
                     .typo(.body(16)).foregroundStyle(Palette.ink).autocorrectionDisabled()
                     .fieldPill()
@@ -100,11 +116,26 @@ private struct ViaSheet: View {
                 }
             }
             PairedActions {
-                PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }
-                PillButton("Continuer", fullWidth: true) { reviewing = true }.disabled(station == nil)
+                PillButton("Annuler", variant: .ghost, fullWidth: true) { close() }
+                PillButton("Continuer", fullWidth: true) { reviewing = true }.disabled(target == nil)
             }
             .padding(.top, 12)
         }
+    }
+
+    private func close() {
+        guard !model.operations.sending else { return }
+        dismiss()
+    }
+
+    private func startOver() {
+        guard let operationKey else { return }
+        model.operations.clear(operationKey)
+        refused = nil
+        notice = nil
+        reviewing = false
+        selected = nil
+        query = ""
     }
 
     private func locate() {
@@ -125,16 +156,30 @@ private struct ViaSheet: View {
         }
     }
 
-    private func confirm(_ station: Station) {
-        guard !pending else { return }
+    private func confirm(_ station: (number: Int, name: String)) {
+        guard let operationKey, !pending else { return }
         Haptics.confirm()
-        pending = true
-        failure = nil
+        refused = nil
+        notice = nil
+        let model = model
         Task {
-            let outcome = await attempt { try await model.service.requestExtraTime(stationNumber: station.number) }
-            Haptics.result(outcome.ok)
-            pending = false
-            if outcome.ok { dismiss() } else { failure = outcome }
+            let result = await model.operations.runOnce(operationKey, keep: true, meta: ["number": String(station.number), "name": station.name]) {
+                await attempt { try await model.service.requestExtraTime(stationNumber: station.number) }
+            }
+            switch result {
+            case .unsaved: notice = Messages.unsaved
+            case .busy: if model.operations.get(operationKey) == nil { notice = Messages.busy }
+            case .finished(let outcome):
+                Haptics.result(outcome.ok)
+                if outcome.ok {
+                    reviewing = false
+                    selected = nil
+                    query = ""
+                    dismiss()
+                } else if !outcome.isUncertain {
+                    refused = outcome
+                }
+            }
         }
     }
 }

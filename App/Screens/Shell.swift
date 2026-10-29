@@ -74,7 +74,8 @@ struct TabBar: View {
     let radius: CGFloat
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Namespace private var selection
+    @State private var motion = PillMotion(at: 0)
+    @State private var moving = false
     @State private var picks = 0
     private let padding: CGFloat = 10
 
@@ -87,31 +88,147 @@ struct TabBar: View {
                     model.page = page
                     picks += 1
                 } label: {
-                    VStack(spacing: 5) {
-                        Icon(page.icon, .light, size: 22)
-                        Text(page.tab).typo(.body(11))
-                    }
-                    .foregroundStyle(active ? Palette.white : Palette.ink)
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .padding(4)
-                    .background {
-                        if active {
-                            RoundedRectangle(cornerRadius: radius - padding, style: .continuous).fill(Palette.red)
-                                .matchedGeometryEffect(id: reduceMotion ? page.id : "active", in: selection)
-                                .transition(reduceMotion ? .opacity : .identity)
-                        }
-                    }
-                    .contentShape(Rectangle())
+                    label(page)
+                        .hidden()
+                        .anchorPreference(key: TabBounds.self, value: .bounds) { [page: $0] }
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(page.title)
                 .accessibilityAddTraits(active ? .isSelected : [])
             }
         }
+        .backgroundPreferenceValue(TabBounds.self) { bounds in
+            GeometryReader { proxy in
+                let tabs = Page.allCases.compactMap { bounds[$0].map { proxy[$0] } }
+                if tabs.count == Page.allCases.count {
+                    TimelineView(.animation(minimumInterval: nil, paused: !moving)) { context in
+                        let pill = Pill(edges: moving ? motion.edges(at: context.date) : motion.targets, tabs: tabs, radius: radius - padding)
+                        ZStack(alignment: .topLeading) {
+                            pill.fill(Palette.red)
+                            ZStack {
+                                Palette.ink
+                                pill.fill(Palette.white)
+                            }
+                            .mask(alignment: .topLeading) {
+                                ForEach(Array(zip(Page.allCases, tabs)), id: \.0) { page, tab in
+                                    label(page).frame(width: tab.width, height: tab.height).offset(x: tab.minX, y: tab.minY)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .accessibilityHidden(true)
+        }
         .padding(padding)
         .floatingGlass(RoundedRectangle(cornerRadius: radius, style: .continuous))
-        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.22), value: model.page)
+        .onAppear { motion = PillMotion(at: model.page.index) }
+        .onChange(of: model.page) { _, page in
+            motion.retarget(page.index, at: .now, reduceMotion: reduceMotion)
+            moving = true
+        }
+        .task(id: motion.start) {
+            try? await Task.sleep(for: .seconds(1.2))
+            if !Task.isCancelled { moving = false }
+        }
         .sensoryFeedback(.selection, trigger: picks)
+    }
+
+    private func label(_ page: Page) -> some View {
+        VStack(spacing: 5) {
+            Icon(page.icon, .light, size: 22)
+            Text(page.tab).typo(.body(11))
+        }
+        .frame(maxWidth: .infinity, minHeight: 48)
+        .padding(4)
+    }
+}
+
+private struct TabBounds: PreferenceKey {
+    static let defaultValue: [Page: Anchor<CGRect>] = [:]
+    static func reduce(value: inout [Page: Anchor<CGRect>], nextValue: () -> [Page: Anchor<CGRect>]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
+
+private extension Page {
+    var index: Int { Page.allCases.firstIndex(of: self) ?? 0 }
+}
+
+private struct Pill: Shape {
+    let edges: (CGFloat, CGFloat)
+    let tabs: [CGRect]
+    let radius: CGFloat
+
+    func path(in _: CGRect) -> Path {
+        let left = x(edges.0), right = x(edges.1)
+        let rest = tabs[min(max(Int(((edges.0 + edges.1) / 2).rounded(.down)), 0), tabs.count - 1)]
+        let stretch = (right - left) / rest.width
+        let height = rest.height * min(1, max(0.74, 1 - 0.2 * (stretch - 1)))
+        let rect = CGRect(x: left, y: rest.midY - height / 2, width: max(right - left, 0), height: height)
+        return Path(roundedRect: rect, cornerRadius: min(radius, height / 2), style: .continuous)
+    }
+
+    private func x(_ edge: CGFloat) -> CGFloat {
+        let slot = min(max(Int(edge.rounded(.down)), 0), tabs.count - 1)
+        return tabs[slot].minX + (edge - CGFloat(slot)) * tabs[slot].width
+    }
+}
+
+private struct PillMotion {
+    private var left: Track
+    private var right: Track
+    private(set) var start = Date.now
+
+    init(at index: Int) {
+        left = Track(rest: CGFloat(index))
+        right = Track(rest: CGFloat(index + 1))
+    }
+
+    var targets: (CGFloat, CGFloat) { (left.to, right.to) }
+
+    func edges(at date: Date) -> (CGFloat, CGFloat) {
+        let time = date.timeIntervalSince(start)
+        return (left.value(time), right.value(time))
+    }
+
+    mutating func retarget(_ index: Int, at date: Date, reduceMotion: Bool) {
+        let time = date.timeIntervalSince(start)
+        let forward = CGFloat(index) + 0.5 > (left.value(time) + right.value(time)) / 2
+        let lead = reduceMotion ? Spring(response: 0.36, dampingRatio: 1) : Spring(response: 0.32, dampingRatio: 0.8)
+        let trail = reduceMotion ? lead : Spring(response: 0.52, dampingRatio: 0.85)
+        left = left.toward(CGFloat(index), after: time, with: forward ? trail : lead)
+        right = right.toward(CGFloat(index + 1), after: time, with: forward ? lead : trail)
+        start = date
+    }
+}
+
+private struct Track {
+    var from: CGFloat
+    var to: CGFloat
+    var velocity: CGFloat = 0
+    var spring = Spring()
+
+    init(rest: CGFloat) {
+        from = rest
+        to = rest
+    }
+
+    private init(from: CGFloat, to: CGFloat, velocity: CGFloat, spring: Spring) {
+        self.from = from
+        self.to = to
+        self.velocity = velocity
+        self.spring = spring
+    }
+
+    func value(_ time: TimeInterval) -> CGFloat {
+        from + spring.value(target: to - from, initialVelocity: velocity, time: max(0, time))
+    }
+
+    func toward(_ target: CGFloat, after time: TimeInterval, with next: Spring) -> Track {
+        let speed = spring.velocity(target: to - from, initialVelocity: velocity, time: max(0, time))
+        return Track(from: value(time), to: target, velocity: speed, spring: next)
     }
 }
 

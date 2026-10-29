@@ -101,7 +101,7 @@ struct ProfileCoordinates: View {
             } question: {
                 VStack(spacing: 0) {
                     ForEach(Array(review.changes.enumerated()), id: \.element.id) { index, change in
-                        DetailRow(label: change.label, last: index == review.changes.count - 1) { StackedValue(value: change.after, small: "avant : \(change.before)") }
+                        DetailRow(label: change.label, last: index == review.changes.count - 1) { StackedValue(value: change.after, small: "Avant : \(change.before)") }
                     }
                 }
             }

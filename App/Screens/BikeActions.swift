@@ -145,7 +145,7 @@ struct BikeActionSheet: View {
                 } else {
                     Text("Vélo réservé pour \(Rules.bookingMinutes) min").typo(.body(15, medium: true))
                 }
-                Text("Vélo \(place.bikeNumber) · borne \(place.standNumber)").typo(.body(13)).foregroundStyle(Palette.inkSoft)
+                Text("Vélo \(place.bikeNumber) · Borne \(place.standNumber)").typo(.body(13)).foregroundStyle(Palette.inkSoft)
             }
             VStack(spacing: 10) {
                 PillButton(fullWidth: true, action: { step = .confirm(.unlock) }) { Icon(.lockOpen, .light, size: 17); Text("Déverrouiller") }
@@ -159,7 +159,7 @@ struct BikeActionSheet: View {
     private func unlocked(_ ongoing: [Trip]?) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ResultLine(ok: true) {
-                Text("Vélo déverrouillé — borne \(place.standNumber)").typo(.body(15, medium: true))
+                Text("Vélo déverrouillé — Borne \(place.standNumber)").typo(.body(15, medium: true))
                 Text("Appuyez maintenant sur le bouton de la borne (60 s), puis retirez le vélo.").typo(.body(14)).foregroundStyle(Palette.ink)
                 Text(ongoing?.isEmpty == false ? "Trajet en cours." : "Le trajet apparaît une dizaine de secondes après le retrait du vélo.")
                     .typo(.body(13)).foregroundStyle(Palette.inkSoft)

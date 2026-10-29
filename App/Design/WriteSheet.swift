@@ -10,7 +10,7 @@ enum Haptics {
     static func result(_ ok: Bool) { UINotificationFeedbackGenerator().notificationOccurred(ok ? .success : .error) }
 }
 
-/// `.bike-action-raw`: « HTTP 400 · code … · detail », mono, under a failure only.
+/// `.bike-action-raw`: « HTTP 400 · Code … · Detail », mono, under a failure only.
 struct RawStatus: View {
     let outcome: Outcome
     var withState = false

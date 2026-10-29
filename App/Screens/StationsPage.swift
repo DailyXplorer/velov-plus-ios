@@ -137,7 +137,7 @@ struct StationsPage: View {
                             Spacer(minLength: 0)
                             Icon(.caretRight, .light, size: 16).foregroundStyle(Palette.inkSoft)
                         }
-                        Text(verbatim: "\(here.map { "\(formatDistance(haversine($0, station.point))) · " } ?? "")n° \(station.number)\(station.open ? "" : " · Fermée")")
+                        Text(verbatim: "\(here.map { "\(formatDistance(haversine($0, station.point))) · " } ?? "")N° \(station.number)\(station.open ? "" : " · Fermée")")
                             .typo(.body(12)).foregroundStyle(Palette.inkSoft)
                     }
                     .padding(.horizontal, 15).padding(.vertical, 16)

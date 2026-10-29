@@ -13,11 +13,12 @@ struct PointsPage: View {
         let rules = Array(rewards.rules.filter { $0.kind == .earn }.prefix(3))
         let invite = rewards.rules.first { $0.name == "PROMOCODE" }
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 40) {
+            HStack(alignment: .top, spacing: 10) {
                 figure(.starFour, "Solde", rewards.balance.map { formatNumber($0) } ?? "—", accent: true)
                 figure(.trendUp, "Total gagné", rewards.total.map { formatNumber($0) } ?? "—", accent: false)
             }
-            .padding(.bottom, 28)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.bottom, 16)
             AutoSpendSetting(value: rewards.autoSpend)
             InviteFriend(cost: invite.map { Int($0.points) }, balance: rewards.balance.map { Int($0) }, account: data.profile.email)
                 .id(data.profile.email)
@@ -59,14 +60,19 @@ struct PointsPage: View {
         }
     }
 
+    /// `.points-summary > div`: one of two equal mist cards sharing the row.
     private func figure(_ icon: Ph, _ label: String, _ value: String, accent: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             Eyebrow(icon: icon, text: label)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(value).typo(.title(52)).foregroundStyle(accent ? Palette.red : Palette.ink)
+                Text(value).typo(.title(40)).foregroundStyle(accent ? Palette.red : Palette.ink)
                 Text("points").typo(.label(11)).foregroundStyle(Palette.inkSoft)
             }
+            .lineLimit(1).minimumScaleFactor(0.5)
         }
+        .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 18)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
     }
 
 }

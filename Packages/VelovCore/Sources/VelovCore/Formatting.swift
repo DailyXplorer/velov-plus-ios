@@ -43,6 +43,12 @@ public func formatNumber(_ value: Double, maximumFractionDigits: Int = 3, minimu
     }.string(from: NSNumber(value: value)) ?? String(value)
 }
 
+/// "il y a 3 h" -> "Il y a 3 h": a generated text that opens a line or follows a separator.
+public func capitalize(_ text: String) -> String {
+    guard let first = text.first else { return text }
+    return String(first).uppercased(with: french) + text.dropFirst()
+}
+
 /// "350 m", "1,2 km", "14 km".
 public func formatDistance(_ metres: Double) -> String {
     if metres < 1000 { return "\(max(10, Int((metres / 10).rounded()) * 10)) m" }

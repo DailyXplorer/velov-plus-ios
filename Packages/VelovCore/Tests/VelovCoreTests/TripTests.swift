@@ -151,6 +151,8 @@ final class TripTests: XCTestCase {
         XCTAssertEqual(plain(fromNow(date("2026-07-14T05:00:00Z"), now: summer)), "il y a 3 h")
         XCTAssertEqual(plain(fromNow(date("2026-07-16T09:00:00Z"), now: summer)), "dans 2 j")
         XCTAssertEqual(fromNow(summer, now: summer.addingTimeInterval(20)), "à l’instant")
+        XCTAssertEqual(capitalize("à l’instant"), "À l’instant")
+        XCTAssertEqual(capitalize(""), "")
     }
 
     func testPlanNamesAndPhonesAreShortenedLikeTheWebApp() {

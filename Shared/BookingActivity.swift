@@ -24,7 +24,7 @@ enum ActivityStyle {
 }
 
 extension BookingActivityAttributes {
-    var bikeLine: String { "Vélo \(bikeNumber.map(String.init) ?? "—") · borne \(standNumber.map(String.init) ?? "—")" }
+    var bikeLine: String { "Vélo \(bikeNumber.map(String.init) ?? "—") · Borne \(standNumber.map(String.init) ?? "—")" }
 }
 
 /// mm:ss to the end of the booking, ticking on its own; 00:00 once it has run out.

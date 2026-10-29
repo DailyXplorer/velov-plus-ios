@@ -91,7 +91,7 @@ private struct ViaSheet: View {
                     ForEach(choices.prefix(8)) { item in
                         Button { selected = item.number } label: {
                             HStack(spacing: 10) {
-                                Text(verbatim: "\(item.name) · n° \(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
+                                Text(verbatim: "\(item.name) · N° \(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
                                     .typo(.body(14)).foregroundStyle(Palette.ink).multilineTextAlignment(.leading)
                                 Spacer(minLength: 0)
                                 if selected == item.number { Icon(.check, .bold, size: 15).foregroundStyle(Palette.red) }

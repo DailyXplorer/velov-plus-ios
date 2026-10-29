@@ -155,7 +155,8 @@ final class WritesTests: XCTestCase {
     }
 
     func testTheRawLineShowsStatusCodeAndDetail() {
-        XCTAssertEqual(rawLine(Outcome(ok: false, httpStatus: 0, code: "network", detail: "TimeoutError")), "transactionState — · code network · HTTP aucune réponse · TimeoutError")
-        XCTAssertEqual(rawLine(Outcome(ok: false, httpStatus: 400, code: nil), withState: false), "HTTP 400 · code —")
+        XCTAssertEqual(rawLine(Outcome(ok: false, httpStatus: 0, code: "network", detail: "TimeoutError")), "TransactionState — · Code network · HTTP aucune réponse · TimeoutError")
+        XCTAssertEqual(rawLine(Outcome(ok: false, httpStatus: 409, code: "x", detail: "conflict"), withState: false), "HTTP 409 · Code x · Conflict")
+        XCTAssertEqual(rawLine(Outcome(ok: false, httpStatus: 400, code: nil), withState: false), "HTTP 400 · Code —")
     }
 }

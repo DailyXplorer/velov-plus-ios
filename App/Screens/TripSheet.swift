@@ -77,7 +77,7 @@ struct TripSheet: View {
                 VStack(alignment: .leading, spacing: 0) {
                     fact("Payé", trip.price.map(formatPrice) ?? "—")
                     if trip.discount > 0, let full = trip.fullPrice {
-                        Text(verbatim: "Prix \(formatPrice(full)) · remise \(formatPrice(trip.discount))").typo(.mono(10)).foregroundStyle(Palette.inkSoft).padding(.top, 5)
+                        Text(verbatim: "Prix \(formatPrice(full)) · Remise \(formatPrice(trip.discount))").typo(.mono(10)).foregroundStyle(Palette.inkSoft).padding(.top, 5)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

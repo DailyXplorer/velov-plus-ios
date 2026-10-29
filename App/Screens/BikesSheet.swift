@@ -258,7 +258,7 @@ struct BikeDetail: View {
                             Stars(value: rating.value / 20)
                             Text(outOfFive(rating.value)) + Text("/5").foregroundStyle(Palette.inkSoft)
                         }
-                        Text(verbatim: "\(rating.count) avis\(fromNow(rating.lastAt).map { " · le dernier \($0)" } ?? "")").typo(.body(12)).foregroundStyle(Palette.inkSoft)
+                        Text(verbatim: "\(rating.count) avis\(fromNow(rating.lastAt).map { " · Le dernier \($0)" } ?? "")").typo(.body(12)).foregroundStyle(Palette.inkSoft)
                     }
                 } else {
                     Text("Pas encore d’avis")
@@ -295,7 +295,7 @@ struct BikeDetail: View {
     private func dateValue(_ date: Date?, withAgo: Bool) -> some View {
         let exact = date.map { formatDate($0, withAgo ? .dayMonthYearTime : .dayMonthYear) }
         if let exact {
-            if withAgo, let since = fromNow(date) { StackedValue(value: since, small: exact) } else { Text(exact) }
+            if withAgo, let since = fromNow(date) { StackedValue(value: capitalize(since), small: exact) } else { Text(exact) }
         } else {
             Text("Non renseigné")
         }
@@ -309,7 +309,7 @@ struct BikeDetail: View {
             if mine, let endsAt = booking?.endsAt {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let left = max(0, Int(endsAt.timeIntervalSince(context.date).rounded()))
-                    (Text("Vélo réservé jusqu’à ") + Text(formatDate(endsAt, .time)).font(Typo.clock(14).font) + Text(left > 0 ? " · reste " : " · réservation expirée") + Text(left > 0 ? clock(left) : "").font(Typo.clock(14).font))
+                    (Text("Vélo réservé jusqu’à ") + Text(formatDate(endsAt, .time)).font(Typo.clock(14).font) + Text(left > 0 ? " · Reste " : " · Réservation expirée") + Text(left > 0 ? clock(left) : "").font(Typo.clock(14).font))
                         .typo(.body(14, medium: true)).foregroundStyle(Palette.ink)
                 }
             }

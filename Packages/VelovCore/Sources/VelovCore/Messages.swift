@@ -75,13 +75,13 @@ public func accountOutcome(httpStatus: Int, code: String?, detail: String?, fail
     return Outcome(ok: ok, httpStatus: httpStatus, code: code, message: message, detail: detail)
 }
 
-/// "transactionState OK · code — · HTTP 200 · detail": the raw line shown under a failed action.
+/// "TransactionState OK · Code — · HTTP 200 · Detail": the raw line shown under a failed action.
 public func rawLine(_ outcome: Outcome, extra: String? = nil, withState: Bool = true) -> String {
     var parts: [String] = []
-    if withState { parts.append("transactionState \(outcome.transactionState ?? "—")") }
+    if withState { parts.append("TransactionState \(outcome.transactionState ?? "—")") }
     let http = "HTTP \(outcome.httpStatus == 0 ? "aucune réponse" : String(outcome.httpStatus))"
-    let code = "code \(outcome.code ?? "—")"
+    let code = "Code \(outcome.code ?? "—")"
     parts += withState ? [code, http] : [http, code]
-    parts += [outcome.detail, extra].compactMap { $0?.isEmpty == false ? $0 : nil }
+    parts += [outcome.detail, extra].compactMap { $0?.isEmpty == false ? $0 : nil }.map(capitalize)
     return parts.joined(separator: " · ")
 }

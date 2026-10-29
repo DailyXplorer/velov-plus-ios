@@ -11,7 +11,7 @@ struct Shell: View {
         Group {
             switch model.page {
             case .stations: StationsPage(onLogout: { logoutOpen = true })
-            default: PageScaffold(page: model.page, onLogout: { logoutOpen = true })
+            default: PageScaffold(page: model.page, onLogout: { logoutOpen = true }).id(model.page) // a fresh scroll view per tab: every tab opens at the top
             }
         }
         .frame(maxHeight: .infinity)

@@ -1,4 +1,3 @@
-import CoreLocation
 import SwiftUI
 import VelovCore
 
@@ -28,8 +27,7 @@ enum BikeAction { case book, unlock }
 @MainActor
 func knownDistance(to place: Place) async -> Double? {
     guard let lat = place.lat, let lon = place.lon else { return nil }
-    let status = CLLocationManager().authorizationStatus
-    guard status == .authorizedWhenInUse || status == .authorizedAlways, let here = try? await Locator().locate() else { return nil }
+    guard Locator.shared.allowed, let here = try? await Locator.shared.locate() else { return nil }
     return haversine(GeoPoint(lat: here.coordinate.latitude, lon: here.coordinate.longitude), GeoPoint(lat: lat, lon: lon))
 }
 

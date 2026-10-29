@@ -26,7 +26,7 @@ struct StationsPage: View {
     @State private var position: CLLocation?
     @State private var locating = false
     @State private var locationError = ""
-    @State private var locator = Locator()
+    @State private var locationRaw = ""
     @FocusState private var searching: Bool
     /// The band the tab bar takes under the map, and the station card's height: MapKit's attribution stays above both.
     @State private var barBand: CGFloat = 0
@@ -58,7 +58,12 @@ struct StationsPage: View {
             VStack(alignment: .leading, spacing: 12) {
                 BookingBanners(bottom: 0)
                 toolbar.zIndex(2)
-                if !locationError.isEmpty { Text(locationError).typo(.body(13)).foregroundStyle(Palette.notice) }
+                if !locationError.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(locationError).typo(.body(13)).foregroundStyle(Palette.notice)
+                        if !locationRaw.isEmpty { RawStatus(line: locationRaw) }
+                    }
+                }
                 if case .failed(let message) = model.stations {
                     ErrorNotice(message: message, pending: model.stationsPending) { Task { await model.loadStations() } }
                 }
@@ -189,14 +194,16 @@ struct StationsPage: View {
 
     private func locate() {
         locationError = ""
+        locationRaw = ""
         locating = true
         Task {
             defer { locating = false }
             do {
-                let location = try await locator.locate()
+                let location = try await Locator.shared.locate()
                 located(location)
             } catch let error as Locator.Failure {
                 locationError = error.message
+                locationRaw = error.raw
             } catch {
                 locationError = "Impossible de vous localiser pour le moment."
             }
@@ -231,67 +238,4 @@ struct StationsPage: View {
 /// Accent- and case-insensitive search text.
 func fold(_ value: String) -> String {
     value.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "fr_FR")).trimmingCharacters(in: .whitespaces)
-}
-
-/// One position fix on demand, with the permission asked the first time.
-@MainActor
-final class Locator: NSObject, CLLocationManagerDelegate {
-    struct Failure: Error { let message: String }
-
-    private let manager = CLLocationManager()
-    private var waiting: CheckedContinuation<CLLocation, Error>?
-    private var timeout: Task<Void, Never>?
-
-    override init() {
-        super.init()
-        manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyBest
-    }
-
-    func locate() async throws -> CLLocation {
-        if let recent = manager.location, recent.timestamp.timeIntervalSinceNow > -30 { return recent }
-        switch manager.authorizationStatus {
-        case .denied, .restricted:
-            throw Failure(message: "Localisation refusée. Autorisez-la dans les réglages de votre téléphone.")
-        default: break
-        }
-        return try await withCheckedThrowingContinuation { continuation in
-            waiting?.resume(throwing: Failure(message: "Impossible de vous localiser pour le moment."))
-            waiting = continuation
-            if manager.authorizationStatus == .notDetermined { manager.requestWhenInUseAuthorization() } else { manager.requestLocation() }
-            timeout?.cancel()
-            timeout = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 20_000_000_000)
-                guard !Task.isCancelled else { return }
-                self?.finish(.failure(Failure(message: "La localisation a pris trop de temps. Réessayez.")))
-            }
-        }
-    }
-
-    private func finish(_ result: Result<CLLocation, Error>) {
-        timeout?.cancel()
-        waiting?.resume(with: result)
-        waiting = nil
-    }
-
-    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        let status = manager.authorizationStatus
-        Task { @MainActor in
-            guard self.waiting != nil else { return }
-            switch status {
-            case .authorizedWhenInUse, .authorizedAlways: self.manager.requestLocation()
-            case .denied, .restricted: self.finish(.failure(Failure(message: "Localisation refusée. Autorisez-la dans les réglages de votre téléphone.")))
-            default: break
-            }
-        }
-    }
-
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
-        Task { @MainActor in self.finish(.success(location)) }
-    }
-
-    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in self.finish(.failure(Failure(message: "Impossible de vous localiser pour le moment."))) }
-    }
 }

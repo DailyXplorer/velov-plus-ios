@@ -20,6 +20,7 @@ private struct ViaSheet: View {
     @State private var position: GeoPoint?
     @State private var locating = false
     @State private var locationError = ""
+    @State private var locationRaw = ""
     @State private var reviewing = false
     @State private var pending = false
     @State private var result: Outcome?
@@ -77,7 +78,12 @@ private struct ViaSheet: View {
                     .fieldPill()
             }
             PillButton("Les plus proches", variant: .ghost, pending: locating) { locate() }
-            if !locationError.isEmpty { SoonNote(text: locationError) }
+            if !locationError.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    SoonNote(text: locationError)
+                    if !locationRaw.isEmpty { RawStatus(line: locationRaw) }
+                }
+            }
             if choices.isEmpty {
                 Text("Aucune station pleine ne correspond à votre recherche.").typo(.body(14)).foregroundStyle(Palette.inkSoft)
             } else {
@@ -110,9 +116,13 @@ private struct ViaSheet: View {
         Task {
             defer { locating = false }
             do {
-                let here = try await Locator().locate()
+                let here = try await Locator.shared.locate()
                 position = GeoPoint(lat: here.coordinate.latitude, lon: here.coordinate.longitude)
                 locationError = ""
+                locationRaw = ""
+            } catch let error as Locator.Failure {
+                locationError = error.message
+                locationRaw = error.raw
             } catch {
                 locationError = "Position indisponible. Recherchez une station par son nom."
             }

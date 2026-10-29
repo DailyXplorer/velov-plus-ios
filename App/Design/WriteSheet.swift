@@ -12,11 +12,11 @@ enum Haptics {
 
 /// `.bike-action-raw`: « HTTP 400 · Code … · Detail », mono, under a failure only.
 struct RawStatus: View {
-    let outcome: Outcome
-    var withState = false
-    var extra: String?
+    let line: String
+    init(outcome: Outcome, withState: Bool = false) { line = rawLine(outcome, withState: withState) }
+    init(line: String) { self.line = line }
     var body: some View {
-        Text(rawLine(outcome, extra: extra, withState: withState)).typo(.mono(11)).foregroundStyle(Palette.inkSoft)
+        Text(line).typo(.mono(11)).foregroundStyle(Palette.inkSoft)
             .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
     }
 }

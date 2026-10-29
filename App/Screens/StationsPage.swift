@@ -29,6 +29,7 @@ struct StationsPage: View {
     @FocusState private var searching: Bool
     @State private var barBand: CGFloat = 0
     @State private var cardHeight: CGFloat = 0
+    @State private var toolbarBand: CGFloat = 0
 
     private var stations: [Station] { model.stations.value?.stations ?? [] }
     private var favorites: Set<Int> { Set(model.dashboard?.profile.favorites ?? []) }
@@ -52,22 +53,21 @@ struct StationsPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Header(title: "Stations")
-            VStack(alignment: .leading, spacing: 12) {
-                BookingBanners(bottom: 0)
-                toolbar.zIndex(2)
+            Group {
+                BookingBanners(bottom: 12)
                 if !locationError.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(locationError).typo(.body(13)).foregroundStyle(Palette.notice)
                         if !locationRaw.isEmpty { RawStatus(line: locationRaw) }
                     }
+                    .padding(.bottom, 12)
                 }
                 if case .failed(let message) = model.stations {
                     ErrorNotice(message: message, pending: model.stationsPending) { Task { await model.loadStations() } }
+                        .padding(.bottom, 12)
                 }
             }
             .padding(.horizontal, 22)
-            .padding(.bottom, 12)
-            .zIndex(2)
             map
         }
         .task {
@@ -103,14 +103,14 @@ struct StationsPage: View {
                 .fixedSize()
             }
             .padding(.leading, 14).padding(.trailing, 7)
-            .ringed(Capsule())
+            .floatingGlass(Capsule())
             Button { locate() } label: {
                 ZStack {
                     if locating { Spinner() } else { Icon(.navigationArrow, .light, size: 18) }
                 }
                 .foregroundStyle(Palette.ink)
                 .frame(width: 42, height: 42)
-                .ringed(Capsule())
+                .floatingGlass(Circle(), interactive: true)
             }
             .buttonStyle(.plain)
             .disabled(locating)
@@ -121,8 +121,16 @@ struct StationsPage: View {
     private var map: some View {
         ZStack(alignment: .top) {
             StationMapView(stations: filtered, selected: selectedId, camera: $camera, showsUser: position != nil) { select($0) }
+                .safeAreaPadding(.top, toolbarBand)
                 .safeAreaPadding(.bottom, barBand + (selected == nil ? 0 : cardHeight + Concentric.gap))
-            if !query.isEmpty, model.stations.value != nil { results.padding(12) }
+            VStack(alignment: .leading, spacing: 12) {
+                toolbar
+                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { toolbarBand = $0 + 12 }
+                    .zIndex(1)
+                if !query.isEmpty, model.stations.value != nil { results }
+            }
+            .padding(.horizontal, 22)
+            .padding(.top, 12)
         }
         .ignoresSafeArea(.keyboard)
         .ignoresSafeArea(.container, edges: .bottom)

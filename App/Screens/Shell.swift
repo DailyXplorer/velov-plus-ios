@@ -41,6 +41,7 @@ struct Shell: View {
 struct TabBar: View {
     let radius: CGFloat
     @Environment(AppModel.self) private var model
+    @Namespace private var selection
     private let padding: CGFloat = 10
 
     var body: some View {
@@ -55,7 +56,12 @@ struct TabBar: View {
                     .foregroundStyle(active ? Palette.white : Palette.ink)
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .padding(4)
-                    .background(RoundedRectangle(cornerRadius: radius - padding, style: .continuous).fill(active ? Palette.red : .clear))
+                    .background {
+                        if active {
+                            RoundedRectangle(cornerRadius: radius - padding, style: .continuous).fill(Palette.red)
+                                .matchedGeometryEffect(id: "active", in: selection)
+                        }
+                    }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -64,7 +70,8 @@ struct TabBar: View {
             }
         }
         .padding(padding)
-        .ringed(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        .floatingGlass(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        .animation(.snappy(duration: 0.3), value: model.page)
     }
 }
 
@@ -82,6 +89,7 @@ struct Header: View {
                     if model.refreshing { Spinner(size: 20) } else { Icon(.arrowClockwise, .light, size: 20) }
                 }
                 .foregroundStyle(Palette.inkSoft).frame(width: 40, height: 40)
+                .floatingGlass(Circle(), interactive: true, fallback: .clear)
             }
             .buttonStyle(.plain)
             .disabled(model.refreshing)
@@ -96,7 +104,7 @@ struct Header: View {
                 }
                 .foregroundStyle(Palette.ink)
                 .frame(width: 40, height: 40)
-                .background(Circle().fill(Palette.mist))
+                .floatingGlass(Circle(), interactive: true, fallback: Palette.mist)
             }
             .buttonStyle(.plain)
             .padding(.leading, 4)

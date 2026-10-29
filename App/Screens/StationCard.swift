@@ -43,7 +43,7 @@ struct StationCard: View {
             .padding(.top, 10)
         }
         .padding(.horizontal, padding).padding(.top, 14).padding(.bottom, padding)
-        .ringed(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        .floatingGlass(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .sheet(isPresented: $bikesOpen) { BikesSheet(station: station) }
         .sheet(isPresented: $favoriteOpen) {
             WriteDialog(title: wasFavorite ? "Retirer des favoris ?" : "Ajouter aux favoris ?", key: OperationKey.favorite(station.number), run: { [wasFavorite] in

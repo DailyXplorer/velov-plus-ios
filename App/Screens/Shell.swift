@@ -48,7 +48,7 @@ struct TabBar: View {
                         Icon(page.icon, .light, size: 22)
                         Text(page.tab).typo(.body(11))
                     }
-                    .foregroundStyle(active ? Palette.white : Palette.inkSoft)
+                    .foregroundStyle(active ? Palette.white : Palette.ink)
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .padding(4)
                     .background(RoundedRectangle(cornerRadius: radius - padding, style: .continuous).fill(active ? Palette.red : .clear))

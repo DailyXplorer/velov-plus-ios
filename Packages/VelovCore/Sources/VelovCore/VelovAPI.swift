@@ -110,7 +110,7 @@ public final class VelovAPI: Sendable {
             return TripCheck(ongoing: [], latest: latestFinished((finished ?? []).map { normalizeTrip($0, stations: byNumber) }), historyRead: finished != nil)
         }
         let byNumber = ongoing == nil ? [:] : await stationsByNumber()
-        return TripCheck(ongoing: ongoing?.map { normalizeTrip($0, stations: byNumber) }, latest: nil)
+        return TripCheck(ongoing: ongoing?.map { normalizeTrip($0, stations: byNumber) }, latest: nil, historyRead: false)
     }
 
     public func dashboard(_ identity: Identity, now: Date = Date()) async throws -> Dashboard {

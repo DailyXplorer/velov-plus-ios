@@ -36,7 +36,7 @@ public func unlockCheck(_ check: TripCheck, bike: Int, since: Date, now: Date, b
     guard let ongoing = check.ongoing else { return .unknown }
     if ongoing.contains(where: { $0.bikeNumber == bike }) { return .applied }
     if let latest = check.latest, latest.bikeNumber == bike, let start = latest.startedAt, start >= since.addingTimeInterval(-Reconcile.dockWindow) { return .applied }
-    guard check.historyRead, now.timeIntervalSince(since) >= Reconcile.dockWindow else { return .unknown }
+    guard ongoing.isEmpty, check.historyRead, now.timeIntervalSince(since) >= Reconcile.dockWindow else { return .unknown }
     if let booking, !(bookings ?? []).contains(where: { $0.id == booking }) { return .unknown }
     return .unchanged
 }

@@ -231,6 +231,7 @@ final class OperationsTests: XCTestCase {
         XCTAssertEqual(unlockCheck(riding, bike: 7, since: since, now: since), .applied)
         let other = TripCheck(ongoing: [Trip(id: "t", status: "STARTED", startedAt: since, bikeNumber: 8)], latest: nil)
         XCTAssertEqual(unlockCheck(other, bike: 7, since: since, now: since), .unknown)
+        XCTAssertEqual(unlockCheck(other, bike: 7, since: since, now: since.addingTimeInterval(180)), .unknown, "another bike riding is no proof")
         let docked = TripCheck(ongoing: [], latest: Trip(id: "t", startedAt: since.addingTimeInterval(-20), bikeNumber: 7))
         XCTAssertEqual(unlockCheck(docked, bike: 7, since: since, now: since.addingTimeInterval(600)), .applied)
         let older = TripCheck(ongoing: [], latest: Trip(id: "t", startedAt: since.addingTimeInterval(-3600), bikeNumber: 7))

@@ -299,6 +299,7 @@ final class TripEndTests: XCTestCase {
         let riding = try await api.tripCheck(identity)
         XCTAssertEqual(riding.ongoing?.map(\.id), ["t-9"])
         XCTAssertNil(riding.latest)
+        XCTAssertFalse(riding.historyRead)
         XCTAssertFalse(server.calls.contains { $0.url.contains("status=FINISHED") })
         ongoingTrips.value = []
         let docked = try await api.tripCheck(identity)

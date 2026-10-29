@@ -46,7 +46,7 @@ extension Writes {
         if outcome.ok && code == nil {
             outcome.ok = false
             outcome.code = "local.promo.unreadable"
-            outcome.message = "Aucun code n’a été reçu, mais vos points ont peut-être été débités. Contactez Vélo’v avant de recommencer."
+            outcome.message = "Aucun code n’a été reçu, mais vos points ont peut-être été débités. Contactez le service client avant de recommencer."
         }
         return PromoResult(outcome: outcome, promoCode: code)
     }

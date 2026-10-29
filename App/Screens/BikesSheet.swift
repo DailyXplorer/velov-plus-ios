@@ -84,7 +84,7 @@ struct BikesSheet: View {
         refreshing = true
         defer { refreshing = false }
         do { bikes = .ready(try await model.service.stationBikes(station.number)) }
-        catch { bikes = .failed((error as? VelovError)?.message ?? Messages.stationBikesUnavailable) }
+        catch { bikes = .failed(failureMessage(error, Messages.stationBikesUnavailable)) }
     }
 }
 
@@ -266,7 +266,7 @@ struct BikeDetail: View {
             if assessed.verdict == .recommended { assessed.verdict = .neutral; assessed.reasons = [] }
             loaded = .ready(assessed)
         } catch {
-            loaded = .failed((error as? VelovError)?.message ?? Messages.bikeUnavailable)
+            loaded = .failed(failureMessage(error, Messages.bikeUnavailable))
         }
     }
 

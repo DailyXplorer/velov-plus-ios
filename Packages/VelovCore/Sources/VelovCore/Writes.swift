@@ -24,10 +24,6 @@ struct ErrorReply {
 
 func accountURL(_ accountId: String) -> String { "\(Cyclocity.base)/accounts/\(pathSegment(accountId))" }
 
-private func networkFailure(_ error: Error) -> String {
-    (error as? URLError)?.code == .timedOut ? "TimeoutError" : String(describing: type(of: error))
-}
-
 func orderedJSON(_ pairs: [(String, Any?)]) -> Data {
     let parts = pairs.map { key, value -> String in
         let encoded: String
@@ -53,16 +49,14 @@ public enum Writes {
             response = try await http.send(makeRequest(url, method: "POST", headers: [
                 "Authorization": "Taknv1 \(auth.token)", "Identity": auth.identity, "Content-Type": "application/vnd.trip.v6+json"], body: body, timeout: 25))
         } catch {
-            var outcome = Outcome.refusal("network", Messages.ratingUnconfirmed)
-            outcome.detail = networkFailure(error)
-            return outcome
+            var outcome = Outcome.refusal("network", "")
+            outcome.detail = networkLine(error)
+            return ratingOutcome(outcome)
         }
         if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
         if response.ok { return Outcome(ok: true, httpStatus: response.status) }
         let reply = ErrorReply(response)
-        var outcome = Outcome(ok: false, httpStatus: response.status, code: reply.code, detail: reply.detail)
-        outcome.message = outcome.isUncertain ? Messages.ratingUncertain : "Vélo’v a refusé cette note."
-        return outcome
+        return ratingOutcome(Outcome(ok: false, httpStatus: response.status, code: reply.code, detail: reply.detail))
     }
 
     public static func release(_ auth: WriteAuth, subscriptionId: String, stationNumber: Int, standNumber: Int, bikeNumber: Int, http: HTTPTransport) async throws -> Outcome {
@@ -75,7 +69,7 @@ public enum Writes {
                 "Accept": "application/vnd.trip.v6+json", "Accept-Language": "fr"], body: body, timeout: 30))
         } catch {
             var outcome = Outcome.refusal("network", "Vélo’v ne répond pas. Le vélo est peut-être déverrouillé : regardez la borne avant de réessayer.")
-            outcome.detail = networkFailure(error)
+            outcome.detail = networkLine(error)
             return outcome
         }
         if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
@@ -92,7 +86,7 @@ public enum Writes {
                 "Authorization": "Taknv1 \(auth.token)", "Identity": auth.identity, "Content-Type": "application/json; charset=UTF-8"], body: body, timeout: 30))
         } catch {
             var outcome = Outcome.refusal("network", "Vélo’v ne répond pas. Le vélo est peut-être réservé : actualisez avant de réessayer.")
-            outcome.detail = networkFailure(error)
+            outcome.detail = networkLine(error)
             return (outcome, nil)
         }
         if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
@@ -118,7 +112,7 @@ public enum Writes {
             response = try await http.send(makeRequest(url, method: method, headers: all, body: body, timeout: 15))
         } catch {
             var outcome = Outcome.refusal("network", "Vélo’v ne répond pas. La modification a peut-être été prise en compte : actualisez avant de réessayer.")
-            outcome.detail = networkFailure(error)
+            outcome.detail = networkLine(error)
             return (outcome, nil)
         }
         if response.status == 401 && !preserveUnauthorized { throw VelovError(.expired, Messages.sessionToRenew) }

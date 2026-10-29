@@ -143,7 +143,10 @@ final class StatsTests: XCTestCase {
         XCTAssertEqual(formatMinutes(12.5), "13\u{00A0}min")
         XCTAssertEqual(formatMinutes(12.4), "12\u{00A0}min")
         XCTAssertEqual(formatMinutes(0.2), "0\u{00A0}min")
-        XCTAssertEqual(formatMinutes(1380), "1\u{00A0}380\u{00A0}min")
+        XCTAssertEqual(formatMinutes(1380), "23\u{00A0}h\u{00A0}0\u{00A0}min")
+        XCTAssertEqual(formatMinutes(59.4), "59\u{00A0}min")
+        XCTAssertEqual(formatMinutes(90), "1\u{00A0}h\u{00A0}30\u{00A0}min")
+        XCTAssertEqual(formatMinutes(60_000), "1\u{00A0}000\u{00A0}h\u{00A0}0\u{00A0}min")
     }
 
     func testPartialStatsAreKeptOneMinuteAndCompleteOnesTenMinutes() async throws {

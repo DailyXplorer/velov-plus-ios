@@ -230,11 +230,11 @@ final class AccountWritesTests: XCTestCase {
         XCTAssertTrue(body.isValid)
         XCTAssertEqual(Guesses.mailComplaintTypes, ["TRIP", "SUBSCRIPTION", "PAYMENT", "PARKING"])
         for invalid in [ContactBody(complaintType: "OTHER", message: "Hi"), ContactBody(complaintType: "TRIP", message: " "),
-                        ContactBody(complaintType: "TRIP", message: String(repeating: "x", count: 1501)), ContactBody(complaintType: "TRIP", message: "Hi", tripToken: "A\nB"),
-                        ContactBody(complaintType: "TRIP", message: String(repeating: "€", count: 1500))] {
+                        ContactBody(complaintType: "TRIP", message: String(repeating: "x", count: 1501)), ContactBody(complaintType: "TRIP", message: "Hi", tripToken: "A\nB")] {
             XCTAssertFalse(invalid.isValid, String(invalid.message.prefix(10)))
         }
         XCTAssertTrue(ContactBody(complaintType: "TRIP", message: String(repeating: "é", count: 1500)).isValid)
+        XCTAssertTrue(ContactBody(complaintType: "TRIP", message: String(repeating: "€", count: 1500)).isValid)
         XCTAssertEqual(contactMessage(ContactBody(complaintType: "PAYMENT", message: " Question ")), "Question")
     }
 

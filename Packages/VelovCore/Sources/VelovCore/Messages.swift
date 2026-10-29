@@ -43,6 +43,8 @@ public enum Messages {
     public static let unverified = "Le résultat est incertain et n’a pas pu être vérifié. Vérifiez de nouveau avant de réessayer."
     public static let ratingUnconfirmed = "Vélo’v ne répond pas. La note a peut-être été enregistrée."
     public static let ratingUncertain = "Vélo’v n’a pas confirmé la note. Elle a peut-être été enregistrée."
+    public static let ratingRefused = "Vélo’v a refusé cette note."
+    public static let bookingsUnreadable = "Les réservations en cours n’ont pas pu être lues."
     public static let releaseFailed = "Le déverrouillage n’a pas abouti."
     public static let bookingFailed = "La réservation de votre vélo n’a pas fonctionné."
     public static let sessionRefused = "Votre session n’est plus valide. Reconnectez-vous."
@@ -79,6 +81,13 @@ public func accountOutcome(httpStatus: Int, code: String?, detail: String?, fail
     let ok = (200..<300).contains(httpStatus)
     let message: String? = ok ? nil : code.flatMap { Messages.accountCodes[$0] } ?? (httpStatus == 403 ? Messages.sessionRefused : failed)
     return Outcome(ok: ok, httpStatus: httpStatus, code: code, message: message, detail: detail)
+}
+
+public func ratingOutcome(_ outcome: Outcome) -> Outcome {
+    guard !outcome.ok, outcome.code?.hasPrefix("local.") != true else { return outcome }
+    var rated = outcome
+    rated.message = outcome.httpStatus == 0 ? Messages.ratingUnconfirmed : outcome.isUncertain ? Messages.ratingUncertain : Messages.ratingRefused
+    return rated
 }
 
 public func rawLine(_ outcome: Outcome, extra: String? = nil, withState: Bool = true) -> String {

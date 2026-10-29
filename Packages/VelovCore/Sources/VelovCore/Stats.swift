@@ -284,6 +284,8 @@ public func statsTTL(_ stats: Stats) -> TimeInterval { stats.complete ? 10 * 60 
 public final class StatsScreenCache {
     private let now: () -> Date
     private var entry: (account: String, stats: Stats, until: Date)?
+    private var generation = 0
+    private var reset: Task<Void, Never>?
 
     public init(now: @escaping () -> Date = Date.init) { self.now = now }
 
@@ -294,7 +296,30 @@ public final class StatsScreenCache {
 
     public func put(_ stats: Stats, account: String) { entry = (account, stats, now().addingTimeInterval(statsTTL(stats))) }
 
-    public func clear() { entry = nil }
+    public func clear(_ forget: (@Sendable () async -> Void)? = nil) {
+        entry = nil
+        generation += 1
+        guard let forget else { return }
+        let previous = reset
+        reset = Task {
+            await previous?.value
+            await forget()
+        }
+    }
+
+    public func load(account: String, session: SessionGeneration, _ fetch: @escaping () async throws -> Stats) async -> Result<Stats, Error>? {
+        while true {
+            let started = generation
+            let reset = reset
+            guard let result = await session.load({ () async throws -> Stats in
+                await reset?.value
+                return try await fetch()
+            }) else { return nil }
+            guard started == generation else { continue }
+            if case .success(let stats) = result { put(stats, account: account) }
+            return result
+        }
+    }
 }
 
 public func buildStats(_ input: StatsInput) -> Stats {

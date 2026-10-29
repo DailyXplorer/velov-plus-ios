@@ -95,11 +95,13 @@ struct RateBike: View {
         let key = key
         Task {
             let result = await model.operations.runOnce(key) {
-                await attempt { try await model.service.rate(tripId: trip.id, bikeNumber: bikeNumber, vote: StarRating.vote(stars)) }
+                ratingOutcome(await attempt { try await model.service.rate(tripId: trip.id, bikeNumber: bikeNumber, vote: StarRating.vote(stars)) })
             }
-            guard case .finished(let outcome) = result else {
-                if model.operations.get(key) == nil { notice = Messages.busy }
-                return
+            let outcome: Outcome
+            switch result {
+            case .unsaved: notice = Messages.unsaved; return
+            case .busy: if model.operations.get(key) == nil { notice = Messages.busy }; return
+            case .finished(let answer): outcome = answer
             }
             Haptics.result(outcome.ok)
             if outcome.ok { rated() } else if outcome.isUncertain { verify() } else { refused = outcome }

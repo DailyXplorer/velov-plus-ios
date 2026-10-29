@@ -32,15 +32,19 @@ final class OperationsTests: XCTestCase {
         XCTAssertEqual(operations.begin("book:2"), .started)
     }
 
-    func testAKeptActionIsNeverSentWithoutStorage() {
+    func testNoActionIsEverSentWithoutStorage() {
         let clock = Clock()
         let failing = store(InMemoryOperationBacking(failing: true), clock)
-        XCTAssertEqual(failing.begin("invite:x", keep: true), .unsaved)
+        for key in ["invite:x", "unlock:1", "book:1", "rate:t-1", "profile", "favorite:2002", "autoSpend", "autoRenewal:sub-1"] {
+            XCTAssertEqual(failing.begin(key), .unsaved, key)
+        }
         XCTAssertFalse(failing.sending)
-        XCTAssertEqual(failing.begin("profile"), .started, "an unkept action may live in memory")
+        let corrupted = InMemoryOperationBacking()
+        corrupted.values["\(Operations.storageKey):\(accountDigest("person@example.com"))"] = Data("not json".utf8)
+        XCTAssertEqual(store(corrupted, clock).begin("unlock:1"), .unsaved, "an unreadable registry never lets a write leave")
         let anonymous = store(InMemoryOperationBacking(), clock, account: nil)
-        XCTAssertEqual(anonymous.begin("contact:x", keep: true), .unsaved)
-        XCTAssertEqual(store(nil, clock).begin("via:x:t", keep: true), .unsaved)
+        XCTAssertEqual(anonymous.begin("contact:x"), .unsaved)
+        XCTAssertEqual(store(nil, clock).begin("via:x:t"), .unsaved)
         XCTAssertEqual(Messages.unsaved, "Ce téléphone ne peut pas suivre cette action. Rien n’a été envoyé.")
         XCTAssertEqual(Messages.busy, "Une autre action est en cours. Attendez sa réponse avant de recommencer.")
     }
@@ -49,7 +53,7 @@ final class OperationsTests: XCTestCase {
         let clock = Clock()
         let backing = InMemoryOperationBacking()
         let first = store(backing, clock)
-        XCTAssertEqual(first.begin("invite:x", keep: true, meta: ["cost": "100", "balance": "250"]), .started)
+        XCTAssertEqual(first.begin("invite:x", meta: ["cost": "100", "balance": "250"]), .started)
         let relaunched = store(backing, clock)
         XCTAssertEqual(relaunched.get("invite:x")?.status, .sending)
         XCTAssertTrue(relaunched.busy(), "a send left by the closed app still blocks for two minutes")
@@ -61,7 +65,7 @@ final class OperationsTests: XCTestCase {
         XCTAssertEqual(entry?.outcome?.message, "L’app a été fermée avant la réponse. L’action a peut-être abouti.")
         XCTAssertEqual(entry?.meta, ["cost": "100", "balance": "250"])
         XCTAssertFalse(relaunched.busy())
-        XCTAssertEqual(relaunched.begin("invite:x", keep: true), .busy, "an uncertain debit is never sent again blindly")
+        XCTAssertEqual(relaunched.begin("invite:x"), .busy, "an uncertain debit is never sent again blindly")
         clock.now += 3600
         XCTAssertEqual(relaunched.get("invite:x")?.status, .uncertain)
 
@@ -91,7 +95,7 @@ final class OperationsTests: XCTestCase {
             XCTAssertEqual(operations.get(key)?.status, .uncertain, key)
             XCTAssertEqual(operations.begin(key), .busy, key)
         }
-        XCTAssertEqual(operations.begin("contact:x", keep: true), .started)
+        XCTAssertEqual(operations.begin("contact:x"), .started)
         operations.finish("contact:x", lost)
         XCTAssertEqual(operations.get("contact:x")?.status, .uncertain)
         operations.clear("contact:x")
@@ -106,7 +110,7 @@ final class OperationsTests: XCTestCase {
         let clock = Clock()
         let backing = InMemoryOperationBacking()
         let operations = store(backing, clock, account: "person@example.com")
-        XCTAssertEqual(operations.begin("via:x:t-1", keep: true), .started)
+        XCTAssertEqual(operations.begin("via:x:t-1"), .started)
         operations.finish("via:x:t-1", lost)
         XCTAssertEqual(Array(backing.values.keys), ["velov:operations:v1:" + accountDigest("person@example.com")])
         XCTAssertEqual(PromoStore.key(account: "person@example.com"), "velov:promocodes:v1:" + accountDigest("person@example.com"))
@@ -133,11 +137,13 @@ final class OperationsTests: XCTestCase {
             XCTAssertEqual(operations.begin("autoSpend"), .busy)
             throw URLError(.timedOut)
         }
-        XCTAssertEqual(thrown, .finished(noAnswer("Le serveur ne répond pas.")))
+        var timedOut = noAnswer("Le serveur ne répond pas.")
+        timedOut.detail = "Délai dépassé · NSURLErrorTimedOut (-1001)"
+        XCTAssertEqual(thrown, .finished(timedOut))
         XCTAssertEqual(operations.get("profile")?.status, .uncertain)
         let blocked = await operations.runOnce("profile") { sent += 1; return Outcome(ok: true, httpStatus: 200) }
         XCTAssertEqual(blocked, .busy)
-        let unsaved = await store(nil, clock).runOnce("invite:x", keep: true) { sent += 1; return Outcome(ok: true, httpStatus: 200) }
+        let unsaved = await store(nil, clock).runOnce("invite:x") { sent += 1; return Outcome(ok: true, httpStatus: 200) }
         XCTAssertEqual(unsaved, .unsaved)
         XCTAssertEqual(sent, 1)
         let version = operations.version

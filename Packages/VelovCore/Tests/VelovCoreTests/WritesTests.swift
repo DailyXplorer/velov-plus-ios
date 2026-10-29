@@ -68,7 +68,7 @@ final class WritesTests: XCTestCase {
         }
         let (lost, server) = try await release(.failure(.timedOut))
         XCTAssertEqual(server.calls.count, 1)
-        XCTAssertEqual([lost.ok ? "ok" : "no", String(lost.httpStatus), lost.code, lost.detail], ["no", "0", "network", "TimeoutError"])
+        XCTAssertEqual([lost.ok ? "ok" : "no", String(lost.httpStatus), lost.code, lost.detail], ["no", "0", "network", "Délai dépassé · NSURLErrorTimedOut (-1001)"])
         XCTAssert(lost.message!.contains("peut-être déverrouillé"))
         let expired = MockServer { _, _ in .status(401) }
         do { _ = try await Writes.release(auth, subscriptionId: "sub-1", stationNumber: 2002, standNumber: 1, bikeNumber: 20449, http: expired.transport); XCTFail("no error") }

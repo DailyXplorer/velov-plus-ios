@@ -124,16 +124,15 @@ public actor SessionManager {
     }
 
     private func renew(_ expired: StoredSession) async throws -> StoredSession {
-        if let refreshing { return try await refreshing.value }
         let started = generation
         let http = http, now = now
-        let task = Task { StoredSession(tokens: try await refreshTokens(expired.tokens.refreshToken, http: http), obtainedAt: now()) }
+        let task = refreshing ?? Task { StoredSession(tokens: try await refreshTokens(expired.tokens.refreshToken, http: http), obtainedAt: now()) }
         refreshing = task
         defer { if refreshing == task { refreshing = nil } }
         do {
             let renewed = try await task.value
             guard started == generation else { throw VelovError.sessionRevoked }
-            save(renewed)
+            if session != renewed { save(renewed) }
             return renewed
         } catch let error as VelovError where error.revoked {
             if started == generation { forget() }

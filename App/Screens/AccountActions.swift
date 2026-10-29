@@ -218,8 +218,10 @@ struct SharedFile: Identifiable {
 }
 
 struct ShareSheet: UIViewControllerRepresentable {
-    let url: URL
-    func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: [url], applicationActivities: nil) }
+    let items: [Any]
+    init(url: URL) { items = [url] }
+    init(items: [Any]) { self.items = items }
+    func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: items, applicationActivities: nil) }
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
@@ -254,7 +256,7 @@ struct ContactSupport: View {
             start()
         }
         .sheet(isPresented: $asking, onDismiss: { draft = nil }) {
-            WriteDialog(title: "Envoyer au service client ?", key: operationKey, keep: true, ready: draft != nil, run: { [draft] in
+            WriteDialog(title: "Envoyer au service client ?", key: operationKey, ready: draft != nil, run: { [draft] in
                 guard let draft else { return Outcome.refusal("local.empty", "Votre message est vide ou trop long.") }
                 let outcome = await attempt { try await model.service.contactSupport(draft) }
                 if outcome.ok { message = ""; tripId = "none"; open = false; self.draft = nil }
@@ -276,7 +278,13 @@ struct ContactSupport: View {
                 TextEditor(text: $message).typo(.body(16)).frame(minHeight: 110).scrollContentBackground(.hidden)
                     .padding(.horizontal, 13).padding(.vertical, 4)
                     .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
-                    .onChange(of: message) { _, value in if value.count > 1500 { message = String(value.prefix(1500)) } }
+                    .accessibilityLabel("Message")
+                    .onChange(of: message) { _, value in
+                        guard value.utf16.count > 1500 else { return }
+                        var cut = value
+                        while cut.utf16.count > 1500 { cut.removeLast() }
+                        message = cut
+                    }
             }
             if let error { FormError(error) }
             FormActions {

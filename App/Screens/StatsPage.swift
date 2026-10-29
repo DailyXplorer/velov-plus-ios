@@ -183,12 +183,10 @@ struct StatsPage: View {
 
     private func load() async {
         state = .loading
-        do {
-            let stats = try await model.service.stats()
-            model.statsCache.put(stats, account: account)
-            state = .ready(stats)
-        } catch {
-            state = .failed((error as? VelovError)?.message ?? Self.unavailable)
+        switch await model.loadStats() {
+        case .success(let stats)?: state = .ready(stats)
+        case .failure(let error)?: state = .failed(failureMessage(error, Self.unavailable))
+        case nil: break
         }
     }
 }

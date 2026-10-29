@@ -211,6 +211,14 @@ public struct RawBooking: Equatable, Sendable {
         bikeId = value["bikeId"]?.string
         endTime = value["endTime"]?.string
     }
+
+    public static func list(_ value: JSON) throws -> [RawBooking] {
+        guard let items = value.array else { throw ShapeError("bookings is not a list") }
+        return try items.map { item in
+            guard let booking = RawBooking(item) else { throw ShapeError("unreadable booking") }
+            return booking
+        }
+    }
 }
 
 public func toBooking(_ value: RawBooking, stations: [Int: Station], bikeNumbers: [String: Int]) -> Booking {

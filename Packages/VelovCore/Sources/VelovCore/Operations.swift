@@ -61,7 +61,6 @@ public final class Operations {
         public enum Status: String, Codable, Sendable { case sending, uncertain }
         public var status: Status
         public var at: Date
-        public var keep: Bool
         public var outcome: Outcome?
         public var meta: [String: String]
     }
@@ -130,7 +129,7 @@ public final class Operations {
         let all = saved()
         let entry = live(all.map { $0[key] } ?? memory[key])
         if running.contains(key) && entry?.status != .sending {
-            return Entry(status: .sending, at: now(), keep: false, outcome: nil, meta: [:])
+            return Entry(status: .sending, at: now(), outcome: nil, meta: [:])
         }
         return entry
     }
@@ -146,9 +145,9 @@ public final class Operations {
         return !running.isEmpty
     }
 
-    public func begin(_ key: String, keep: Bool = false, meta: [String: String] = [:]) -> Began {
+    public func begin(_ key: String, meta: [String: String] = [:]) -> Began {
         if busy() || get(key) != nil { return .busy }
-        do { try write(key, Entry(status: .sending, at: now(), keep: keep, outcome: nil, meta: meta), required: keep) } catch { return .unsaved }
+        do { try write(key, Entry(status: .sending, at: now(), outcome: nil, meta: meta), required: true) } catch { return .unsaved }
         running.insert(key)
         changed()
         return .started
@@ -157,7 +156,7 @@ public final class Operations {
     public func finish(_ key: String, _ outcome: Outcome) {
         running.remove(key)
         let entry = memory[key] ?? saved()?[key]
-        let next = outcome.ok || !outcome.isUncertain ? nil : Entry(status: .uncertain, at: now(), keep: entry?.keep ?? false, outcome: outcome, meta: entry?.meta ?? [:])
+        let next = outcome.ok || !outcome.isUncertain ? nil : Entry(status: .uncertain, at: now(), outcome: outcome, meta: entry?.meta ?? [:])
         try? write(key, next, required: false)
         changed()
     }
@@ -181,14 +180,18 @@ public final class Operations {
         return settled
     }
 
-    public func runOnce(_ key: String, keep: Bool = false, meta: [String: String] = [:], _ send: () async throws -> Outcome) async -> Run {
-        switch begin(key, keep: keep, meta: meta) {
+    public func runOnce(_ key: String, meta: [String: String] = [:], _ send: () async throws -> Outcome) async -> Run {
+        switch begin(key, meta: meta) {
         case .busy: return .busy
         case .unsaved: return .unsaved
         case .started: break
         }
         let outcome: Outcome
-        do { outcome = try await send() } catch { outcome = noAnswer("Le serveur ne répond pas.") }
+        do { outcome = try await TechnicalJournal.$operation.withValue(key) { try await send() } } catch {
+            var lost = noAnswer("Le serveur ne répond pas.")
+            lost.detail = networkLine(error)
+            outcome = lost
+        }
         finish(key, outcome)
         return .finished(outcome)
     }

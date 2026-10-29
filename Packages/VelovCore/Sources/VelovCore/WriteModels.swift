@@ -57,6 +57,8 @@ public struct ProfileBody: Equatable, Sendable {
 }
 
 public struct ContactBody: Equatable, Sendable {
+    public static let byteLimit = 10_240
+
     public var complaintType: String
     public var message: String
     public var tripToken: String?
@@ -71,7 +73,7 @@ public struct ContactBody: Equatable, Sendable {
         if let tripToken, !validLine(tripToken, max: 128, min: 1) { return false }
         var pairs: [(String, Any?)] = [("complaintType", complaintType), ("message", message)]
         if let tripToken { pairs.append(("tripToken", tripToken)) }
-        return orderedJSON(pairs).count <= 4096
+        return orderedJSON(pairs).count <= Self.byteLimit
     }
 }
 

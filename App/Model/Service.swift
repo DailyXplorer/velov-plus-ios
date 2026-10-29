@@ -33,7 +33,7 @@ final class LiveService: VelovService {
     private let session: SessionManager
 
     init() {
-        let transport = URLSessionTransport()
+        let transport = JournalTransport(URLSessionTransport())
         api = VelovAPI(transport: transport)
         session = SessionManager(store: KeychainStore(), http: transport)
     }
@@ -82,6 +82,11 @@ func attempt(_ run: () async throws -> Outcome) async -> Outcome {
     } catch let error as VelovError {
         return Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: "local.\(error.code.rawValue)", message: error.message)
     } catch {
-        return Outcome(ok: false, httpStatus: 0, code: "network", message: "Le serveur ne répond pas. Actualisez avant de réessayer.")
+        return Outcome(ok: false, httpStatus: 0, code: "network", message: "Le serveur ne répond pas. Actualisez avant de réessayer.", detail: networkLine(error))
     }
+}
+
+func failureMessage(_ error: Error, _ fallback: String) -> String {
+    if let error = error as? VelovError { return error.message }
+    return "\(fallback)\n\(networkLine(error))"
 }

@@ -46,7 +46,9 @@ public func formatNumber(_ value: Int) -> String {
 }
 
 public func formatMinutes(_ minutes: Double) -> String {
-    "\(formatNumber(Int(minutes.rounded())))\u{00A0}min"
+    let whole = Int(minutes.rounded())
+    guard whole >= 60 else { return "\(whole)\u{00A0}min" }
+    return "\(formatNumber(whole / 60))\u{00A0}h\u{00A0}\(whole % 60)\u{00A0}min"
 }
 
 public func capitalize(_ text: String) -> String {

@@ -86,7 +86,6 @@ typealias IntentCheck = ([String: String]) async throws -> Check
 struct WriteDialog<Question: View>: View {
     let title: String
     let key: String?
-    let keep: Bool
     let ready: Bool
     let intent: [String: String]
     let run: () async -> Outcome
@@ -100,10 +99,10 @@ struct WriteDialog<Question: View>: View {
     @State private var notice: String?
     @State private var checking = false
 
-    init(title: String, key: String?, keep: Bool = false, ready: Bool = true, intent: [String: String] = [:], run: @escaping () async -> Outcome,
+    init(title: String, key: String?, ready: Bool = true, intent: [String: String] = [:], run: @escaping () async -> Outcome,
          check: IntentCheck? = nil, verified: @escaping ([String: String]) -> Void = { _ in }, restart: Restart? = nil,
          @ViewBuilder question: @escaping () -> Question) {
-        self.title = title; self.key = key; self.keep = keep; self.ready = ready; self.intent = intent; self.run = run
+        self.title = title; self.key = key; self.ready = ready; self.intent = intent; self.run = run
         self.check = check; self.verified = verified; self.restart = restart; self.question = question
     }
 
@@ -155,7 +154,7 @@ struct WriteDialog<Question: View>: View {
         notice = nil
         let operations = model.operations
         Task {
-            switch await operations.runOnce(key, keep: keep, meta: intent, run) {
+            switch await operations.runOnce(key, meta: intent, run) {
             case .unsaved:
                 notice = Messages.unsaved
             case .busy:
@@ -194,9 +193,9 @@ struct WriteDialog<Question: View>: View {
 }
 
 extension WriteDialog where Question == EmptyView {
-    init(title: String, key: String?, keep: Bool = false, ready: Bool = true, intent: [String: String] = [:], run: @escaping () async -> Outcome,
+    init(title: String, key: String?, ready: Bool = true, intent: [String: String] = [:], run: @escaping () async -> Outcome,
          check: IntentCheck? = nil, verified: @escaping ([String: String]) -> Void = { _ in }, restart: Restart? = nil) {
-        self.init(title: title, key: key, keep: keep, ready: ready, intent: intent, run: run, check: check, verified: verified, restart: restart) { EmptyView() }
+        self.init(title: title, key: key, ready: ready, intent: intent, run: run, check: check, verified: verified, restart: restart) { EmptyView() }
     }
 }
 

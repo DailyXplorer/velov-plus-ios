@@ -59,3 +59,7 @@ Le bandeau de réservation dans l’app et sur le site reste identique : l’hor
 ### Apparence propre à iOS
 - La barre d’onglets du bas, les boutons Actualiser et Compte de l’en-tête et la barre de recherche des Stations utilisent le matériau Liquid Glass d’iOS. Le site utilise des surfaces blanches avec un filet.
 - L’app utilise la police des chiffres « Velov Glyphic Timer » pour les comptes à rebours des Live Activities.
+
+### Diagnostic
+- La ligne technique d’une panne réseau garde le code exact et la durée. App : « Délai dépassé après 30 s · NSURLErrorTimedOut (-1001) », « Connexion perdue après 2 s · NSURLErrorNetworkConnectionLost (-1005) », « Pas de réseau après 0 s · NSURLErrorNotConnectedToInternet (-1009) ». Site : nom de l’erreur du navigateur (TypeError, AbortError) et durée, quand le navigateur les donne.
+- Seule l’app a le Journal technique (page Compte) : les 50 dernières requêtes envoyées à Vélo’v (heure, méthode, chemin aux identifiants masqués sauf numéros de station et de vélo, statut HTTP ou code d’erreur, durée, action), sans jeton, en-tête, contenu, nom, e-mail ni téléphone, avec « Partager » et « Effacer ».

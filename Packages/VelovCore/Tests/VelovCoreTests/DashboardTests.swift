@@ -98,7 +98,7 @@ final class DashboardTests: XCTestCase {
             let url = call.url
             if url.hasSuffix("/client_tokens") { return .json(["accessToken": "app"]) }
             if url.hasSuffix("/id") { return .json(accountId) }
-            if url.hasSuffix("/bookings") { return .json([["id": "bk-1", "stationNumber": 2002, "standNumber": 4, "bikeId": "bike-uuid", "endTime": "2026-03-02T09:47:14"], ["broken": true]]) }
+            if url.hasSuffix("/bookings") { return .json([["id": "bk-1", "stationNumber": 2002, "standNumber": 4, "bikeId": "bike-uuid", "endTime": "2026-03-02T09:47:14"]]) }
             if url.contains("/bikes?stationNumber=2002") { return .json([["id": "bike-uuid", "number": 20449]]) }
             if url.contains("station_information") { return .json(UpstreamTests.information) }
             if url.contains("station_status") { return .json(UpstreamTests.status) }

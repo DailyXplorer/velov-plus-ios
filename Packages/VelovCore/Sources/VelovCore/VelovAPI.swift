@@ -85,7 +85,7 @@ public final class VelovAPI: Sendable {
     public func bookings(_ identity: Identity) async throws -> [Booking] {
         let account = try await accountId(identity)
         let value = try await read("/accounts/\(account)/bookings", identity, accept: "*/*")
-        let bookings = (value.array ?? []).compactMap(RawBooking.init)
+        guard let bookings = try? RawBooking.list(value) else { throw VelovError(.unavailable, Messages.bookingsUnreadable) }
         if bookings.isEmpty { return [] }
         let numbers = Array(Set(bookings.map(\.stationNumber)))
         async let stations = stationsByNumber()
@@ -193,10 +193,11 @@ func receiptsOf(_ subscriptions: [JSON], offers: [JSON]) -> [Receipt] {
 }
 
 func rewardMovement(_ movement: JSON) -> RewardMovement? {
-    guard let id = movement["id"]?.string, let amount = movement["amount"]?.number else { return nil }
+    guard let id = movement["id"]?.string, let amount = movement["amount"]?.number, amount.isFinite, amount >= 0,
+          let sign = ["DEBIT": -1.0, "CREDIT": 1.0][movement["direction"]?.string ?? ""] else { return nil }
     return RewardMovement(id: id, date: cyclocityDate(movement["createdAt"]?.string),
                           label: Messages.rewardReasons[movement["reason"]?.string ?? ""] ?? "Mouvement de points",
-                          amount: amount * (movement["direction"]?.string == "DEBIT" ? -1 : 1),
+                          amount: amount * sign,
                           dateOnly: movement["createdAt"]?.string?.count == 10)
 }
 

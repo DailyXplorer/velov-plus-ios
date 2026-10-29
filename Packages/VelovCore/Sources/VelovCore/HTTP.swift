@@ -185,7 +185,8 @@ public actor Memo<Value: Sendable> {
     private let stale: Bool
     private let now: @Sendable () -> Date
     private var values: [String: (value: Value, expiresAt: Date)] = [:]
-    private var pending: [String: Task<Value, Error>] = [:]
+    private var pending: [String: (generation: Int, task: Task<Value, Error>)] = [:]
+    private var generation = 0
 
     public init(ttl: TimeInterval, stale: Bool = false, now: @escaping @Sendable () -> Date = { Date() }) {
         self.init(ttl: { _ in ttl }, stale: stale, now: now)
@@ -197,18 +198,19 @@ public actor Memo<Value: Sendable> {
 
     public func get(_ key: String, _ load: @escaping @Sendable () async throws -> Value) async throws -> Value {
         if let hit = values[key], hit.expiresAt > now() { return hit.value }
-        if let running = pending[key] {
-            do { return try await running.value } catch {
+        if let running = pending[key], running.generation == generation {
+            do { return try await running.task.value } catch {
                 if stale, let last = values[key] { return last.value }
                 throw error
             }
         }
+        let started = generation
         let task = Task { try await load() }
-        pending[key] = task
-        defer { pending[key] = nil }
+        pending[key] = (started, task)
+        defer { if pending[key]?.task == task { pending[key] = nil } }
         do {
             let value = try await task.value
-            values[key] = (value, now().addingTimeInterval(ttl(value)))
+            if started == generation { values[key] = (value, now().addingTimeInterval(ttl(value))) }
             return value
         } catch {
             if stale, let last = values[key] { return last.value }
@@ -216,5 +218,9 @@ public actor Memo<Value: Sendable> {
         }
     }
 
-    public func clear() { values = [:] }
+    public func clear() {
+        values = [:]
+        pending = [:]
+        generation += 1
+    }
 }

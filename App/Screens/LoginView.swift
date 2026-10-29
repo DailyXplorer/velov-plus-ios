@@ -68,10 +68,8 @@ struct LoginView: View {
             do {
                 try await model.signIn(email: email.trimmingCharacters(in: .whitespaces), code: code)
                 code = ""
-            } catch let failure as VelovError {
-                error = failure.message
             } catch {
-                self.error = "Connexion impossible. Vérifiez votre connexion Internet."
+                self.error = failureMessage(error, "Connexion impossible. Vérifiez votre connexion Internet.")
             }
         }
     }

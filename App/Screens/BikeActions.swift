@@ -154,9 +154,11 @@ struct BikeActionSheet: View {
                     }
                 }
             }
-            guard case .finished(let outcome) = result else {
-                if model.operations.get(key) == nil { notice = Messages.busy }
-                return
+            let outcome: Outcome
+            switch result {
+            case .unsaved: notice = Messages.unsaved; return
+            case .busy: if model.operations.get(key) == nil { notice = Messages.busy }; return
+            case .finished(let answer): outcome = answer
             }
             Haptics.result(outcome.ok)
             if outcome.ok {

@@ -80,7 +80,7 @@ struct SelectField<Value: Hashable>: View {
 
     private var list: some View {
         Group {
-            if options.count > 8 { ScrollView { rows }.frame(maxHeight: 336) } else { rows }
+            if options.count > 8 { ScrollView { rows }.scrollIndicators(.visible).frame(height: 336) } else { rows }
         }
         .padding(6)
         .frame(width: inline ? 220 : max(width, 200))

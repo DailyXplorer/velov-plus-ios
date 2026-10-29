@@ -13,6 +13,9 @@ struct AccountPage: View {
             AccountSection(title: "Service client") {
                 ContactSupport(trips: data.trips).padding(.top, 16)
             }
+            AccountSection(title: "Journal technique") {
+                JournalLink().padding(.top, 16)
+            }
             LogoutButton(action: onLogout).padding(.top, 28)
         }
     }
@@ -148,6 +151,9 @@ struct AccountSkeleton: View {
             }
             AccountSection(title: "Service client", ghost: true) {
                 PillButton(variant: .secondary, action: {}) { Icon(.envelopeSimple, .light, size: 18); Text("Écrire au service client") }.padding(.top, 16)
+            }
+            AccountSection(title: "Journal technique", ghost: true) {
+                PillButton("Ouvrir le journal", variant: .secondary) {}.padding(.top, 16)
             }
             LogoutButton {}.skeleton(24).padding(.top, 28)
         }

@@ -168,7 +168,7 @@ final class AppModel {
             dockWatch.stop()
             phase = .guest(error.revoked ? error.message : "Votre session a expiré. Reconnectez-vous.")
         case .failure(let error):
-            phase = .failed((error as? VelovError)?.message ?? "Votre compte est momentanément indisponible.")
+            phase = .failed(failureMessage(error, "Votre compte est momentanément indisponible."))
         }
     }
 
@@ -177,7 +177,7 @@ final class AppModel {
         stationsPending = true
         defer { stationsPending = false }
         do { stations = .ready(try await service.stations()) }
-        catch { stations = .failed((error as? VelovError)?.message ?? "Les stations sont momentanément indisponibles.") }
+        catch { stations = .failed(failureMessage(error, "Les stations sont momentanément indisponibles.")) }
     }
 
     func loadBookings(force: Bool = false) async {
@@ -190,8 +190,11 @@ final class AppModel {
     }
 
     func statsChanged() {
-        statsCache.clear()
-        Task { await service.forgetStats() }
+        statsCache.clear { [service] in await service.forgetStats() }
+    }
+
+    func loadStats() async -> Result<Stats, Error>? {
+        await statsCache.load(account: dashboard?.profile.email ?? "", session: session) { [service] in try await service.stats() }
     }
 
     func becameActive() {

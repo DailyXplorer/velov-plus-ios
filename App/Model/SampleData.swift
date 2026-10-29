@@ -100,7 +100,7 @@ struct SampleService: VelovService {
     func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?) {
         if failUnlock {
             var lost = Outcome.refusal("network", "Vélo’v ne répond pas. Le vélo est peut-être déverrouillé : regardez la borne avant de réessayer.")
-            lost.detail = "TimeoutError"
+            lost.detail = NetworkFailure(code: URLError.timedOut.rawValue, elapsed: 30).line
             return (lost, nil)
         }
         return (Outcome(ok: true, httpStatus: 200, transactionState: "OK"), [])

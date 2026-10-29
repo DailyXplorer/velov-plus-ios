@@ -18,8 +18,10 @@ struct PointsPage: View {
                 figure(.trendUp, "Total gagné", rewards.total.map { formatNumber($0) } ?? "—", accent: false)
             }
             .padding(.bottom, 28)
-            autoSpend(rewards.autoSpend)
-            if let invite { inviteRow(cost: Int(invite.points), balance: rewards.balance) }
+            AutoSpendSetting(value: rewards.autoSpend)
+            InviteFriend(cost: invite.map { Int($0.points) }, balance: rewards.balance.map { Int($0) }, account: data.profile.email)
+                .id(data.profile.email)
+                .padding(.top, 12)
             if !rules.isEmpty {
                 SectionHeading("Gagner des points").padding(.top, 40)
                 VStack(spacing: 8) {
@@ -67,33 +69,44 @@ struct PointsPage: View {
         }
     }
 
-    /// « Utilisation automatique »: the current state; the switch writes in stage 2.
-    private func autoSpend(_ value: Bool?) -> some View {
+}
+
+/// account-actions.tsx `AutoSpendSetting`: « Utilisation automatique » as a real switch (PATCH /rewards), confirmed first.
+struct AutoSpendSetting: View {
+    let value: Bool?
+    @Environment(AppModel.self) private var model
+    @State private var asking = false
+    @State private var next = false
+
+    var body: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Utilisation automatique").typo(.label(12)).foregroundStyle(Palette.inkSoft)
                 Text(value == nil ? Messages.missing : value! ? "Activée" : "Désactivée").typo(.title(20)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
-            if let value { VelovSwitch(on: value).disabled(true).accessibilityLabel("Utilisation automatique des points") }
-        }
-        .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
-    }
-
-    private func inviteRow(cost: Int, balance: Double?) -> some View {
-        let missing = balance.map { Int($0) < cost ? " · il vous manque \(cost - Int($0)) points" : "" } ?? ""
-        return HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(verbatim: "Inviter un ami · \(cost) points").typo(.label(12)).foregroundStyle(Palette.inkSoft)
-                Text(verbatim: "Un ticket 1 trajet valable 24 h, pour libérer un second vélo\(missing).").typo(.body(13)).foregroundStyle(Palette.inkSoft)
-                SoonNote()
+            if let value {
+                VelovSwitch(on: value) { next = !value; asking = true }
+                    .accessibilityLabel("Utilisation automatique des points").accessibilityValue(value ? "Activée" : "Désactivée")
             }
-            Spacer(minLength: 0)
-            PillButton("Obtenir", variant: .secondary) {}.disabled(true)
         }
         .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
-        .padding(.top, 12)
+        .sheet(isPresented: $asking) {
+            WriteDialog(title: next ? "Activer l’utilisation automatique ?" : "Désactiver l’utilisation automatique ?",
+                        success: next ? "Utilisation automatique activée." : "Utilisation automatique désactivée.") { [next] in
+                var answered: Bool?
+                let outcome = await attempt {
+                    let result = try await model.service.setAutoSpend(next)
+                    answered = result.autoSpend
+                    return result.outcome
+                }
+                if outcome.ok { model.setAutoSpend(answered ?? next) }
+                return outcome
+            } question: {
+                Text(next ? "Vos points paieront automatiquement le dépassement de la période gratuite de vos trajets."
+                          : "Vos points ne paieront plus le dépassement de la période gratuite de vos trajets.")
+            }
+        }
     }
 }

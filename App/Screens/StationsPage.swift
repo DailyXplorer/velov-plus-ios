@@ -55,7 +55,7 @@ struct StationsPage: View {
         VStack(alignment: .leading, spacing: 0) {
             Header(title: "Stations")
             VStack(alignment: .leading, spacing: 12) {
-                BookingBanners()
+                BookingBanners(bottom: 0)
                 toolbar
                 if !locationError.isEmpty { Text(locationError).typo(.body(13)).foregroundStyle(Palette.notice) }
                 SelectField(label: "Afficher", value: $filter, options: [
@@ -228,7 +228,7 @@ final class Locator: NSObject, CLLocationManagerDelegate {
         if let recent = manager.location, recent.timestamp.timeIntervalSinceNow > -30 { return recent }
         switch manager.authorizationStatus {
         case .denied, .restricted:
-            throw Failure(message: "Localisation refusée. Autorisez-la dans Réglages > Confidentialité et sécurité > Service de localisation > Vélo’v.")
+            throw Failure(message: "Localisation refusée. Autorisez-la dans Réglages > Confidentialité et sécurité > Service de localisation > Vélo’v+.")
         default: break
         }
         return try await withCheckedThrowingContinuation { continuation in
@@ -256,7 +256,7 @@ final class Locator: NSObject, CLLocationManagerDelegate {
             guard self.waiting != nil else { return }
             switch status {
             case .authorizedWhenInUse, .authorizedAlways: self.manager.requestLocation()
-            case .denied, .restricted: self.finish(.failure(Failure(message: "Localisation refusée. Autorisez-la dans Réglages > Confidentialité et sécurité > Service de localisation > Vélo’v.")))
+            case .denied, .restricted: self.finish(.failure(Failure(message: "Localisation refusée. Autorisez-la dans Réglages > Confidentialité et sécurité > Service de localisation > Vélo’v+.")))
             default: break
             }
         }

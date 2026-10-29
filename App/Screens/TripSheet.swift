@@ -11,7 +11,7 @@ struct TripSheet: View {
     @State private var copied = false
 
     private var sameStation: Bool { trip.startStationNumber != nil && trip.startStationNumber == trip.endStationNumber }
-    private var rated: Bool { trip.isRated == true }
+    private var rated: Bool { trip.isRated == true || model.ratedHere.contains(trip.id) }
 
     var body: some View {
         NavigationStack {
@@ -31,7 +31,7 @@ struct TripSheet: View {
                     facts.padding(.top, 22)
                     if let points = pointsLine { Text(points).typo(.mono(12)).foregroundStyle(Palette.inkSoft).padding(.top, 10) }
                     if trip.litigious { litigious }
-                    if !rated, trip.bikeNumber != nil, canRate(trip) { rateOffer }
+                    if let bike = trip.bikeNumber, canRate(trip) || model.ratedHere.contains(trip.id) { RateBike(trip: trip, bikeNumber: bike) }
                     details
                 }
                 .padding(.horizontal, 22).padding(.top, 20).padding(.bottom, 28)
@@ -40,7 +40,7 @@ struct TripSheet: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: BikeRoute.self) { route in BikeDetail(route: route) }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents(model.snapshot == .rateCard ? [.large] : [.medium, .large])
         .presentationBackground(Palette.white)
         .presentationCornerRadius(Palette.radius)
         .presentationDragIndicator(.visible)
@@ -112,7 +112,7 @@ struct TripSheet: View {
             Button {
                 var components = URLComponents()
                 components.scheme = "mailto"
-                components.path = Guesses.supportAddress
+                components.path = Support.address
                 components.queryItems = [URLQueryItem(name: "subject", value: subject)]
                 if let url = components.url { openURL(url) }
             } label: {
@@ -122,23 +122,6 @@ struct TripSheet: View {
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.red, lineWidth: 1))
-        .padding(.top, 14)
-    }
-
-    /// « Noter ce vélo · +5 points »: shown, not sent in stage 1.
-    private var rateOffer: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            (Text("Noter ce vélo · ") + Text("+5 points").foregroundColor(Palette.redDeep)).typo(.label(12)).foregroundStyle(Palette.ink)
-            HStack(spacing: 8) {
-                PillButton(variant: .secondary, fullWidth: true, action: {}) { Icon(.thumbsUp, .light, size: 17); Text("Je recommande") }
-                PillButton(variant: .secondary, fullWidth: true, action: {}) { Icon(.thumbsDown, .light, size: 17); Text("Je déconseille") }
-            }
-            .disabled(true)
-            .padding(.top, 12)
-            SoonNote().padding(.top, 8)
-        }
-        .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 16)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
         .padding(.top, 14)
     }
 

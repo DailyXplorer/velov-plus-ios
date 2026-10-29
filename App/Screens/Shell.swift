@@ -7,18 +7,21 @@ struct Shell: View {
     @State private var logoutOpen = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            Group {
-                switch model.page {
-                case .stations: StationsPage(onLogout: { logoutOpen = true })
-                default: PageScaffold(page: model.page, onLogout: { logoutOpen = true })
-                }
+        @Bindable var model = model
+        Group {
+            switch model.page {
+            case .stations: StationsPage(onLogout: { logoutOpen = true })
+            default: PageScaffold(page: model.page, onLogout: { logoutOpen = true })
             }
-            .frame(maxHeight: .infinity)
-            TabBar()
         }
+        .frame(maxHeight: .infinity)
+        // The bar insets the page: the end of every scroll view stops above it, nothing sits under it.
+        .safeAreaInset(edge: .bottom, spacing: 0) { TabBar() }
         .background(Palette.white)
         .sheet(isPresented: $logoutOpen) { LogoutSheet() }
+        .sheet(item: $model.unlocking) { booking in
+            if let place = Place(booking) { BikeActionSheet(place: place, bookingId: booking.id, action: .unlock) }
+        }
     }
 }
 
@@ -49,7 +52,7 @@ struct TabBar: View {
             }
             .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 8)
         }
-        .background(Palette.white.opacity(0.96).ignoresSafeArea(edges: .bottom))
+        .background(Palette.white.ignoresSafeArea(edges: .bottom))
     }
 }
 
@@ -98,6 +101,17 @@ struct PageScaffold: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        ScrollViewReader { proxy in
+            scroll.task {
+                if model.snapshot == .overviewMap {
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    proxy.scrollTo("stations-map", anchor: .bottom)
+                }
+            }
+        }
+    }
+
+    private var scroll: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Header(title: page.title)
@@ -171,8 +185,9 @@ struct DataNotice: View {
     }
 }
 
-/// « Réservé · mm:ss · Déverrouiller » on one red line, hidden once the booking has run out.
+/// `.booking-banner`: a solid red card, « Réservé », the countdown and « Déverrouiller », on every tab; gone once the booking has run out.
 struct BookingBanners: View {
+    var bottom: CGFloat = 24
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -180,16 +195,25 @@ struct BookingBanners: View {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let left = booking.endsAt.map { max(0, Int($0.timeIntervalSince(context.date).rounded())) }
                 if left != 0 {
+                    // The web's phone sizes: a tighter tag, 18 pt digits, the button without its icon.
                     HStack(spacing: 8) {
-                        CardTag(icon: .clock, text: "Réservé")
-                        if let left { Text(clock(left)).typo(.clock(18)).foregroundStyle(Palette.white) }
+                        HStack(spacing: 8) {
+                            Icon(.clock, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
+                            Text("Réservé").typo(.label(12)).foregroundStyle(Palette.ink)
+                        }
+                        .padding(.leading, 5).padding(.trailing, 12).padding(.vertical, 5)
+                        .background(Capsule().fill(Palette.white))
+                        .fixedSize()
+                        if let left { Text(clock(left)).typo(.clock(18)).foregroundStyle(Palette.white).fixedSize().accessibilityLabel("Reste \(clock(left))") }
                         Spacer(minLength: 0)
-                        // Stage 1: the release is shown, not sent.
-                        PillButton(variant: .onRed, height: 40, action: {}) { Text("Déverrouiller") }.disabled(true)
+                        if Place(booking) != nil {
+                            PillButton(variant: .onRed, height: 40, action: { model.unlocking = booking }) { Text("Déverrouiller").typo(.label(12)) }
+                                .fixedSize()
+                        }
                     }
                     .padding(8)
                     .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.red))
-                    .padding(.bottom, 24)
+                    .padding(.bottom, bottom)
                 }
             }
         }

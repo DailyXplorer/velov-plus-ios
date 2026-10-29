@@ -76,10 +76,11 @@ struct OverviewPage: View {
         .frame(height: 310)
         .clipShape(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
+        .id("stations-map")
     }
 }
 
-/// `.ongoing-banner`: « Trajet en cours » and the start station; « 15 minutes de plus » shown, not sent.
+/// `.ongoing-banner`: « Trajet en cours », the start station and « 15 minutes de plus ».
 struct OngoingBanner: View {
     let trip: Trip
     var body: some View {
@@ -88,10 +89,7 @@ struct OngoingBanner: View {
                 Eyebrow(icon: .personSimpleBike, text: "Trajet en cours")
                 Text(trip.startStation ?? "Trajet Vélo’v").typo(.body(13)).foregroundStyle(Palette.inkSoft).lineLimit(1)
             }
-            HStack(spacing: 10) {
-                PillButton(variant: .secondary, action: {}) { Icon(.timer, .light, size: 17); Text("15 minutes de plus") }.disabled(true)
-                SoonNote()
-            }
+            ViaAction()
         }
         .padding(.bottom, 16)
         .overlay(alignment: .bottom) { Hairline() }

@@ -1,4 +1,4 @@
-# Vélo’v Compagnon (iOS)
+# Vélo’v+ (iOS)
 
 A native SwiftUI client for the Lyon bike-share account, a port of the companion web app with the same design and copy. It talks to Cyclocity directly; there is no backend.
 
@@ -23,12 +23,15 @@ A native SwiftUI client for the Lyon bike-share account, a port of the companion
 | `make smoke` | Public GETs against the real service: GBFS stations and the bikes of station 2002. |
 | `make install` | Installs the last device build on the paired iPhone. |
 | `make snapshots` | Renders the key screens with sample data in the simulator to `snapshots/`. |
+| `scripts/install.command` | `make build && make install` from the GUI session, output appended to `~/.velov-ios-install.log` (ends with `DONE`). See `INSTALL.md`. |
 
 ## Rules the code keeps
 
 - Reads retry only on 502, 503 and 504, at most three attempts, 8 s each; never after a timeout.
 - A state-changing call goes out exactly once per user confirmation and is never retried.
-- The device id is created once, stored in the Keychain and kept across logouts: the service allows one connected device per account.
+- Every write sits behind a confirmation sheet; a failure shows Vélo’v's message and the raw status line, nothing is resent without a new confirmation.
+- The device id is created once, stored in the Keychain and kept across logouts. No one-device rule is assumed: a login refusal shows the server's own message.
+- The booking Live Activity is started and ended by the app only (no push).
 - Light mode only; red is the only accent colour.
 
 Fonts: Faculty Glyphic, DM Sans and Azeret Mono (SIL Open Font License). Icons: Phosphor (MIT). Licences are in `App/Resources/Licenses`.

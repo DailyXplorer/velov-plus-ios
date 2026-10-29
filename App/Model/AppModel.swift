@@ -43,7 +43,11 @@ enum Resource<T> {
 
 /// A screen the snapshot run opens straight away (`-VelovScreen tripSheet`).
 enum SnapshotScreen: String {
-    case overview, trips, tripSheet, points, stations, stationSheet, bikeList, bikeSheet, account
+    case overview, overviewMap, trips, tripSheet, rateCard, points, stations, stationSheet, bikeList, bikeSheet, account, accountEdit
+    case bookingBanner, unlockConfirm, unlockSuccess, liveActivityLock, liveActivityIsland
+
+    /// The screens drawn with a running booking.
+    var withBooking: Bool { [.bookingBanner, .unlockConfirm, .unlockSuccess].contains(self) }
 }
 
 @MainActor
@@ -65,17 +69,30 @@ final class AppModel {
     var bookings: [Booking] = []
     var refreshing = false
     var stationsPending = false
+    /// The booking whose unlock sheet is open, from the banner of any tab.
+    var unlocking: Booking?
+    /// Trips rated from this phone: the dashboard says so only after its next read.
+    var ratedHere: Set<String> = []
+    /// Where the invite codes are kept on this phone, before anything else happens to them.
+    let promoBacking: PromoBacking
+    private let activities = BookingActivities()
 
-    init(service: VelovService, snapshot: SnapshotScreen? = nil) {
+    init(service: VelovService, snapshot: SnapshotScreen? = nil, promoBacking: PromoBacking) {
         self.service = service
         self.snapshot = snapshot
+        self.promoBacking = promoBacking
         switch snapshot {
-        case .trips?, .tripSheet?: page = .trips
+        case .trips?, .tripSheet?, .rateCard?: page = .trips
         case .points?: page = .points
         case .stations?, .stationSheet?, .bikeList?, .bikeSheet?: page = .stations
-        case .account?: page = .account
+        case .account?, .accountEdit?: page = .account
         default: break
         }
+    }
+
+    /// The app's own folder for the invite codes: Application Support, backed up with the phone.
+    static func promoDirectory() -> URL {
+        URL.applicationSupportDirectory.appending(path: "PromoCodes", directoryHint: .isDirectory)
     }
 
     var dashboard: Dashboard? {
@@ -121,9 +138,58 @@ final class AppModel {
         catch { stations = .failed((error as? VelovError)?.message ?? "Stations indisponibles.") }
     }
 
-    /// Best effort: without it the app only misses the booking banner.
+    /// Best effort: without it the app only misses the booking banner. A running booking found here gets its Live Activity.
     func loadBookings() async {
-        if let value = try? await service.bookings() { bookings = value }
+        guard let value = try? await service.bookings() else { return }
+        bookings = value
+        if snapshot == nil { activities.sync(value) }
+        if snapshot == .unlockConfirm || snapshot == .unlockSuccess { unlocking = value.first }
+    }
+
+    /// Back in the foreground: the bookings may have run out or been used meanwhile.
+    func becameActive() {
+        guard dashboard != nil else { return }
+        Task { await loadBookings() }
+    }
+
+    // MARK: Effects of confirmed writes, applied here instead of reading the whole account again.
+
+    func booked(_ booking: Booking?) {
+        if let booking {
+            bookings.removeAll { $0.id == booking.id }
+            bookings.append(booking)
+            if snapshot == nil { activities.start(booking) }
+        }
+        Task { await loadBookings() }
+    }
+
+    /// The release spends the booking: its banner and its Live Activity go.
+    func unlocked(bookingId: String?) {
+        if let bookingId {
+            bookings.removeAll { $0.id == bookingId }
+            activities.end(bookingId: bookingId)
+        }
+        Task {
+            await loadBookings()
+            await loadDashboard()
+        }
+    }
+
+    func patch(_ change: (inout Dashboard) -> Void) {
+        guard case .ready(var data) = phase else { return }
+        change(&data)
+        phase = .ready(data)
+    }
+
+    func setFavorite(_ number: Int, _ on: Bool) {
+        patch { data in
+            data.profile.favorites.removeAll { $0 == number }
+            if on { data.profile.favorites.append(number) }
+        }
+    }
+
+    func setAutoSpend(_ value: Bool) {
+        patch { $0.rewards.autoSpend = value }
     }
 
     /// One login attempt; a refusal is shown as is and never retried.
@@ -137,6 +203,8 @@ final class AppModel {
     func logout() async {
         let confirmed = await service.logout()
         bookings = []
+        unlocking = nil
+        activities.endAll()
         page = .overview
         phase = .guest(confirmed ? nil : Messages.remoteLogoutUnconfirmed)
     }

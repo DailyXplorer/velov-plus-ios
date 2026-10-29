@@ -54,13 +54,20 @@ enum SampleData {
             RewardRule(name: "END_STATION_EMPTY", label: "Arrivée dans une station vide", points: 10, kind: .earn),
             RewardRule(name: "PROMOCODE", label: "Invitation d’un proche", points: 50, kind: .spend)
         ]),
-        subscription: .current(Subscription(id: "sub-1", title: "Vélo’v Plus 1 an – paiement comptant", type: "LT", validUntil: now.addingTimeInterval(200 * 86_400), active: true, autoRenewal: true)),
+        subscription: .current(Subscription(id: "sub-1", title: "Vélo’v Plus 1 an – paiement comptant", type: "LT", validUntil: now.addingTimeInterval(200 * 86_400), active: true, autoRenewal: true, autoRenewalAllowed: true)),
         paymentValid: true,
         receipts: [
             Receipt(subscriptionId: "sub-1", periodId: "p-2", title: "Vélo’v Plus 1 an", start: now.addingTimeInterval(-165 * 86_400), end: now.addingTimeInterval(200 * 86_400)),
             Receipt(subscriptionId: "sub-0", periodId: "p-1", title: "Ticket 24h", start: now.addingTimeInterval(-400 * 86_400), end: now.addingTimeInterval(-399 * 86_400))
         ],
         trips: trips, ongoing: [], bookings: 0, updatedAt: now, warnings: [])
+
+    /// A booking of a sample bike at Bellecour, `minutesLeft` from now.
+    static func booking(bike: Int = 20449, minutesLeft: Double = 12.6) -> Booking {
+        let station = byNumber[2002]!
+        return Booking(id: "bk-sample", stationNumber: station.number, stationName: station.name, standNumber: 2, bikeNumber: bike,
+                       endsAt: now.addingTimeInterval(minutesLeft * 60), lat: station.lat, lon: station.lon)
+    }
 
     static let bikes: [Bike] = [
         Bike(number: 20449, type: .electrical, standNumber: 2, statusLabel: "Accroché", rating: .init(value: 92, count: 31, lastAt: ago(5)), batteryPercent: 88, frameId: "FR-0042-2044", lastTripAt: ago(2), lastControlAt: ago(200), nextCheckAt: now.addingTimeInterval(3 * 86_400), lastSignalAt: ago(0.1), nextReviewAt: now.addingTimeInterval(60 * 86_400)),
@@ -74,6 +81,9 @@ enum SampleData {
 }
 
 struct SampleService: VelovService {
+    /// The booking the snapshot screens show; none elsewhere.
+    var booking: Booking?
+
     func hasSession() async -> Bool { true }
     func signIn(email: String, code: String) async throws {}
     func logout() async -> Bool { true }
@@ -81,5 +91,26 @@ struct SampleService: VelovService {
     func stations() async throws -> StationData { StationData(stations: SampleData.stations, updatedAt: SampleData.now) }
     func stationBikes(_ station: Int) async throws -> [Bike] { SampleData.bikes }
     func bike(_ number: Int) async throws -> Bike? { SampleData.bikes.first { $0.number == number } ?? SampleData.bikes[0] }
-    func bookings() async throws -> [Booking] { [] }
+    func bookings() async throws -> [Booking] { booking.map { [$0] } ?? [] }
+
+    // Writes answer at once with what Vélo’v would: nothing leaves the device.
+    func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?) {
+        (Outcome(ok: true, httpStatus: 200), SampleData.booking(bike: bikeNumber, minutesLeft: 15))
+    }
+    func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?) {
+        (Outcome(ok: true, httpStatus: 200, transactionState: "OK"), [])
+    }
+    func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws {}
+    func setAutoSpend(_ value: Bool) async throws -> (outcome: Outcome, autoSpend: Bool?) { (Outcome(ok: true, httpStatus: 200), value) }
+    func setFavorite(station: Int, on: Bool) async throws -> Outcome { Outcome(ok: true, httpStatus: 204) }
+    func receipt(subscriptionId: String, periodId: String) async throws -> (outcome: Outcome, filename: String?, pdf: Data?) {
+        (Outcome(ok: false, httpStatus: 0, code: "sample", message: "Pas de reçu dans les données d’exemple."), nil, nil)
+    }
+    func updateProfile(_ body: ProfileBody) async throws -> Outcome { Outcome(ok: true, httpStatus: 200) }
+    func setAutoRenewal(subscriptionId: String, autoRenewal: Bool) async throws -> AutoRenewalResult {
+        AutoRenewalResult(outcome: Outcome(ok: true, httpStatus: 200), autoRenewal: autoRenewal, autoRenewalAllowed: true, verified: true)
+    }
+    func requestExtraTime(stationNumber: Int) async throws -> Outcome { Outcome(ok: true, httpStatus: 200, transactionState: "OK") }
+    func contactSupport(_ body: ContactBody) async throws -> Outcome { Outcome(ok: true, httpStatus: 200) }
+    func consumePromoCode(expectedCost: Int) async throws -> PromoResult { PromoResult(outcome: Outcome(ok: true, httpStatus: 200), promoCode: "EXEMPLE-0000") }
 }

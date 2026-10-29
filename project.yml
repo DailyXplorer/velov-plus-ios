@@ -30,7 +30,7 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: "Vélo’v"
+        CFBundleDisplayName: "Vélo’v+"
         CFBundleDevelopmentRegion: fr
         UILaunchScreen:
           UIColorName: ""
@@ -46,7 +46,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.dailyxplorer.velov
         PRODUCT_NAME: VelovCompagnon
         TARGETED_DEVICE_FAMILY: "1"
-        INFOPLIST_KEY_CFBundleDisplayName: "Vélo’v"
+        INFOPLIST_KEY_CFBundleDisplayName: "Vélo’v+"
   VelovWidgets:
     type: app-extension
     platform: iOS
@@ -56,7 +56,7 @@ targets:
     info:
       path: Widgets/Info.plist
       properties:
-        CFBundleDisplayName: "Vélo’v"
+        CFBundleDisplayName: "Vélo’v+"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:

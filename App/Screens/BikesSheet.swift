@@ -188,6 +188,7 @@ struct BikeDetail: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var loaded: Resource<AssessedBike> = .loading
+    @State private var pending: PendingAction?
 
     private var own: Set<Int> { Set(model.bookings.compactMap(\.bikeNumber)) }
     private var item: AssessedBike? { preloaded ?? loaded.value }
@@ -217,6 +218,7 @@ struct BikeDetail: View {
         .scrollIndicators(.hidden)
         .toolbar(.hidden, for: .navigationBar)
         .task { if preloaded == nil { await load() } }
+        .sheet(item: $pending) { BikeActionSheet(place: $0.place, bookingId: $0.bookingId, action: $0.action) }
     }
 
     private func load() async {
@@ -299,20 +301,35 @@ struct BikeDetail: View {
         }
     }
 
-    /// Book and release: shown with the confirmation copy of the web app, sent in stage 2.
+    /// Book and release, stacked full width like the web's phone layout; each opens its confirmation.
     private func actions(_ bike: Bike, station: Station, mine: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                if !mine {
-                    PillButton(variant: .secondary, fullWidth: true, action: {}) { Text(verbatim: "Réserver (\(Rules.bookingMinutes) min · \(Rules.bookingPoints) points)").minimumScaleFactor(0.7) }
+        let booking = model.bookings.first { $0.bikeNumber == bike.number }
+        let place = Place(stationNumber: station.number, stationName: station.name, standNumber: bike.standNumber ?? 0, bikeNumber: bike.number, lat: station.lat, lon: station.lon)
+        return VStack(alignment: .leading, spacing: 10) {
+            if mine, let endsAt = booking?.endsAt {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let left = max(0, Int(endsAt.timeIntervalSince(context.date).rounded()))
+                    (Text("Vélo réservé jusqu’à ") + Text(formatDate(endsAt, .time)).font(Typo.clock(14).font) + Text(left > 0 ? " · reste " : " · réservation expirée") + Text(left > 0 ? clock(left) : "").font(Typo.clock(14).font))
+                        .typo(.body(14, medium: true)).foregroundStyle(Palette.ink)
                 }
-                PillButton(variant: .primary, fullWidth: true, action: {}) { Icon(.lockOpen, .light, size: 17); Text("Déverrouiller") }
             }
-            .disabled(true)
-            SoonNote().padding(.top, 10)
+            if !mine {
+                PillButton(variant: .secondary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: nil, action: .book) }) {
+                    Text(verbatim: "Réserver (\(Rules.bookingMinutes) min · \(Rules.bookingPoints) points)")
+                }
+            }
+            PillButton(variant: .primary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: booking?.id, action: .unlock) }) { Icon(.lockOpen, .light, size: 17); Text("Déverrouiller") }
         }
         .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 16)
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
         .padding(.top, 18)
     }
+}
+
+/// The sheet a bike action opens: what to confirm and with which booking.
+struct PendingAction: Identifiable {
+    let place: Place
+    let bookingId: String?
+    let action: BikeAction
+    var id: String { "\(place.bikeNumber)-\(action)" }
 }

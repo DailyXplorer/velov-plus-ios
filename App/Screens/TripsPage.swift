@@ -35,7 +35,7 @@ struct TripsPage: View {
                 .padding(.bottom, 20)
                 .onChange(of: filter) { limit = 10 }
                 .onChange(of: sort) { limit = 10 }
-                TripsList(trips: Array(trips.prefix(limit)), openFirst: model.snapshot == .tripSheet)
+                TripsList(trips: Array(trips.prefix(limit)), openFirst: model.snapshot == .tripSheet || model.snapshot == .rateCard)
                 if trips.count > limit {
                     PillButton("Voir plus", variant: .secondary) { limit += 10 }.frame(maxWidth: .infinity).padding(.vertical, 24)
                 }

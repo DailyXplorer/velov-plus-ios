@@ -7,10 +7,7 @@ struct ViaAction: View {
     @State private var open = false
 
     var body: some View {
-        HStack(spacing: 10) {
-            PillButton(variant: .secondary, action: { open = true }) { Icon(.timer, .light, size: 17); Text("15 minutes de plus") }
-            ExperimentalTag()
-        }
+        PillButton(variant: .secondary, action: { open = true }) { Icon(.timer, .light, size: 17); Text("15 minutes de plus") }
         .sheet(isPresented: $open) { ViaSheet() }
     }
 }
@@ -33,7 +30,6 @@ private struct ViaSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: "15 minutes de plus", closeDisabled: pending) { dismiss() }
-            ExperimentalTag().padding(.top, 2)
             Group {
                 if let result { done(result) } else if reviewing, let station { review(station) } else { pick }
             }

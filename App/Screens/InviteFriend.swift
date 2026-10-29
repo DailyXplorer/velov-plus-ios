@@ -29,7 +29,6 @@ struct InviteFriend: View {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(verbatim: "Inviter un ami\(cost.map { " · \($0) points" } ?? "")").typo(.label(12)).foregroundStyle(Palette.inkSoft)
-                    ExperimentalTag()
                     Text("Échanger vos points contre un code à transmettre à votre ami.").typo(.body(13)).foregroundStyle(Palette.inkSoft)
                     if cost == nil {
                         SoonNote(text: "L’offre est momentanément indisponible. Vos codes conservés restent accessibles ci-dessous.")
@@ -70,7 +69,6 @@ struct InviteFriend: View {
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: "Échanger \(cost ?? 0) points ?", closeDisabled: pending) { asking = false }
-            ExperimentalTag().padding(.top, 2)
             Text("Solde affiché : \(balance ?? 0) points. \(cost ?? 0) points seront débités dès la création du code, même si vous ne l’utilisez pas. Aucun ticket ne sera activé automatiquement.")
                 .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
             if let outcome {

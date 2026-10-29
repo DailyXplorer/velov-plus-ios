@@ -158,7 +158,7 @@ struct ProfileCoordinates: View {
 
 // MARK: Auto-renewal
 
-/// auto-renewal.tsx: experimental; the switch shows only when Vélo’v offers it, the state shown after a change is the one read back.
+/// auto-renewal.tsx: the switch shows only when Vélo’v offers it, the state shown after a change is the one read back.
 struct AutoRenewalSetting: View {
     let subscription: Subscription
     @Environment(AppModel.self) private var model
@@ -174,7 +174,6 @@ struct AutoRenewalSetting: View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Renouvellement automatique").typo(.label(12)).foregroundStyle(Palette.inkSoft)
-                ExperimentalTag()
                 Text(actual == nil ? "État à actualiser" : actual! ? "Activé" : "Désactivé").typo(.body(15, medium: true)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
@@ -191,7 +190,6 @@ struct AutoRenewalSetting: View {
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: "Renouvellement automatique", closeDisabled: pending) { asking = false }
-            ExperimentalTag().padding(.top, 2)
             Group {
                 if let result {
                     if result.outcome.ok {
@@ -323,11 +321,10 @@ struct ShareSheet: UIViewControllerRepresentable {
 
 private let subjects: [SelectOption<String>] = zip(Guesses.mailComplaintTypes, ["Un trajet", "Mon abonnement", "Mes paiements", "Un parking"]).map { .init(value: $0, label: $1) }
 
-/// contact-support.tsx: experimental; one multipart message after the review, the mail app as the alternative.
+/// contact-support.tsx: one multipart message after the review.
 struct ContactSupport: View {
     let trips: [Trip]?
     @Environment(AppModel.self) private var model
-    @Environment(\.openURL) private var openURL
     @State private var open = false
     @State private var subject = Guesses.mailComplaintTypes[0]
     @State private var message = ""
@@ -350,12 +347,9 @@ struct ContactSupport: View {
             } else {
                 form
             }
-            ExperimentalTag()
-            Button { openMail() } label: { Text("Ouvrir ma messagerie à la place").typo(.body(13)).underline().foregroundStyle(Palette.redDeep) }
-                .buttonStyle(.plain)
         }
         .sheet(item: $draft, onDismiss: nil) { draft in
-            WriteDialog(title: "Envoyer au service client ?", success: "Message envoyé au service client.", experimental: true) {
+            WriteDialog(title: "Envoyer au service client ?", success: "Message envoyé au service client.") {
                 let outcome = await attempt { try await model.service.contactSupport(draft.body) }
                 if outcome.ok { message = ""; tripId = "none" }
                 return outcome
@@ -400,15 +394,5 @@ struct ContactSupport: View {
         }
         error = nil
         draft = ContactDraft(body: body)
-    }
-
-    private func openMail() {
-        let body = contact
-        var components = URLComponents()
-        components.scheme = "mailto"
-        components.path = Support.address
-        components.queryItems = [URLQueryItem(name: "subject", value: subjects.first { $0.value == subject }?.label ?? "Demande"),
-                                 URLQueryItem(name: "body", value: contactMessage(body))]
-        if let url = components.url { openURL(url) }
     }
 }

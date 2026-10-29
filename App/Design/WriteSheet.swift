@@ -28,11 +28,6 @@ struct FormError: View {
     var body: some View { Text(text).typo(.body(14)).foregroundStyle(Palette.formError).fixedSize(horizontal: false, vertical: true) }
 }
 
-/// `.experimental-tag`: the features built on request shapes no live answer has confirmed yet.
-struct ExperimentalTag: View {
-    var body: some View { Text("Expérimental").typo(.mono(10)).foregroundStyle(Palette.red) }
-}
-
 /// `.write-done`: a check and the success sentence.
 struct DoneLine: View {
     let text: String
@@ -89,7 +84,6 @@ struct WriteDialog<Question: View>: View {
 
     let title: String
     let success: String
-    var experimental = false
     /// Off where the core reports a failure as a message only (the rating, as on the web).
     var showsRawLine = true
     /// Sends the one request; applies its effect itself when it succeeds.
@@ -103,7 +97,6 @@ struct WriteDialog<Question: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: title, closeDisabled: sending) { dismiss() }
-            if experimental { ExperimentalTag().padding(.top, 2) }
             if case .done = step {
                 DoneLine(text: success).padding(.top, 18)
                 PillButton("Fermer", variant: .secondary) { dismiss() }.frame(maxWidth: .infinity, alignment: .trailing).padding(.top, 24)

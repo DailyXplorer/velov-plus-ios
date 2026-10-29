@@ -97,7 +97,7 @@ Si Xcode répond « No Accounts » ou « No profiles », ouvrez `VelovCompagnon.
 ## Liens
 
 - Version web : [velovplus.vercel.app](https://velovplus.vercel.app)
-- Code de la version web : [DailyXplorer/velov-compagnon](https://github.com/DailyXplorer/velov-compagnon)
+- Code de la version web : [DailyXplorer/velov-plus](https://github.com/DailyXplorer/velov-plus)
 
 ## Avertissement
 

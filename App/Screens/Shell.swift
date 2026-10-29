@@ -7,6 +7,7 @@ struct Shell: View {
     @State private var logoutOpen = false
     @State private var homeIndicator: CGFloat = 0
     @State private var radius = Concentric.fallback
+    @State private var tabBarBand: CGFloat = 0
 
     var body: some View {
         @Bindable var model = model
@@ -24,6 +25,7 @@ struct Shell: View {
             TabBar(radius: radius)
                 .onGeometryChange(for: CGFloat.self, of: { Concentric.radius($0) }) { radius = $0 }
                 .padding(.horizontal, Concentric.inset).padding(.bottom, Concentric.inset - homeIndicator)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { tabBarBand = $0 }
         }
         .background(Palette.white)
         .background {
@@ -36,6 +38,7 @@ struct Shell: View {
         .sheet(item: $model.ended) { TripEndedSheet(trip: $0) }
         // The station card and every sheet take the bar's radius.
         .environment(\.floatingRadius, radius)
+        .environment(\.tabBarBand, tabBarBand)
     }
 }
 
@@ -212,19 +215,19 @@ struct BookingBanners: View {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let left = booking.endsAt.map { max(0, Int($0.timeIntervalSince(context.date).rounded())) }
                 if left != 0 {
-                    // The web's phone sizes: a tighter tag, 18 pt digits, the button without its icon.
+                    // The web's phone sizes: a tighter tag, 22 pt digits, the button without its icon.
                     HStack(spacing: 8) {
                         HStack(spacing: 8) {
                             Icon(.clock, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
-                            Text("Réservé").typo(.label(12)).foregroundStyle(Palette.ink)
+                            Text("Réservé").typo(.label(13)).foregroundStyle(Palette.ink)
                         }
                         .padding(.leading, 5).padding(.trailing, 12).padding(.vertical, 5)
                         .background(Capsule().fill(Palette.white))
                         .fixedSize()
-                        if let left { Text(clock(left)).typo(.clock(18)).foregroundStyle(Palette.white).fixedSize().accessibilityLabel("Reste \(clock(left))") }
+                        if let left { Text(clock(left)).typo(.countdown(22)).foregroundStyle(Palette.white).fixedSize().accessibilityLabel("Reste \(clock(left))") }
                         Spacer(minLength: 0)
                         if Place(booking) != nil {
-                            PillButton(variant: .onRed, height: 40, action: { model.unlocking = booking }) { Text("Déverrouiller").typo(.label(12)) }
+                            PillButton(variant: .onRed, height: 40, action: { model.unlocking = booking }) { Text("Déverrouiller").typo(.label(14)) }
                                 .fixedSize()
                         }
                     }

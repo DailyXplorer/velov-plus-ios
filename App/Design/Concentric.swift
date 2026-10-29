@@ -24,6 +24,9 @@ enum Concentric {
 extension EnvironmentValues {
     /// The tab bar's radius, measured by the shell: every floating card and sheet uses it on all four corners.
     @Entry var floatingRadius: CGFloat = Concentric.fallback
+    /// The height the floating tab bar takes over the home indicator's band. Pages pushed inside a tab's navigation stack
+    /// do not get the shell's bottom inset, so they keep their end above the bar with it.
+    @Entry var tabBarBand: CGFloat = 0
 }
 
 /// A system sheet's top corners at the floating radius, so they match its bottom ones and the tab bar.

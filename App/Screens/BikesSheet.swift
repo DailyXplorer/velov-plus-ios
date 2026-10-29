@@ -42,7 +42,7 @@ struct BikesSheet: View {
                     }
                     .padding(.top, 14).padding(.bottom, 10)
                     Text(assessed.map { "\($0.count) vélo\($0.count > 1 ? "s" : "") à la station" } ?? "Chargement des vélos…")
-                        .typo(.label(11)).foregroundStyle(Palette.inkMuted).padding(.bottom, 8)
+                        .typo(.label(13)).foregroundStyle(Palette.inkMuted).padding(.bottom, 8)
                     switch bikes {
                     case .loading:
                         VStack(spacing: 10) { ForEach(0..<4, id: \.self) { _ in Skeleton(height: 64) } }.padding(.top, 6)
@@ -110,7 +110,7 @@ struct BikeRow: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(verbatim: "\(bike.number)").typo(.title(24)).foregroundStyle(Palette.ink)
                 HStack(spacing: 8) {
-                    Text(bike.standNumber.map { "Borne \($0)" } ?? "Borne inconnue").typo(.label(11)).foregroundStyle(Palette.inkSoft)
+                    Text(bike.standNumber.map { "Borne \($0)" } ?? "Borne inconnue").typo(.label(13)).foregroundStyle(Palette.inkSoft)
                     if bike.isReserved || mine { OutlinePill(text: "Réservé") }
                 }
                 .padding(.top, 5)
@@ -282,7 +282,7 @@ struct BikeDetail: View {
                 dateRow("Dernier contrôle", bike.lastControlAt, withAgo: true)
                 dateRow("Dernier signal", bike.lastSignalAt, withAgo: true)
                 dateRow("Prochaine révision", bike.nextReviewAt, withAgo: false)
-                DetailRow(label: "Cadre", last: true) { Text(bike.frameId ?? "Non renseigné").typo(.mono(13)) }
+                DetailRow(label: "Cadre", last: true) { Text(bike.frameId ?? "Non renseigné").typo(.label(13)) }
             }
         }
     }
@@ -309,7 +309,7 @@ struct BikeDetail: View {
             if mine, let endsAt = booking?.endsAt {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let left = max(0, Int(endsAt.timeIntervalSince(context.date).rounded()))
-                    (Text("Vélo réservé jusqu’à ") + Text(formatDate(endsAt, .time)).font(Typo.clock(14).font) + Text(left > 0 ? " · Il reste " : " · Réservation expirée") + Text(left > 0 ? clock(left) : "").font(Typo.clock(14).font))
+                    (Text("Vélo réservé jusqu’à ") + Text(formatDate(endsAt, .time)) + Text(left > 0 ? " · Il reste " : " · Réservation expirée") + Text(left > 0 ? clock(left) : ""))
                         .typo(.body(14, medium: true)).foregroundStyle(Palette.ink)
                 }
             }

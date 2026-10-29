@@ -9,7 +9,6 @@ public enum StatsRules {
     public static let co2GramsPerKm = 200.0
     public static let maxPages = 50
     static let top = 5
-    static let durationBuckets: [(label: String, max: Double)] = [("0-5", 5), ("5-10", 10), ("10-20", 20), ("20-30", 30), ("30+", .infinity)]
 }
 
 public enum StatsPeriod: String, CaseIterable, Sendable, Hashable {
@@ -23,33 +22,18 @@ public struct StatsBucket: Equatable, Sendable {
     public var key: String
     public var minutes: Int
     public var trips: Int
-    /// The points balance at the end of the bucket; nil without the points history.
-    public var balance: Double?
-    public init(key: String, minutes: Int, trips: Int, balance: Double?) { self.key = key; self.minutes = minutes; self.trips = trips; self.balance = balance }
+    public init(key: String, minutes: Int, trips: Int) { self.key = key; self.minutes = minutes; self.trips = trips }
 }
 
 public struct StationCount: Equatable, Sendable {
-    public var number: Int?
     public var name: String
     public var count: Int
 }
 
-public struct PairCount: Equatable, Sendable {
-    public var from: String
-    public var to: String
-    public var count: Int
-}
-
-public struct DurationCount: Equatable, Sendable {
-    public var label: String
-    public var count: Int
-}
-
 public struct DistanceEstimate: Equatable, Sendable {
-    /// Sum over `known` trips; `unknown`: no station, or a station no longer in the open data.
+    /// Summed over the `known` trips, those whose two stations are known.
     public var metres: Double
     public var known: Int
-    public var unknown: Int
 }
 
 public struct BikeTypeCounts: Equatable, Sendable {
@@ -59,15 +43,11 @@ public struct BikeTypeCounts: Equatable, Sendable {
 }
 
 public struct StatsRecords: Equatable, Sendable {
-    public struct Longest: Equatable, Sendable { public var minutes: Int; public var startedAt: Date?; public var from: String?; public var to: String? }
-    public struct BusiestDay: Equatable, Sendable { public var day: String; public var trips: Int; public var minutes: Int }
-    public struct Streak: Equatable, Sendable { public var days: Int; public var from: String; public var to: String }
-    public struct FavouriteBike: Equatable, Sendable { public var number: Int; public var count: Int; public var type: BikeType }
-
-    public var longest: Longest?
-    public var busiestDay: BusiestDay?
-    public var streak: Streak?
-    public var bike: FavouriteBike?
+    public var longestMinutes: Int?
+    public var busiestDayTrips: Int?
+    public var streakDays: Int?
+    /// The most ridden bike's number.
+    public var bike: Int?
 }
 
 public struct PeriodStats: Equatable, Sendable {
@@ -80,16 +60,13 @@ public struct PeriodStats: Equatable, Sendable {
     public var spentCents: Double
     public var savedCents: Double
     public var pointsEarned: Double
-    public var withoutStations: Int
     public var unit: Unit
     public var buckets: [StatsBucket]
     /// Seven rows, Monday first, of 24 hours (Paris time).
     public var heatmap: [[Int]]
     public var bikeTypes: BikeTypeCounts
-    public var durations: [DurationCount]
-    public var starts: [StationCount]
-    public var ends: [StationCount]
-    public var pairs: [PairCount]
+    /// Departures and arrivals together.
+    public var stations: [StationCount]
     public var records: StatsRecords
 }
 
@@ -97,10 +74,8 @@ public struct Stats: Equatable, Sendable {
     public var days30: PeriodStats
     public var months12: PeriodStats
     public var all: PeriodStats
-    /// false: a page of history failed or the page cap was hit, so older trips may be missing.
-    public var complete: Bool
-    public var pointsAvailable: Bool
-    public var generatedAt: Date
+    /// Today's points balance, else the sum of the movements; nil when neither could be read.
+    public var balance: Double?
 
     public subscript(period: StatsPeriod) -> PeriodStats {
         switch period {
@@ -123,10 +98,9 @@ public struct StatsInput: Sendable {
     public var coords: [Int: GeoPoint]
     public var movements: [StatsMovement]?
     public var balance: Double?
-    public var complete: Bool
     public var now: Date
-    public init(trips: [Trip], coords: [Int: GeoPoint], movements: [StatsMovement]?, balance: Double?, complete: Bool, now: Date) {
-        self.trips = trips; self.coords = coords; self.movements = movements; self.balance = balance; self.complete = complete; self.now = now
+    public init(trips: [Trip], coords: [Int: GeoPoint], movements: [StatsMovement]?, balance: Double?, now: Date) {
+        self.trips = trips; self.coords = coords; self.movements = movements; self.balance = balance; self.now = now
     }
 }
 
@@ -213,44 +187,38 @@ private func range(_ first: String, _ last: String, _ next: (String) -> String) 
     return keys
 }
 
-/// Most counted first, ties by name, so the order is stable.
-private func top<T>(_ values: [T], count: (T) -> Int, label: (T) -> String, minimum: Int = 1) -> [T] {
-    Array(values.filter { count($0) >= minimum }.enumerated().sorted { (left: (offset: Int, element: T), right: (offset: Int, element: T)) -> Bool in
-        let (a, b) = (left.element, right.element)
-        if count(a) != count(b) { return count(a) > count(b) }
-        let order = label(a).compare(label(b), locale: french)
-        return order == .orderedSame ? left.offset < right.offset : order == .orderedAscending
-    }.map(\.element).prefix(StatsRules.top))
-}
-
 private func present(_ text: String?) -> Bool { !(text ?? "").isEmpty }
 
-private func stationTally(_ trips: [Trip], start: Bool) -> [StationCount] {
+/// Every departure and arrival, most used first, ties by name so the order is stable.
+private func favouriteStations(_ trips: [Trip]) -> [StationCount] {
     var order: [String] = []
     var tally: [String: StationCount] = [:]
     for trip in trips {
-        let number = start ? trip.startStationNumber : trip.endStationNumber
-        let name = start ? trip.startStation : trip.endStation
-        if number == nil && !present(name) { continue }
-        let key = number.map { "#\($0)" } ?? name!
-        if tally[key] == nil { order.append(key) }
-        var entry = tally[key] ?? StationCount(number: number, name: name ?? "Station \(number!)", count: 0)
-        entry.count += 1
-        tally[key] = entry
+        for (number, name) in [(trip.startStationNumber, trip.startStation), (trip.endStationNumber, trip.endStation)] {
+            if number == nil && !present(name) { continue }
+            let key = number.map { "#\($0)" } ?? name!
+            if tally[key] == nil { order.append(key) }
+            tally[key, default: StationCount(name: name ?? "Station \(number!)", count: 0)].count += 1
+        }
     }
-    return top(order.map { tally[$0]! }, count: { $0.count }, label: { $0.name })
+    return Array(order.enumerated().map { (offset: $0.offset, station: tally[$0.element]!) }.sorted { left, right in
+        if left.station.count != right.station.count { return left.station.count > right.station.count }
+        let order = left.station.name.compare(right.station.name, locale: french)
+        return order == .orderedSame ? left.offset < right.offset : order == .orderedAscending
+    }.map(\.station).prefix(StatsRules.top))
 }
 
-private func longestStreak(_ days: [String]) -> StatsRecords.Streak? {
-    var best: StatsRecords.Streak?
-    var current: StatsRecords.Streak?
+/// Longest run of consecutive days, nil without any day.
+private func longestStreak(_ days: [String]) -> Int? {
+    var best = 0
+    var current = 0
+    var previous: String?
     for day in Set(days).sorted() {
-        let next = current.flatMap { shiftDay($0.to, 1) == day ? StatsRecords.Streak(days: $0.days + 1, from: $0.from, to: day) : nil }
-            ?? StatsRecords.Streak(days: 1, from: day, to: day)
-        if best == nil || next.days > best!.days { best = next }
-        current = next
+        current = previous.map { shiftDay($0, 1) == day } == true ? current + 1 : 1
+        best = max(best, current)
+        previous = day
     }
-    return best
+    return best > 0 ? best : nil
 }
 
 private func minutes(_ trip: Trip) -> Int { Int((trip.duration ?? 0).rounded()) }
@@ -275,17 +243,10 @@ public func periodStats(_ period: StatsPeriod, _ input: StatsInput) -> PeriodSta
     let trips = inPeriod.map(\.trip)
 
     let keys = unit == .day ? range(start, today.day) { shiftDay($0, 1) } : range(start, today.month) { shiftMonth($0, 1) }
-    let dated = (input.movements ?? []).compactMap { movement in movement.date.map { (key: keyOf(parisTime($0)), amount: movement.amount) } }
-    // The balance at the end of a bucket: today's balance minus what came after, or the running sum when it is unknown.
-    let balanceAt = { (key: String) -> Double in
-        if let balance = input.balance { return balance - dated.filter { $0.key > key }.reduce(0) { $0 + $1.amount } }
-        return dated.filter { $0.key <= key }.reduce(0) { $0 + $1.amount }
-    }
-    var buckets = keys.map { StatsBucket(key: $0, minutes: 0, trips: 0, balance: input.movements != nil ? balanceAt($0) : nil) }
+    var buckets = keys.map { StatsBucket(key: $0, minutes: 0, trips: 0) }
     let bucketIndex = Dictionary(uniqueKeysWithValues: keys.enumerated().map { ($1, $0) })
     var heatmap = Array(repeating: Array(repeating: 0, count: 24), count: 7)
-    var dayOrder: [String] = []
-    var days: [String: StatsRecords.BusiestDay] = [:]
+    var days: [String: Int] = [:]
     for (trip, at) in inPeriod {
         guard let at else { continue }
         if let index = bucketIndex[keyOf(at)] {
@@ -293,80 +254,46 @@ public func periodStats(_ period: StatsPeriod, _ input: StatsInput) -> PeriodSta
             buckets[index].minutes += minutes(trip)
         }
         heatmap[at.weekday][at.hour] += 1
-        if days[at.day] == nil { dayOrder.append(at.day) }
-        var day = days[at.day] ?? StatsRecords.BusiestDay(day: at.day, trips: 0, minutes: 0)
-        day.trips += 1
-        day.minutes += minutes(trip)
-        days[at.day] = day
+        days[at.day, default: 0] += 1
     }
 
-    let distances = trips.map { estimateDistance($0, coords: input.coords) }
-    let metres = distances.reduce(0) { $0 + ($1 ?? 0) }
-    let durations = StatsRules.durationBuckets.enumerated().map { index, bucket in
-        let low = index > 0 ? StatsRules.durationBuckets[index - 1].max : 0
-        return DurationCount(label: bucket.label, count: trips.filter { $0.duration.map { $0 >= low && $0 < bucket.max } ?? false }.count)
-    }
-    var pairOrder: [String] = []
-    var pairs: [String: PairCount] = [:]
-    for trip in trips {
-        guard let from = trip.startStation, let to = trip.endStation, !from.isEmpty, !to.isEmpty else { continue }
-        let key = "\(trip.startStationNumber.map(String.init) ?? from)→\(trip.endStationNumber.map(String.init) ?? to)"
-        if pairs[key] == nil { pairOrder.append(key) }
-        pairs[key, default: PairCount(from: from, to: to, count: 0)].count += 1
-    }
+    let distances = trips.compactMap { estimateDistance($0, coords: input.coords) }
+    let metres = distances.reduce(0, +)
     var bikeOrder: [Int] = []
-    var bikes: [Int: (count: Int, type: BikeType, last: Date)] = [:]
+    var bikes: [Int: (count: Int, last: Date)] = [:]
     for trip in trips {
         guard let number = trip.bikeNumber else { continue }
         if bikes[number] == nil { bikeOrder.append(number) }
-        var bike = bikes[number] ?? (0, trip.bikeType, .distantPast)
+        var bike = bikes[number] ?? (0, .distantPast)
         bike.count += 1
-        let at = trip.startedAt ?? .distantPast
-        if at >= bike.last { bike.last = at; bike.type = trip.bikeType }
+        bike.last = max(bike.last, trip.startedAt ?? .distantPast)
         bikes[number] = bike
     }
+    // The most ridden, then the one ridden last; on a full tie the first met, like the web's stable sort.
     let bike = bikeOrder.max { (left: Int, right: Int) -> Bool in
         let a = bikes[left]!, b = bikes[right]!
         if a.count != b.count { return a.count < b.count }
         return a.last < b.last
     }
-    let timed = trips.filter { $0.duration != nil }.enumerated().sorted { (left: (offset: Int, element: Trip), right: (offset: Int, element: Trip)) -> Bool in
-        let (a, b) = (left.element, right.element)
-        if a.duration! != b.duration! { return a.duration! > b.duration! }
-        let aAt: Date = a.startedAt ?? .distantPast, bAt: Date = b.startedAt ?? .distantPast
-        if aAt != bAt { return aAt > bAt }
-        return left.offset < right.offset
-    }
-    let longest = timed.first?.element
-    let busiestDay = dayOrder.map { days[$0]! }.sorted { (a: StatsRecords.BusiestDay, b: StatsRecords.BusiestDay) -> Bool in
-        if a.trips != b.trips { return a.trips > b.trips }
-        if a.minutes != b.minutes { return a.minutes > b.minutes }
-        return a.day > b.day
-    }.first
+    let dated = (input.movements ?? []).compactMap { movement in movement.date.map { (key: keyOf(parisTime($0)), amount: movement.amount) } }
     let earned: Double = input.movements != nil
         ? dated.filter { $0.amount > 0 && (period == .all || $0.key >= start) }.reduce(0) { $0 + $1.amount }
         : trips.reduce(0) { $0 + $1.pointsEarned }
 
-    let known = distances.filter { $0 != nil }.count
-    let distance = DistanceEstimate(metres: metres.rounded(), known: known, unknown: distances.count - known)
-    let spent: Double = trips.reduce(0) { $0 + max(0, $1.price ?? 0) }
-    let saved: Double = trips.reduce(0) { $0 + max(0, $1.discount) }
-    let total: Int = trips.reduce(0) { $0 + minutes($1) }
-    let withoutStations = trips.filter { !present($0.startStation) && !present($0.endStation) }.count
     let count = { (type: BikeType) in trips.filter { $0.bikeType == type }.count }
-    let bikeTypes = BikeTypeCounts(mechanical: count(.mechanical), electrical: count(.electrical), unknown: count(.unknown))
-    let favouritePairs = top(pairOrder.map { pairs[$0]! }, count: { $0.count }, label: { "\($0.from) \($0.to)" }, minimum: 2)
-    let longestRecord = longest.map { StatsRecords.Longest(minutes: minutes($0), startedAt: $0.startedAt, from: $0.startStation, to: $0.endStation) }
-    let bikeRecord = bike.map { StatsRecords.FavouriteBike(number: $0, count: bikes[$0]!.count, type: bikes[$0]!.type) }
-    let records = StatsRecords(longest: longestRecord, busiestDay: busiestDay, streak: longestStreak(dayOrder), bike: bikeRecord)
+    let records = StatsRecords(longestMinutes: trips.compactMap { $0.duration }.max().map { Int($0.rounded()) },
+                               busiestDayTrips: days.values.max(), streakDays: longestStreak(Array(days.keys)), bike: bike)
     return PeriodStats(
-        trips: trips.count, minutes: total, distance: distance, co2Grams: (metres / 1000 * StatsRules.co2GramsPerKm).rounded(),
-        spentCents: spent, savedCents: saved, pointsEarned: earned, withoutStations: withoutStations,
-        unit: unit, buckets: buckets, heatmap: heatmap, bikeTypes: bikeTypes, durations: durations,
-        starts: stationTally(trips, start: true), ends: stationTally(trips, start: false), pairs: favouritePairs, records: records)
+        trips: trips.count, minutes: trips.reduce(0) { $0 + minutes($1) },
+        distance: DistanceEstimate(metres: metres.rounded(), known: distances.count),
+        co2Grams: (metres / 1000 * StatsRules.co2GramsPerKm).rounded(),
+        spentCents: trips.reduce(0) { $0 + max(0, $1.price ?? 0) }, savedCents: trips.reduce(0) { $0 + max(0, $1.discount) }, pointsEarned: earned,
+        unit: unit, buckets: buckets, heatmap: heatmap,
+        bikeTypes: BikeTypeCounts(mechanical: count(.mechanical), electrical: count(.electrical), unknown: count(.unknown)),
+        stations: favouriteStations(trips), records: records)
 }
 
 public func buildStats(_ input: StatsInput) -> Stats {
     Stats(days30: periodStats(.days30, input), months12: periodStats(.months12, input), all: periodStats(.all, input),
-          complete: input.complete, pointsAvailable: input.movements != nil, generatedAt: input.now)
+          balance: input.balance ?? input.movements?.reduce(0) { $0 + $1.amount })
 }

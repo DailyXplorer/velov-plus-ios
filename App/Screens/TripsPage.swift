@@ -23,7 +23,7 @@ struct TripsPage: View {
                             .init(value: .all, label: "Tous les vélos"), .init(value: .mechanical, label: "Vélos mécaniques"), .init(value: .electrical, label: "Vélos électriques")
                         ])
                         Spacer(minLength: 8)
-                        Text(verbatim: "\(trips.count) trajet\(trips.count > 1 ? "s" : "")").typo(.label(11)).foregroundStyle(Palette.inkMuted)
+                        Text(verbatim: "\(trips.count) trajet\(trips.count > 1 ? "s" : "")").typo(.label(13)).foregroundStyle(Palette.inkMuted)
                     }
                     .zIndex(2)
                     SelectField(label: "Trier par", value: $sort, options: [
@@ -106,7 +106,7 @@ struct TripRow: View {
                 }
                 HStack(spacing: 5) {
                     Text(formatDate(trip.startedAt)).typo(.body(11))
-                    Text(formatDate(trip.startedAt, .time)).typo(.clock(11))
+                    Text(formatDate(trip.startedAt, .time)).typo(.body(11))
                 }
                 .foregroundStyle(Palette.inkSoft)
                 .padding(.leading, 42)

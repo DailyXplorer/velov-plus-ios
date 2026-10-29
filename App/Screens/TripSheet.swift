@@ -29,7 +29,7 @@ struct TripSheet: View {
                     }
                     .padding(.top, 22)
                     facts.padding(.top, 22)
-                    if let points = pointsLine { Text(points).typo(.mono(12)).foregroundStyle(Palette.inkSoft).padding(.top, 10) }
+                    if let points = pointsLine { Text(points).typo(.label(13)).foregroundStyle(Palette.inkSoft).padding(.top, 10) }
                     if trip.litigious { litigious }
                     if let bike = trip.bikeNumber, canRate(trip) || model.ratedHere.contains(trip.id) {
                         RateBike(trip: trip, bikeNumber: bike) {
@@ -55,7 +55,7 @@ struct TripSheet: View {
         HStack(spacing: 0) {
             if let start = trip.startedAt {
                 Text(verbatim: "\(formatDate(start, .dayLongMonthYear)) · ").typo(.body(14))
-                Text(formatDate(start, .time) + (trip.endedAt.map { " → \(formatDate($0, .time))" } ?? "")).typo(.clock(14))
+                Text(formatDate(start, .time) + (trip.endedAt.map { " → \(formatDate($0, .time))" } ?? "")).typo(.body(14))
             } else {
                 Text("Date indisponible").typo(.body(14))
             }
@@ -65,10 +65,10 @@ struct TripSheet: View {
 
     private func stop(_ label: String, _ station: String?, _ stand: Int?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).typo(.label(11)).foregroundStyle(Palette.inkSoft)
+            Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(station ?? "Non renseignée").typo(.body(15)).foregroundStyle(Palette.ink)
-                if let stand { Text(verbatim: "Borne \(stand)").typo(.label(11)).foregroundStyle(Palette.inkSoft).fixedSize() }
+                if let stand { Text(verbatim: "Borne \(stand)").typo(.label(13)).foregroundStyle(Palette.inkSoft).fixedSize() }
             }
         }
     }
@@ -82,7 +82,7 @@ struct TripSheet: View {
                 VStack(alignment: .leading, spacing: 0) {
                     fact("Payé", trip.price.map(formatPrice) ?? "—")
                     if trip.discount > 0, let full = trip.fullPrice {
-                        Text(verbatim: "Prix \(formatPrice(full)) · Remise \(formatPrice(trip.discount))").typo(.mono(10)).foregroundStyle(Palette.inkSoft).padding(.top, 5)
+                        Text(verbatim: "Prix \(formatPrice(full)) · Remise \(formatPrice(trip.discount))").typo(.label(12)).foregroundStyle(Palette.inkSoft).padding(.top, 5)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -94,7 +94,7 @@ struct TripSheet: View {
 
     private func fact(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).typo(.label(11)).foregroundStyle(Palette.inkSoft)
+            Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft)
             Text(value).typo(.title(20)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -121,7 +121,7 @@ struct TripSheet: View {
                 components.queryItems = [URLQueryItem(name: "subject", value: subject)]
                 if let url = components.url { openURL(url) }
             } label: {
-                Text("Contacter le service client").typo(.label(12)).foregroundStyle(Palette.redDeep).multilineTextAlignment(.trailing)
+                Text("Contacter le service client").typo(.label(13)).foregroundStyle(Palette.redDeep).multilineTextAlignment(.trailing)
             }
             .buttonStyle(.plain)
         }
@@ -140,7 +140,7 @@ struct TripSheet: View {
                     if let number = trip.bikeNumber {
                         NavigationLink(value: BikeRoute(number: number, station: nil)) {
                             HStack(spacing: 6) { Text(verbatim: "Vélo n° \(number)"); Icon(.caretRight, .bold, size: 14) }
-                                .typo(.label(12)).foregroundStyle(Palette.redDeep).frame(minHeight: 36)
+                                .typo(.label(13)).foregroundStyle(Palette.redDeep).frame(minHeight: 36)
                         }
                         .buttonStyle(.plain)
                     }
@@ -151,7 +151,7 @@ struct TripSheet: View {
                     if let token = trip.token {
                         DetailRow(label: "Code du trajet") {
                             HStack(spacing: 2) {
-                                Text(token).typo(.mono(13))
+                                Text(token).typo(.label(13))
                                 IconButton(icon: copied ? .check : .copy, weight: copied ? .bold : .light, size: 16, frame: 32, label: copied ? "Code copié" : "Copier le code du trajet") {
                                     UIPasteboard.general.string = token
                                     UINotificationFeedbackGenerator().notificationOccurred(.success)

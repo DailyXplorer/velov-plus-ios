@@ -14,13 +14,16 @@ struct BookingActivityAttributes: ActivityAttributes {
 }
 
 // The views are shared so the app can draw them for the snapshots; the widget extension puts them in its regions.
-// Hugeicons from the shared catalogue and system fonts: the extension does not bundle the web fonts.
+// Hugeicons from the shared catalogue; the extension bundles the two web fonts (UIAppFonts), the app registers them at launch.
 
 enum ActivityStyle {
     static let red = Color(red: 0xdf / 255, green: 0x25 / 255, blue: 0x37 / 255)
     static let ink = Color(red: 0x1c / 255, green: 0x17 / 255, blue: 0x17 / 255)
 
-    static func mono(_ size: CGFloat) -> Font { .system(size: size, weight: .medium, design: .monospaced) }
+    /// Faculty Glyphic: the bike and the countdown.
+    static func title(_ size: CGFloat) -> Font { .custom("FacultyGlyphic-Regular", fixedSize: size) }
+    /// DM Sans 500 as written: everything else.
+    static func label(_ size: CGFloat) -> Font { .custom("DM Sans", fixedSize: size).weight(.medium) }
 }
 
 extension BookingActivityAttributes {
@@ -35,17 +38,17 @@ struct BookingCountdown: View {
 
     var body: some View {
         Text(timerInterval: Date.now...max(Date.now, endsAt), countsDown: true)
-            .font(ActivityStyle.mono(size)).monospacedDigit().foregroundStyle(color)
+            .font(ActivityStyle.title(size)).monospacedDigit().foregroundStyle(color)
     }
 }
 
-/// The white « RÉSERVÉ » pill with its red clock, like the in-app banner.
+/// The white « Réservé » pill with its red clock, like the in-app banner.
 struct ReservedPill: View {
     var body: some View {
         HStack(spacing: 6) {
             Icon(.clock, .bold, size: 11).foregroundStyle(.white)
                 .frame(width: 20, height: 20).background(Circle().fill(ActivityStyle.red))
-            Text("RÉSERVÉ").font(ActivityStyle.mono(11)).foregroundStyle(ActivityStyle.ink)
+            Text("Réservé").font(ActivityStyle.label(13)).foregroundStyle(ActivityStyle.ink)
         }
         .padding(.leading, 3).padding(.trailing, 10).padding(.vertical, 3)
         .background(Capsule().fill(.white))
@@ -62,12 +65,12 @@ struct BookingLockScreenView: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 ReservedPill()
-                Text(attributes.bikeLine).font(.system(size: 17, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
-                Text(attributes.stationName).font(.footnote).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
+                Text(attributes.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
+                Text(attributes.stationName).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
             }
             Spacer(minLength: 0)
             if stale {
-                Text("EXPIRÉE").font(ActivityStyle.mono(14)).foregroundStyle(.white)
+                Text("Expirée").font(ActivityStyle.label(15)).foregroundStyle(.white)
             } else {
                 BookingCountdown(endsAt: endsAt, size: 34, color: .white).multilineTextAlignment(.trailing).frame(width: 118, alignment: .trailing)
             }
@@ -81,8 +84,8 @@ struct BookingIslandLeading: View {
     let attributes: BookingActivityAttributes
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("RÉSERVÉ").font(ActivityStyle.mono(11)).foregroundStyle(ActivityStyle.red)
-            Text("Vélo \(attributes.bikeNumber.map(String.init) ?? "—")").font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
+            Text("Réservé").font(ActivityStyle.label(13)).foregroundStyle(ActivityStyle.red)
+            Text("Vélo \(attributes.bikeNumber.map(String.init) ?? "—")").font(ActivityStyle.title(19)).foregroundStyle(.white)
         }
         .padding(.leading, 6)
     }
@@ -102,7 +105,7 @@ struct BookingIslandBottom: View {
             Icon(.personSimpleBike, size: 16).foregroundStyle(ActivityStyle.red)
             Text("Borne \(attributes.standNumber.map(String.init) ?? "—") · \(attributes.stationName)").foregroundStyle(.white.opacity(0.85)).lineLimit(1)
         }
-        .font(.footnote)
+        .font(ActivityStyle.label(13))
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 6)
     }

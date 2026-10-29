@@ -27,9 +27,8 @@ CACHE = ROOT / "build"
 FONT_FILES = {
     "FacultyGlyphic-Regular.ttf": "ofl/facultyglyphic/FacultyGlyphic-Regular.ttf",
     "DMSans.ttf": "ofl/dmsans/DMSans[opsz,wght].ttf",
-    "AzeretMono.ttf": "ofl/azeretmono/AzeretMono[wght].ttf",
 }
-FONT_LICENSES = {"OFL-FacultyGlyphic.txt": "ofl/facultyglyphic/OFL.txt", "OFL-DMSans.txt": "ofl/dmsans/OFL.txt", "OFL-AzeretMono.txt": "ofl/azeretmono/OFL.txt"}
+FONT_LICENSES = {"OFL-FacultyGlyphic.txt": "ofl/facultyglyphic/OFL.txt", "OFL-DMSans.txt": "ofl/dmsans/OFL.txt"}
 
 HUGEICONS_VERSION = "4.4.0"
 HUGEICONS_INTEGRITY = "sha512-7Mz8bmGoY6tZ6l3C2TXwNMLVSr0I8HPwjjFIERAuJFj3rWwLxdF2ZLkDqdrVuEE1dx5b/VXyIsP4WoSU6Q40KQ=="

@@ -23,7 +23,7 @@ struct StationCard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Text(station.name).typo(.title(18)).foregroundStyle(Palette.ink).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                if !station.open { Text("Fermée").typo(.label(11)).foregroundStyle(Palette.inkSoft) }
+                if !station.open { Text("Fermée").typo(.label(13)).foregroundStyle(Palette.inkSoft) }
                 IconButton(icon: .star, weight: favorite ? .fill : .light, size: 19, frame: 36, color: favorite ? Palette.red : Palette.inkSoft,
                            label: favorite ? "Retirer des favoris" : "Ajouter aux favoris") { wasFavorite = favorite; favoriteOpen = true }
                     .accessibilityAddTraits(favorite ? .isSelected : [])
@@ -32,13 +32,13 @@ struct StationCard: View {
             .padding(.trailing, -8)
             HStack(spacing: 12) {
                 StationNumbers(station: station, compact: true)
-                if let distance { Text(formatDistance(distance)).typo(.label(11)).foregroundStyle(Palette.inkSoft).fixedSize() }
+                if let distance { Text(formatDistance(distance)).typo(.label(13)).foregroundStyle(Palette.inkSoft).fixedSize() }
             }
             .padding(.top, 2)
             HStack(spacing: 8) {
-                PillButton(variant: .secondary, height: Self.pill, fullWidth: true, action: { bikesOpen = true }) { Text("Voir les vélos").typo(.label(12)) }
+                PillButton(variant: .secondary, height: Self.pill, fullWidth: true, action: { bikesOpen = true }) { Text("Voir les vélos").typo(.label(13)) }
                 PillButton(variant: .primary, height: Self.pill, fullWidth: true, action: directions) {
-                    Text("Itinéraire").typo(.label(12))
+                    Text("Itinéraire").typo(.label(13))
                     CircleArrow(external: true, style: .onPrimary)
                 }
             }

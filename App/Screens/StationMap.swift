@@ -42,7 +42,7 @@ struct StationPin: View {
     var body: some View {
         let size: CGFloat = selected ? 38 : 28
         Text(verbatim: "\(total)")
-            .typo(.label(selected ? 13 : 10))
+            .typo(.label(selected ? 13 : 11))
             .foregroundStyle(total == 0 && !selected ? Palette.inkSoft : Palette.white)
             .frame(width: size, height: size)
             .background(Circle().fill(total == 0 && !selected ? Palette.white : Palette.red))
@@ -80,7 +80,7 @@ struct StationNumbers: View {
                 Icon(icon, .light, size: compact ? 16 : size).foregroundStyle(Palette.inkSoft)
                 Text(verbatim: "\(value)").typo(.body(compact ? 13 : 15, medium: !compact)).foregroundStyle(Palette.ink)
             }
-            if !compact { Text(label).typo(.label(10)).foregroundStyle(Palette.inkSoft) }
+            if !compact { Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)

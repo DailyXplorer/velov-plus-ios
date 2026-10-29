@@ -16,7 +16,7 @@ struct AccountPage: View {
             }
             PillButton(height: 48, fullWidth: true, action: onLogout) {
                 Icon(.signOut, .light, size: 19)
-                Text("Se déconnecter").typo(.label(13))
+                Text("Se déconnecter").typo(.label(14))
             }
             .padding(.top, 28)
         }
@@ -62,13 +62,13 @@ struct AccountPage: View {
             }
             if let receipts = data.receipts, !receipts.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Reçus").typo(.label(12)).foregroundStyle(Palette.inkSoft).padding(.bottom, 8)
+                    Text("Reçus").typo(.label(13)).foregroundStyle(Palette.inkSoft).padding(.bottom, 8)
                     ForEach(receipts) { ReceiptRow(receipt: $0) }
                 }
                 .padding(.top, 24)
             }
             Button { if let url = URL(string: "https://velov.grandlyon.com/") { openURL(url) } } label: {
-                HStack(spacing: 12) { Text("Gérer sur Vélo’v").typo(.label(13)); CircleArrow(external: true, style: .outline) }
+                HStack(spacing: 12) { Text("Gérer sur Vélo’v").typo(.label(14)); CircleArrow(external: true, style: .outline) }
                     .foregroundStyle(Palette.redDeep).frame(minHeight: 40)
             }
             .buttonStyle(.plain)

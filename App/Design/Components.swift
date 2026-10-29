@@ -16,7 +16,7 @@ extension View {
 
 enum ButtonVariant { case primary, secondary, ghost, onRed }
 
-/// `.button`: a 42 pt pill in Azeret Mono, primary red, secondary outline, ghost.
+/// `.button`: a 42 pt pill in DM Sans 500, primary red, secondary outline, ghost.
 struct PillButton<Label: View>: View {
     var variant: ButtonVariant = .primary
     var pending = false
@@ -112,7 +112,7 @@ struct Eyebrow: View {
     var body: some View {
         HStack(spacing: 10) {
             Icon(icon, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
-            Text(text).typo(.label(12)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.8)
+            Text(text).typo(.label(13)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.8)
         }
         .padding(.leading, 4).padding(.trailing, 14).padding(.vertical, 4)
         .background(Capsule().fill(Palette.mist))
@@ -128,7 +128,7 @@ struct CardTag: View {
         HStack(spacing: compact ? 6 : 10) {
             Icon(icon, .bold, size: compact ? 11 : 13).foregroundStyle(Palette.white)
                 .frame(width: compact ? 20 : 28, height: compact ? 20 : 28).background(Circle().fill(Palette.red))
-            Text(text).typo(.label(compact ? 10 : 12)).foregroundStyle(Palette.ink)
+            Text(text).typo(.label(compact ? 12 : 13)).foregroundStyle(Palette.ink)
         }
         .padding(.leading, compact ? 3 : 7).padding(.trailing, compact ? 10 : 16).padding(.vertical, compact ? 3 : 7)
         .background(Capsule().fill(Palette.white))
@@ -204,7 +204,7 @@ struct TextButton: View {
     let title: String
     let action: () -> Void
     var body: some View {
-        Button(action: action) { Text(title).typo(.label(13)).foregroundStyle(Palette.redDeep).frame(minHeight: 40) }.buttonStyle(.plain)
+        Button(action: action) { Text(title).typo(.label(14)).foregroundStyle(Palette.redDeep).frame(minHeight: 40) }.buttonStyle(.plain)
     }
 }
 
@@ -276,7 +276,7 @@ struct DetailRow<Value: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 16) {
-                Text(label).typo(.label(12)).foregroundStyle(Palette.inkSoft)
+                Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft)
                 Spacer(minLength: 0)
                 value().typo(.body(14)).foregroundStyle(Palette.ink).multilineTextAlignment(.trailing)
             }
@@ -322,11 +322,11 @@ struct VelovSwitch: View {
     }
 }
 
-/// `.bike-reserved`: a small red-outlined mono pill.
+/// `.bike-reserved`: a small red-outlined pill.
 struct OutlinePill: View {
     let text: String
     var body: some View {
-        Text(text).typo(.label(10)).foregroundStyle(Palette.redDeep)
+        Text(text).typo(.label(12)).foregroundStyle(Palette.redDeep)
             .padding(.horizontal, 8).padding(.vertical, 3)
             .overlay(Capsule().strokeBorder(Palette.red, lineWidth: 1))
     }
@@ -347,7 +347,7 @@ struct Disclosure<Content: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             Button { withAnimation(.easeOut(duration: 0.2)) { open.toggle() } } label: {
                 HStack(spacing: 8) {
-                    Text(title).typo(.label(12))
+                    Text(title).typo(.label(13))
                     Icon(.caretDown, .bold, size: 14).rotationEffect(.degrees(open ? 180 : 0))
                 }
                 .foregroundStyle(Palette.inkSoft).padding(.top, 18).padding(.bottom, 4)

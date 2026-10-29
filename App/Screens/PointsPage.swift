@@ -66,7 +66,7 @@ struct PointsPage: View {
             Eyebrow(icon: icon, text: label)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(value).typo(.title(40)).foregroundStyle(Palette.ink)
-                Text("points").typo(.label(11)).foregroundStyle(Palette.inkSoft)
+                Text("points").typo(.label(13)).foregroundStyle(Palette.inkSoft)
             }
             .lineLimit(1).minimumScaleFactor(0.5)
         }
@@ -87,7 +87,7 @@ struct AutoSpendSetting: View {
     var body: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Utilisation automatique").typo(.label(12)).foregroundStyle(Palette.inkSoft)
+                Text("Utilisation automatique").typo(.label(13)).foregroundStyle(Palette.inkSoft)
                 Text(value == nil ? Messages.missing : value! ? "Activée" : "Désactivée").typo(.title(20)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)

@@ -33,7 +33,7 @@ struct RateBike: View {
 
     private var card: some View {
         VStack(spacing: 0) {
-            Text("Noter ce vélo").typo(.label(12)).foregroundStyle(Palette.ink).frame(maxWidth: .infinity, alignment: .leading)
+            Text("Noter ce vélo").typo(.label(13)).foregroundStyle(Palette.ink).frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 2) {
                 ForEach(1...5, id: \.self) { value in
                     let on = stars.map { value <= $0 } ?? false
@@ -111,10 +111,10 @@ struct TripEndedSheet: View {
             SheetHeading(title: "Trajet terminé") { dismiss() }
             tripTimes(trip).padding(.top, 4)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Station d’arrivée").typo(.label(11)).foregroundStyle(Palette.inkSoft)
+                Text("Station d’arrivée").typo(.label(13)).foregroundStyle(Palette.inkSoft)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(trip.endStation ?? "Non renseignée").typo(.body(15)).foregroundStyle(Palette.ink)
-                    if let stand = trip.endStand { Text(verbatim: "Borne \(stand)").typo(.label(11)).foregroundStyle(Palette.inkSoft).fixedSize() }
+                    if let stand = trip.endStand { Text(verbatim: "Borne \(stand)").typo(.label(13)).foregroundStyle(Palette.inkSoft).fixedSize() }
                 }
             }
             .padding(.top, 20)
@@ -144,7 +144,7 @@ struct TripEndedSheet: View {
 
     private func fact(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).typo(.label(11)).foregroundStyle(Palette.inkSoft)
+            Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft)
             Text(value).typo(.title(20)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -156,7 +156,7 @@ func tripTimes(_ trip: Trip) -> some View {
     HStack(spacing: 0) {
         if let start = trip.startedAt {
             Text(verbatim: "\(formatDate(start, .dayLongMonthYear)) · ").typo(.body(14))
-            Text(formatDate(start, .time) + (trip.endedAt.map { " → \(formatDate($0, .time))" } ?? "")).typo(.clock(14))
+            Text(formatDate(start, .time) + (trip.endedAt.map { " → \(formatDate($0, .time))" } ?? "")).typo(.body(14))
         } else {
             Text("Date indisponible").typo(.body(14))
         }

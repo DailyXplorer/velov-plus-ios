@@ -39,7 +39,7 @@ If `make build` still reports missing profiles, open `VelovCompagnon.xcodeproj` 
 
 ### Live Activity and the free personal team
 
-- Started on a successful booking and when `GET bookings` returns a running one (launch, foreground, refresh); ended after a successful unlock, at expiry while the app runs, and otherwise at the next `sync` (the activity carries `staleDate` = end of booking and shows « EXPIRÉE » once stale). Lock Screen, compact, minimal and expanded presentations; `Text(timerInterval:)` in monospaced digits.
+- Started on a successful booking and when `GET bookings` returns a running one (launch, foreground, refresh); ended after a successful unlock, at expiry while the app runs, and otherwise at the next `sync` (the activity carries `staleDate` = end of booking and shows « Expirée » once stale). Lock Screen, compact, minimal and expanded presentations; `Text(timerInterval:)` in Faculty Glyphic with tabular digits.
 - ActivityKit needs no entitlement for local updates; only push updates need the push capability, which a personal team lacks and which the app never asks for. The widget extension is the second app ID of the build. Nothing here could be checked on the iPhone over ssh: if ActivityKit refuses (Live Activities off in Réglages, or not allowed for this signing), the refusal is logged (`live-activity` category) and the in-app banner keeps working.
 
 ### Not verified over ssh
@@ -56,3 +56,11 @@ If `make build` still reports missing profiles, open `VelovCompagnon.xcodeproj` 
 - Statistiques: a button at the top of Trajets pushes the page (not a tab). `Stats.swift` ports `lib/stats.ts`; `stats(identity)` reads the trip history page after page (50 pages at most), the points history, the balance and the stations, kept 10 min per account. Swift Charts in red and mist only, no shadow; heatmap by square size and a mist donut part ringed in ink-line, so nothing turns pink.
 - Tests (`make test`): 143 tests, 1 live test skipped, 0 failures (dock watch with a fake clock, stars, uncertain outcomes, names, profile draft, stats aggregation and paging). No request was sent to Cyclocity.
 - Snapshots: `13-unlock-uncertain` replaces the unlock success; new `16a`–`16e` (Statistiques), `17-trip-ended`, `18-trip-ended-stars`; `15-account-edit` shows Prénom and Nom.
+
+## Web sync 4 (done)
+
+- Fonts: Azeret Mono removed (file, licence, `fetch-assets.py`). `Typo.label` is DM Sans 500 as written (no uppercase), `Typo.countdown` is Faculty Glyphic with tabular digits for the booking banner; `.mono` and `.clock` are gone. The widget extension now bundles Faculty Glyphic and DM Sans (`UIAppFonts`): the Live Activity reads « Réservé », « Expirée », the bike in Faculty Glyphic and the countdown in Faculty Glyphic tabular digits. Faculty Glyphic's tabular 1 is wide (« 1 2:32 »), as on the web.
+- Statistiques follows web commit d958d8b: `Stats.swift` ports the new `lib/stats.ts` (stations together, records as four numbers, `balance` instead of `complete`/`pointsAvailable`, no durations, pairs or balance series).
+- Pages pushed inside the Trajets stack (Statistiques) did not get the tab bar's bottom inset: the shell now publishes `tabBarBand` and the page keeps its end above the bar.
+- Tests (`make test`): 143 tests, 1 live test skipped, 0 failures. No request was sent to Cyclocity.
+- Not verified over ssh: the Live Activity fonts inside the real extension on a device (the snapshots draw the shared views in the app).

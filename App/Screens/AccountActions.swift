@@ -119,7 +119,7 @@ struct AutoRenewalSetting: View {
     var body: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Renouvellement automatique").typo(.label(12)).foregroundStyle(Palette.inkSoft)
+                Text("Renouvellement automatique").typo(.label(13)).foregroundStyle(Palette.inkSoft)
                 Text(actual == nil ? "Indisponible pour le moment" : actual! ? "Activé" : "Désactivé").typo(.body(15, medium: true)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
@@ -307,7 +307,7 @@ struct ContactSupport: View {
                             layout: .stacked).zIndex(2)
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("Message").typo(.label(12)).foregroundStyle(Palette.inkSoft)
+                Text("Message").typo(.label(13)).foregroundStyle(Palette.inkSoft)
                 // `.field textarea`: the ring on the card radius; TextEditor's own inset brings the text to 18 × 12.
                 TextEditor(text: $message).typo(.body(16)).frame(minHeight: 110).scrollContentBackground(.hidden)
                     .padding(.horizontal, 13).padding(.vertical, 4)

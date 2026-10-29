@@ -12,8 +12,8 @@ final class StatsTests: XCTestCase {
              startStationNumber: from, endStationNumber: to, bikeNumber: bike, bikeType: type, duration: minutes, price: price, pointsEarned: earned)
     }
 
-    func input(_ trips: [Trip], movements: [StatsMovement]? = nil, balance: Double? = nil, complete: Bool = true) -> StatsInput {
-        StatsInput(trips: trips, coords: coords, movements: movements, balance: balance, complete: complete, now: now)
+    func input(_ trips: [Trip], movements: [StatsMovement]? = nil, balance: Double? = nil) -> StatsInput {
+        StatsInput(trips: trips, coords: coords, movements: movements, balance: balance, now: now)
     }
 
     func testParisTimeFollowsLyonsCalendarAcrossMidnightAndSummerTime() {
@@ -34,7 +34,7 @@ final class StatsTests: XCTestCase {
         XCTAssertNil(estimateDistance(trip("d", "2026-10-28T10:00:00Z", from: nil, to: 2), coords: coords))
 
         let stats = periodStats(.all, input([trip("a", "2026-10-28T10:00:00Z"), trip("b", "2026-10-27T10:00:00Z", from: 1, to: 1), trip("c", "2026-10-26T10:00:00Z", from: 1, to: 9)]))
-        XCTAssertEqual(stats.distance, DistanceEstimate(metres: (straight * 1.3).rounded(), known: 2, unknown: 1))
+        XCTAssertEqual(stats.distance, DistanceEstimate(metres: (straight * 1.3).rounded(), known: 2))
         XCTAssertEqual(stats.co2Grams, (straight * 1.3 / 1000 * 200).rounded())
     }
 
@@ -54,21 +54,20 @@ final class StatsTests: XCTestCase {
         XCTAssertEqual(stats.days30.buckets.count, 30)
         XCTAssertEqual(stats.days30.buckets.first?.key, "2026-09-30")
         XCTAssertEqual(stats.days30.buckets.first?.minutes, 30)
-        XCTAssertEqual(stats.days30.buckets.last, StatsBucket(key: "2026-10-29", minutes: 12, trips: 1, balance: nil))
+        XCTAssertEqual(stats.days30.buckets.last, StatsBucket(key: "2026-10-29", minutes: 12, trips: 1))
         XCTAssertEqual(stats.months12.trips, 4)
         XCTAssertEqual(stats.months12.buckets.map(\.key).first, "2025-11")
         XCTAssertEqual(stats.months12.buckets.count, 12)
         XCTAssertEqual(stats.all.trips, 5)
         XCTAssertEqual(stats.all.buckets.first?.key, "2024-05")
         XCTAssertEqual(stats.all.buckets.count, 30)
-        XCTAssertTrue(stats.complete)
-        XCTAssertFalse(stats.pointsAvailable)
+        XCTAssertNil(stats.balance)
         // Thursday, 9 h in Lyon.
         XCTAssertEqual(stats.days30.heatmap[3][9], 1)
         XCTAssertEqual(stats.days30.heatmap.flatMap { $0 }.reduce(0, +), 2)
     }
 
-    func testDurationsMoneyTypesAndStationLessTrips() {
+    func testMoneyAndBikeTypes() {
         let trips = [
             trip("a", "2026-10-28T10:00:00Z", minutes: 4, type: .electrical, price: 150),
             trip("b", "2026-10-27T10:00:00Z", minutes: 5, price: -20),
@@ -78,27 +77,24 @@ final class StatsTests: XCTestCase {
         var discounted = trips
         discounted[0].discount = 40
         let stats = periodStats(.days30, input(discounted))
-        XCTAssertEqual(stats.durations, [DurationCount(label: "0-5", count: 1), DurationCount(label: "5-10", count: 1), DurationCount(label: "10-20", count: 0),
-                                         DurationCount(label: "20-30", count: 0), DurationCount(label: "30+", count: 1)])
         XCTAssertEqual(stats.spentCents, 150)
         XCTAssertEqual(stats.savedCents, 40)
         XCTAssertEqual(stats.bikeTypes, BikeTypeCounts(mechanical: 2, electrical: 1, unknown: 1))
-        XCTAssertEqual(stats.withoutStations, 1)
         XCTAssertEqual(stats.minutes, 39)
     }
 
-    func testRankingsKeepTheTopFiveMostCountedThenByNameAndPairsNeedTwoTrips() {
+    func testTheStationsCountDeparturesAndArrivalsTogetherTopFiveThenByName() {
         var trips: [Trip] = []
         let counts = [10: 1, 11: 3, 12: 2, 13: 2, 14: 1, 15: 1]
         for (station, count) in counts.sorted(by: { $0.key < $1.key }) {
             for index in 0..<count { trips.append(trip("s\(station)-\(index)", "2026-10-28T10:00:00Z", from: station, to: 2)) }
         }
+        trips.append(trip("loop", "2026-10-28T11:00:00Z", from: 14, to: 14))
+        trips.append(trip("nameless", "2026-10-28T12:00:00Z", from: nil, to: nil))
         let stats = periodStats(.days30, input(trips))
-        XCTAssertEqual(stats.starts.map(\.name), ["Station 11", "Station 12", "Station 13", "Station 10", "Station 14"])
-        XCTAssertEqual(stats.starts.map(\.count), [3, 2, 2, 1, 1])
-        XCTAssertEqual(stats.ends, [StationCount(number: 2, name: "Station 2", count: 10)])
-        XCTAssertEqual(stats.pairs, [PairCount(from: "Station 11", to: "Station 2", count: 3), PairCount(from: "Station 12", to: "Station 2", count: 2),
-                                     PairCount(from: "Station 13", to: "Station 2", count: 2)])
+        XCTAssertEqual(stats.stations, [StationCount(name: "Station 2", count: 10), StationCount(name: "Station 11", count: 3),
+                                        StationCount(name: "Station 14", count: 3), StationCount(name: "Station 12", count: 2),
+                                        StationCount(name: "Station 13", count: 2)])
     }
 
     func testRecordsLongestTripBusiestDayStreakAndFavouriteBike() {
@@ -109,28 +105,21 @@ final class StatsTests: XCTestCase {
             trip("d", "2026-10-22T17:00:00Z", minutes: 12, bike: 8),
             trip("e", "2026-10-25T08:00:00Z", minutes: 45, bike: 9)
         ]
-        let records = periodStats(.days30, input(trips)).records
-        XCTAssertEqual(records.longest, .init(minutes: 45, startedAt: date("2026-10-25T08:00:00Z"), from: "Station 1", to: "Station 2"))
-        XCTAssertEqual(records.busiestDay, .init(day: "2026-10-22", trips: 2, minutes: 22))
-        XCTAssertEqual(records.streak, .init(days: 3, from: "2026-10-20", to: "2026-10-22"))
-        // Bikes 7 and 8 both twice: the one ridden last wins, with the type of its latest trip.
-        XCTAssertEqual(records.bike, .init(number: 8, count: 2, type: .mechanical))
-        XCTAssertNil(periodStats(.days30, input([])).records.longest)
-        XCTAssertNil(periodStats(.days30, input([])).records.streak)
+        // Bikes 7 and 8 both twice: the one ridden last wins.
+        XCTAssertEqual(periodStats(.days30, input(trips)).records, StatsRecords(longestMinutes: 45, busiestDayTrips: 2, streakDays: 3, bike: 8))
+        XCTAssertEqual(periodStats(.days30, input([])).records, StatsRecords(longestMinutes: nil, busiestDayTrips: nil, streakDays: nil, bike: nil))
     }
 
-    func testTheBalanceSeriesCountsBackFromTodaysBalanceOrRunsTheSumWithoutIt() {
+    func testPointsEarnedComeFromTheMovementsAndTheBalanceFallsBackToTheirSum() {
         let movements = [StatsMovement(date: date("2026-10-28T10:00:00Z"), amount: 5), StatsMovement(date: date("2026-09-10T10:00:00Z"), amount: -10),
                          StatsMovement(date: date("2025-01-10T10:00:00Z"), amount: 50), StatsMovement(date: nil, amount: 1000)]
-        let known = periodStats(.months12, input([], movements: movements, balance: 100))
-        XCTAssertEqual(known.buckets.suffix(3).map(\.balance), [105, 95, 100])
-        XCTAssertEqual(known.pointsEarned, 5)
-        let running = periodStats(.months12, input([], movements: movements))
-        XCTAssertEqual(running.buckets.suffix(3).map(\.balance), [50, 40, 45])
+        XCTAssertEqual(periodStats(.months12, input([], movements: movements)).pointsEarned, 5)
         XCTAssertEqual(periodStats(.all, input([], movements: movements)).pointsEarned, 55)
         // Without the points history: what the trips say they earned.
         XCTAssertEqual(periodStats(.days30, input([trip("a", "2026-10-28T10:00:00Z", earned: 10)])).pointsEarned, 10)
-        XCTAssertTrue(buildStats(input([], movements: movements)).pointsAvailable)
+        XCTAssertEqual(buildStats(input([], movements: movements, balance: 100)).balance, 100)
+        XCTAssertEqual(buildStats(input([], movements: movements)).balance, 1045)
+        XCTAssertNil(buildStats(input([])).balance)
     }
 
     struct Boom: Error {}
@@ -191,11 +180,8 @@ final class StatsTests: XCTestCase {
         XCTAssertEqual(stats.all.trips, 3)
         XCTAssertEqual(stats.days30.trips, 2)
         XCTAssertGreaterThan(stats.all.distance.metres, 0)
-        XCTAssertEqual(stats.all.starts.first?.name, "Bellecour / Saint-Exupéry")
-        XCTAssertEqual(stats.days30.buckets.last?.balance, 42)
-        XCTAssertTrue(stats.pointsAvailable)
-        // The points history failed on its second page: older movements may be missing.
-        XCTAssertFalse(stats.complete)
+        XCTAssertTrue(stats.all.stations.map(\.name).contains("Bellecour / Saint-Exupéry"))
+        XCTAssertEqual(stats.balance, 42)
 
         let paths = server.calls.map(\.url).filter { $0.contains("/trips?") || $0.contains("/rewards") }.map { $0.components(separatedBy: accountId).last! }
         XCTAssertEqual(paths, [

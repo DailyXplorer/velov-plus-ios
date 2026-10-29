@@ -31,7 +31,7 @@ struct InviteFriend: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Inviter un ami").typo(.label(12)).foregroundStyle(Palette.inkSoft)
+                    Text("Inviter un ami").typo(.label(13)).foregroundStyle(Palette.inkSoft)
                     Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(13)).foregroundStyle(Palette.inkSoft)
                     if cost == nil {
                         SoonNote(text: "L’offre est momentanément indisponible.")
@@ -56,10 +56,10 @@ struct InviteFriend: View {
     private var codeList: some View {
         if !codes.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Code à transmettre à votre ami").typo(.label(11)).foregroundStyle(Palette.inkSoft)
+                Text("Code à transmettre à votre ami").typo(.label(13)).foregroundStyle(Palette.inkSoft)
                 ForEach(codes, id: \.code) { entry in
                     HStack(spacing: 12) {
-                        Text(entry.code).typo(.mono(15)).foregroundStyle(Palette.ink).textSelection(.enabled)
+                        Text(entry.code).typo(.label(15)).foregroundStyle(Palette.ink).textSelection(.enabled)
                         Spacer(minLength: 0)
                         PillButton(variant: .secondary, action: { copy(entry.code) }) { Icon(.copy, .light, size: 16); Text(copied == entry.code ? "Copié" : "Copier") }
                     }

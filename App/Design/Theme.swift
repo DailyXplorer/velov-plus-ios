@@ -28,7 +28,7 @@ extension Color {
     }
 }
 
-/// The three bundled families: Faculty Glyphic (titles, big numbers), DM Sans (body), Azeret Mono 500 (labels, buttons, clocks).
+/// The two bundled families: Faculty Glyphic (titles, big numbers), DM Sans (everything else).
 enum FontBook {
     private static var names: [String: String] = [:]
 
@@ -75,27 +75,23 @@ enum Typo {
     case title(CGFloat)
     /// DM Sans, -0.02em.
     case body(CGFloat, medium: Bool = false)
-    /// Azeret Mono 500, uppercase, -0.01em.
+    /// DM Sans 500 as written, -0.02em: buttons, tags, labels, chart axes.
     case label(CGFloat)
-    /// Azeret Mono 500 as typed (`.trip-points`, `.trip-token`, raw status lines), -0.01em.
-    case mono(CGFloat)
-    /// Azeret Mono 500, tabular digits, no tracking: every clock and countdown.
-    case clock(CGFloat)
+    /// Faculty Glyphic, tabular digits, -0.02em: the booking countdown, so it does not jump.
+    case countdown(CGFloat)
 
     var font: Font {
         switch self {
-        case .title(let size): FontBook.font("FacultyGlyphic-Regular", size: size)
+        case .title(let size), .countdown(let size): FontBook.font("FacultyGlyphic-Regular", size: size)
         case .body(let size, let medium): FontBook.font("DMSans", size: size, weight: medium ? 500 : 400, optical: true)
-        case .label(let size), .mono(let size), .clock(let size): FontBook.font("AzeretMono", size: size, weight: 500)
+        case .label(let size): FontBook.font("DMSans", size: size, weight: 500, optical: true)
         }
     }
 
     var tracking: CGFloat {
         switch self {
         case .title(let size): -0.03 * size
-        case .body(let size, _): -0.02 * size
-        case .label(let size), .mono(let size): -0.01 * size
-        case .clock: 0
+        case .body(let size, _), .label(let size), .countdown(let size): -0.02 * size
         }
     }
 }
@@ -110,8 +106,7 @@ private struct TypoModifier: ViewModifier {
     let typo: Typo
     func body(content: Content) -> some View {
         switch typo {
-        case .label: content.font(typo.font).tracking(typo.tracking).textCase(.uppercase)
-        case .clock: content.font(typo.font).monospacedDigit()
+        case .countdown: content.font(typo.font).tracking(typo.tracking).monospacedDigit()
         default: content.font(typo.font).tracking(typo.tracking)
         }
     }

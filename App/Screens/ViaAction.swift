@@ -73,7 +73,7 @@ private struct ViaSheet: View {
             Text("Choisissez la station pleine où vous vouliez rendre votre vélo.")
                 .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 6) {
-                Text("Rechercher une station pleine").typo(.label(11)).foregroundStyle(Palette.inkSoft)
+                Text("Rechercher une station pleine").typo(.label(13)).foregroundStyle(Palette.inkSoft)
                 TextField("", text: $query, prompt: Text("Nom, adresse ou numéro").foregroundStyle(Palette.inkSoft))
                     .typo(.body(16)).foregroundStyle(Palette.ink).autocorrectionDisabled()
                     .fieldPill()

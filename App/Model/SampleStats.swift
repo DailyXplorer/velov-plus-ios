@@ -52,7 +52,7 @@ extension SampleData {
 
     static func stats() -> Stats {
         buildStats(StatsInput(trips: statsTrips, coords: byNumber.mapValues(\.point), movements: statsMovements,
-                              balance: dashboard.rewards.balance, complete: true, now: now))
+                              balance: dashboard.rewards.balance, now: now))
     }
 }
 

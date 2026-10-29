@@ -16,7 +16,7 @@ struct RawStatus: View {
     init(outcome: Outcome, withState: Bool = false) { line = rawLine(outcome, withState: withState) }
     init(line: String) { self.line = line }
     var body: some View {
-        Text(line).typo(.mono(11)).foregroundStyle(Palette.inkSoft)
+        Text(line).typo(.label(12)).foregroundStyle(Palette.inkSoft)
             .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
     }
 }
@@ -167,7 +167,7 @@ struct FormField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).typo(.label(11)).foregroundStyle(Palette.inkSoft)
+            Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft)
             TextField("", text: $text)
                 .typo(.body(16)).foregroundStyle(Palette.ink)
                 .keyboardType(keyboard).textContentType(content).autocorrectionDisabled()

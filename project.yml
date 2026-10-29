@@ -53,10 +53,13 @@ targets:
     sources:
       - Widgets
       - Shared
+      - path: App/Resources/Fonts
+        buildPhase: resources
     info:
       path: Widgets/Info.plist
       properties:
         CFBundleDisplayName: "Vélo’v+"
+        UIAppFonts: [FacultyGlyphic-Regular.ttf, DMSans.ttf]
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:

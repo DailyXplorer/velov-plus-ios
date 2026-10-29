@@ -2,7 +2,7 @@ import Charts
 import SwiftUI
 import VelovCore
 
-// stats.tsx: the Statistiques page, pushed from the Trajets tab. Red headline cards, then white panels on the ink-line ring;
+// stats.tsx: the Statistiques page, pushed from the Trajets tab. Six red headline cards, then white panels on the ink-line ring;
 // the charts draw in red on mist only, a tap shows a datum's tip.
 
 enum TripsRoute: Hashable { case stats }
@@ -84,9 +84,9 @@ private func format(_ date: Date, _ template: String) -> String {
     return formatter.string(from: date)
 }
 
-/// "29/10" or "Oct" under the bars.
+/// "29/10" under a day; a month's initial only (J F M A…), like Apple Santé: the full month is in the tip.
 private func axisLabel(_ unit: PeriodStats.Unit, _ key: String) -> String {
-    unit == .day ? format(keyDate(key), "dM") : capitalize(format(keyDate(key), "MMM")).replacingOccurrences(of: ".", with: "")
+    unit == .day ? format(keyDate(key), "dM") : format(keyDate(key), "MMMMM").uppercased(with: french)
 }
 
 /// "jeudi 29 octobre" or "octobre 2026".
@@ -103,6 +103,14 @@ private func niceMax(_ value: Double) -> Double {
     return [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map { $0 * step }.first { $0 >= value } ?? value
 }
 
+/// `.chart-axis`: DM Sans 11 in ink-soft.
+private func axisText(_ text: String) -> some View {
+    Text(text).typo(.body(11)).foregroundStyle(Palette.inkSoft).fixedSize()
+}
+
+/// `--stat-gap` at the phone size: one gap between the cards, the panels and everything else.
+private let gap: CGFloat = 10
+
 // MARK: The page
 
 /// Read once per account: a period change or a return to the page reads nothing (the core keeps it 10 minutes too).
@@ -113,7 +121,9 @@ struct StatsPage: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.tabBarBand) private var tabBarBand
     @State private var state: Resource<Stats> = .loading
+    @State private var position = ScrollPosition()
 
     private var account: String { model.dashboard?.profile.email ?? "" }
 
@@ -141,31 +151,30 @@ struct StatsPage: View {
                         }
                     }
                     .padding(.horizontal, 22).padding(.bottom, 40)
-                    Color.clear.frame(height: 0).id("stats-end")
                 }
             }
+            .scrollPosition($position)
+            .contentMargins(.bottom, tabBarBand, for: .scrollContent)
             .scrollIndicators(.hidden)
             .background(Palette.white)
             .toolbar(.hidden, for: .navigationBar)
             .task {
                 if let cachedStats, cachedStats.account == account { state = .ready(cachedStats.stats) } else { await load() }
-                // The snapshot run reviews the whole page in four screens.
-                let anchors: [SnapshotScreen: (String, UnitPoint)] = [.statsCharts: ("panel-charts", .top), .statsHeatmap: ("panel-heatmap", .top),
-                                                                       .statsRecords: ("panel-points", .top), .statsEnd: ("stats-end", .bottom)]
-                if let snapshot = model.snapshot, let target = anchors[snapshot] {
-                    try? await Task.sleep(nanoseconds: 1_500_000_000)
-                    proxy.scrollTo(target.0, anchor: target.1)
-                }
+                // The snapshot run reviews the whole page in four screens; the last one at the true end, above the tab bar.
+                let anchors: [SnapshotScreen: String] = [.statsCharts: "panel-charts", .statsHeatmap: "panel-heatmap", .statsRecords: "panel-records"]
+                guard let snapshot = model.snapshot, snapshot != .stats, snapshot.showsStats else { return }
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                if let anchor = anchors[snapshot] { proxy.scrollTo(anchor, anchor: .top) } else { position.scrollTo(edge: .bottom) }
             }
         }
     }
 
     private var skeleton: some View {
-        VStack(spacing: 10) {
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                ForEach(0..<6, id: \.self) { _ in Skeleton(height: 140) }
+        VStack(spacing: gap) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: gap), GridItem(.flexible(), spacing: gap)], spacing: gap) {
+                ForEach(0..<6, id: \.self) { _ in Skeleton(height: 132) }
             }
-            Skeleton(height: 310).padding(.top, 30)
+            Skeleton(height: 310)
         }
         .accessibilityLabel("Chargement des statistiques")
     }
@@ -187,51 +196,28 @@ struct StatsView: View {
     @State private var period = StatsPeriod.months12
 
     private static let periods: [SelectOption<StatsPeriod>] = [
-        .init(value: .days30, label: "30 derniers jours", short: "30 jours"),
-        .init(value: .months12, label: "12 derniers mois", short: "12 mois"),
-        .init(value: .all, label: "Depuis le début", short: "Tout")
+        .init(value: .days30, label: "30 derniers jours"),
+        .init(value: .months12, label: "12 derniers mois"),
+        .init(value: .all, label: "Depuis le début")
     ]
 
     var body: some View {
         let data = stats[period]
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                SelectField(label: "Période", hideLabel: true, value: $period, options: Self.periods)
-                Spacer(minLength: 8)
-                Text(plural(data.trips, "trajet")).typo(.label(11)).foregroundStyle(Palette.inkMuted)
-            }
-            .zIndex(2)
-            .padding(.bottom, 24)
-            if data.withoutStations > 0 { notice("\(plural(data.withoutStations, "trajet")) sans stations : Vélo’v a effacé ces données.") }
-            if !stats.complete { notice("Une partie de l’historique n’a pas pu être lue : les chiffres peuvent être incomplets.") }
-            Headline(data: data)
+        VStack(alignment: .leading, spacing: gap) {
+            SelectField(label: "Période", hideLabel: true, value: $period, options: Self.periods)
+                .zIndex(2)
+                .padding(.bottom, 6)
+            Headline(data: data, balance: stats.balance)
             if data.trips == 0 {
-                EmptyState(stats.all.trips > 0 ? "Aucun trajet sur cette période." : "Aucun trajet pour l’instant. Vos statistiques apparaîtront après votre premier trajet.")
+                EmptyState(stats.all.trips > 0 ? "Aucun trajet sur cette période." : "Vos statistiques apparaîtront après votre premier trajet.")
             } else {
-                VStack(spacing: 12) {
-                    Panel(title: data.unit == .day ? "Minutes par jour" : "Minutes par mois") { MinutesChart(data: data) }.id("panel-charts")
-                    Panel(title: "Type de vélo") { BikeTypes(data: data) }
-                    Panel(title: "Quand vous roulez", note: "Départs par jour et par heure") { Heatmap(data: data) }.id("panel-heatmap")
-                    Panel(title: "Durée des trajets", note: "En minutes") { Durations(data: data) }
-                    Panel(title: "Évolution des points", note: stats.pointsAvailable ? "Solde en fin de période" : nil) {
-                        if stats.pointsAvailable { PointsChart(data: data) } else { EmptyState("L’historique des points est momentanément indisponible.") }
-                    }
-                    .id("panel-points")
-                    Panel(title: "Records") { Records(data: data) }
-                    Panel(title: "Stations de départ") { Ranking(items: data.starts.map { (label: $0.name, count: $0.count) }) }
-                    Panel(title: "Stations d’arrivée") { Ranking(items: data.ends.map { (label: $0.name, count: $0.count) }) }
-                    Panel(title: "Trajets favoris") {
-                        Ranking(items: data.pairs.map { (label: $0.from == $0.to ? "\($0.from) (boucle)" : "\($0.from) → \($0.to)", count: $0.count) },
-                                empty: "Aucun trajet refait deux fois.")
-                    }
-                }
-                .padding(.top, 24)
+                Panel(title: data.unit == .day ? "Temps à vélo par jour" : "Temps à vélo par mois") { MinutesChart(data: data) }.id("panel-charts")
+                Panel(title: "Horaires de départ") { Heatmap(data: data) }.id("panel-heatmap")
+                Panel(title: "Répartition par type de vélo") { BikeTypes(data: data) }
+                Panel(title: "Records") { Records(records: data.records) }.id("panel-records")
+                if !data.stations.isEmpty { Panel(title: "Stations les plus utilisées") { Ranking(items: data.stations) } }
             }
         }
-    }
-
-    private func notice(_ text: String) -> some View {
-        Text(text).typo(.body(13)).foregroundStyle(Palette.notice).fixedSize(horizontal: false, vertical: true).padding(.bottom, 20)
     }
 }
 
@@ -239,25 +225,20 @@ struct StatsView: View {
 
 private struct Headline: View {
     let data: PeriodStats
+    let balance: Double?
 
     var body: some View {
-        let distance = data.distance
         let kg = data.co2Grams / 1000
         let average = data.trips > 0 ? Int((Double(data.minutes) / Double(data.trips)).rounded()) : 0
-        VStack(alignment: .leading, spacing: 12) {
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                StatCard(icon: .personSimpleBike, label: "Trajets", value: number(data.trips), detail: data.trips > 0 ? "\(hours(average)) en moyenne" : "Aucun trajet")
-                StatCard(icon: .clock, label: "Minutes à vélo", value: number(data.minutes), detail: data.minutes >= 60 ? "Soit \(hours(data.minutes))" : "Moins d’une heure")
-                StatCard(icon: .route, label: "Km estimés", value: kilometres(distance.metres),
-                         detail: distance.unknown > 0 ? "Sur \(number(distance.known)) trajets sur \(number(data.trips))" : "Entre stations, détours inclus")
-                StatCard(icon: .leaf, label: "CO₂ évité estimé", value: kg >= 1 ? formatNumber(kg, maximumFractionDigits: kg < 10 ? 1 : 0) : number(data.co2Grams),
-                         unit: kg >= 1 ? "kg" : "g", detail: "Face à la voiture*")
-                StatCard(icon: .coins, label: "Dépenses", value: formatPrice(data.spentCents),
-                         detail: data.savedCents > 0 ? "\(formatPrice(data.savedCents)) économisés" : data.spentCents > 0 ? "Aucune réduction" : "Trajets compris")
-                StatCard(icon: .starFour, label: "Points gagnés", value: number(data.pointsEarned), detail: "Trajets, notes et bonus")
-            }
-            Text("Km estimés : distance entre les stations de départ et d’arrivée, majorée de \(Int(((StatsRules.detourFactor - 1) * 100).rounded())) % pour les détours (0 km pour un retour à la même station).\(distance.unknown > 0 ? " \(plural(distance.unknown, "trajet")) sans distance estimable." : "") *CO₂ évité : \(Int(StatsRules.co2GramsPerKm)) g par km, ordre de grandeur d’une voiture thermique en ville.")
-                .typo(.body(12)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: gap), GridItem(.flexible(), spacing: gap)], spacing: gap) {
+            StatCard(icon: .personSimpleBike, label: "Trajets", value: number(data.trips), detail: data.trips > 0 ? "\(hours(average)) en moyenne" : "Aucun trajet")
+            StatCard(icon: .clock, label: "Minutes à vélo", value: number(data.minutes), detail: data.minutes >= 60 ? "Soit \(hours(data.minutes))" : "Moins d’une heure")
+            StatCard(icon: .route, label: "Distance estimée", value: kilometres(data.distance.metres), unit: "km", detail: "Sur \(plural(data.distance.known, "trajet"))")
+            StatCard(icon: .leaf, label: "CO₂ évité", value: kg >= 1 ? formatNumber(kg, maximumFractionDigits: kg < 10 ? 1 : 0) : number(data.co2Grams),
+                     unit: kg >= 1 ? "kg" : "g", detail: "Face à la voiture")
+            StatCard(icon: .coins, label: "Dépenses", value: formatPrice(data.spentCents),
+                     detail: data.savedCents > 0 ? "\(formatPrice(data.savedCents)) économisés" : data.spentCents > 0 ? "Aucune réduction" : "Aucun supplément")
+            StatCard(icon: .starFour, label: "Points gagnés", value: number(data.pointsEarned), detail: balance.map { "Solde de \(plural(Int($0), "point"))" })
         }
     }
 }
@@ -268,18 +249,18 @@ private struct StatCard: View {
     let label: String
     let value: String
     var unit: String?
-    let detail: String
+    let detail: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             CardTag(icon: icon, text: label, compact: true)
             (Text(value) + Text(unit.map { " \($0)" } ?? "").font(Typo.title(15).font))
                 .typo(.title(32)).foregroundStyle(Palette.white).lineLimit(1).minimumScaleFactor(0.5).padding(.top, 18)
-            Spacer(minLength: 12)
-            Text(detail).typo(.body(12)).foregroundStyle(Palette.onDark).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 18)
+            if let detail { Text(detail).typo(.body(13)).foregroundStyle(Palette.onDark).lineLimit(2).fixedSize(horizontal: false, vertical: true) }
         }
-        .padding(.horizontal, 14).padding(.top, 14).padding(.bottom, 14)
-        .frame(maxWidth: .infinity, minHeight: 140, alignment: .topLeading)
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
         .background(ZStack { Palette.red; DottedTexture() })
         .clipShape(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
         .accessibilityElement(children: .combine)
@@ -288,22 +269,17 @@ private struct StatCard: View {
 
 // MARK: Panels
 
-/// `.stat-panel`: white on the ink-line ring, the title and its note stacked on a phone.
+/// `.stat-panel`: white on the ink-line ring, its title and the chart.
 private struct Panel<Content: View>: View {
     let title: String
-    var note: String?
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).typo(.title(20)).foregroundStyle(Palette.ink)
-                if let note { Text(note).typo(.label(10)).foregroundStyle(Palette.inkSoft) }
-            }
-            .padding(.bottom, 14)
+        VStack(alignment: .leading, spacing: 18) {
+            Text(title).typo(.title(19)).foregroundStyle(Palette.ink)
             content()
         }
-        .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 18)
+        .padding(.horizontal, 16).padding(.top, 18).padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
     }
@@ -339,48 +315,40 @@ private struct TapLayer: View {
     }
 }
 
-private struct Bar: Identifiable {
-    let key: String
-    let axis: String
-    let value: Int
-    let tipTitle: String
-    let tipDetail: String
-    var id: String { key }
-}
-
-/// `BarChart`: red bars, the tapped one deeper with its tip; axis labels thinned to fit.
-private struct BarChart: View {
-    let bars: [Bar]
-    let label: String
+/// The minutes per day or month: red bars, the tapped one deeper with its tip; axis labels thinned to fit.
+private struct MinutesChart: View {
+    let data: PeriodStats
     @State private var selected: String?
     @State private var width: CGFloat = 320
 
     var body: some View {
-        let top = niceMax(Double(bars.map(\.value).max() ?? 0))
-        let every = max(1, Int(ceil(Double(bars.count) * 38 / max(1, width - 34))))
-        let shown = bars.enumerated().filter { (bars.count - 1 - $0.offset) % every == 0 }.map { $0.element.key }
-        Chart(bars) { bar in
-            BarMark(x: .value("Période", bar.key), y: .value("Valeur", bar.value), width: .ratio(0.68))
-                .foregroundStyle(selected == bar.key ? Palette.redDeep : Palette.red)
+        let buckets = data.buckets
+        let top = niceMax(Double(buckets.map(\.minutes).max() ?? 0))
+        // A day's "29/10" needs 38 pt; a month's initial fits in 16, so all twelve show.
+        let every = max(1, Int(ceil(Double(buckets.count) * (data.unit == .day ? 38 : 16) / max(1, width - 34))))
+        let shown = Set(buckets.enumerated().filter { (buckets.count - 1 - $0.offset) % every == 0 }.map { $0.element.key })
+        Chart(buckets, id: \.key) { bucket in
+            BarMark(x: .value("Période", bucket.key), y: .value("Minutes", bucket.minutes), width: .ratio(0.68))
+                .foregroundStyle(selected == bucket.key ? Palette.redDeep : Palette.red)
                 .cornerRadius(3)
                 .annotation(position: .top, spacing: 6, overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))) {
-                    if selected == bar.key { ChartTip(title: bar.tipTitle, detail: bar.tipDetail) }
+                    if selected == bucket.key {
+                        ChartTip(title: capitalize(bucketLabel(data.unit, bucket.key)), detail: "\(hours(bucket.minutes)) en \(plural(bucket.trips, "trajet"))")
+                    }
                 }
         }
         .chartYScale(domain: 0...top)
         .chartYAxis {
             AxisMarks(position: .leading, values: [0, top / 2, top]) { value in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(Palette.line)
-                AxisValueLabel { if let amount = value.as(Double.self) { Text(number(amount)).typo(.mono(10)).foregroundStyle(Palette.inkSoft) } }
+                AxisValueLabel { if let amount = value.as(Double.self) { axisText(number(amount)) } }
             }
         }
         .chartXAxis {
             // A categorical axis marks every bar: the thinned-out ones get an empty label.
-            AxisMarks(values: bars.map(\.key)) { value in
+            AxisMarks(values: buckets.map(\.key)) { value in
                 AxisValueLabel(centered: true) {
-                    if let key = value.as(String.self), shown.contains(key) {
-                        Text(bars.first { $0.key == key }?.axis ?? "").typo(.mono(10)).foregroundStyle(Palette.inkSoft).fixedSize()
-                    }
+                    if let key = value.as(String.self), shown.contains(key) { axisText(axisLabel(data.unit, key)) }
                 }
             }
         }
@@ -391,30 +359,8 @@ private struct BarChart: View {
             }
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-        .frame(height: 190)
-        .accessibilityLabel(label)
-    }
-}
-
-private struct MinutesChart: View {
-    let data: PeriodStats
-    var body: some View {
-        BarChart(bars: data.buckets.map { bucket in
-            Bar(key: bucket.key, axis: axisLabel(data.unit, bucket.key), value: bucket.minutes,
-                tipTitle: capitalize(bucketLabel(data.unit, bucket.key)), tipDetail: "\(hours(bucket.minutes)) · \(plural(bucket.trips, "trajet"))")
-        }, label: "Minutes à vélo par \(data.unit == .day ? "jour" : "mois"), \(hours(data.minutes)) au total")
-    }
-}
-
-private struct Durations: View {
-    let data: PeriodStats
-    var body: some View {
-        let most = data.durations.max { $0.count < $1.count }?.label ?? ""
-        BarChart(bars: data.durations.map { bucket in
-            Bar(key: bucket.label, axis: bucket.label, value: bucket.count,
-                tipTitle: bucket.label == "30+" ? "30 min et plus" : "De \(bucket.label.replacingOccurrences(of: "-", with: " à ")) min",
-                tipDetail: plural(bucket.count, "trajet"))
-        }, label: "Durée des trajets, la plus fréquente \(most) min")
+        .frame(height: 220)
+        .accessibilityLabel("Temps à vélo par \(data.unit == .day ? "jour" : "mois"), \(hours(data.minutes)) au total")
     }
 }
 
@@ -422,6 +368,7 @@ private struct Durations: View {
 private struct Heatmap: View {
     let data: PeriodStats
     @State private var selected: (day: Int, hour: Int)?
+    @State private var width: CGFloat = 320
 
     private struct Cell: Identifiable {
         let day: Int
@@ -435,6 +382,7 @@ private struct Heatmap: View {
         let cells = rows.enumerated().flatMap { day, row in row.enumerated().map { Cell(day: day, hour: $0.offset, count: $0.element) } }
         let max = Swift.max(1, cells.map(\.count).max() ?? 0)
         let busiest = cells.max { $0.count < $1.count || ($0.count == $1.count && $0.id > $1.id) }!
+        let cellHeight = min(26, Swift.max(12, (width - 20) / 24))
         Chart(cells) { cell in
             RectangleMark(xStart: .value("Heure", Double(cell.hour) + 0.06), xEnd: .value("Heure", Double(cell.hour) + 0.94),
                           yStart: .value("Jour", Double(6 - cell.day) + 0.06), yEnd: .value("Jour", Double(6 - cell.day) + 0.94))
@@ -448,7 +396,7 @@ private struct Heatmap: View {
                     .foregroundStyle(active ? Palette.redDeep : Palette.red)
                     .cornerRadius(2)
                     .annotation(position: .top, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))) {
-                        if active { ChartTip(title: "\(weekdays[cell.day]), \(cell.hour) h - \(cell.hour + 1) h", detail: plural(cell.count, "départ")) }
+                        if active { ChartTip(title: "\(weekdays[cell.day]), de \(cell.hour) h à \(cell.hour + 1) h", detail: plural(cell.count, "départ")) }
                     }
             }
         }
@@ -456,12 +404,14 @@ private struct Heatmap: View {
         .chartYScale(domain: 0...7)
         .chartYAxis {
             AxisMarks(position: .leading, values: Array(0..<7).map { Double($0) + 0.5 }) { value in
-                AxisValueLabel { if let row = value.as(Double.self) { Text(weekdays[6 - Int(row)].prefix(1)).typo(.mono(10)).foregroundStyle(Palette.inkSoft) } }
+                AxisValueLabel { if let row = value.as(Double.self) { axisText(String(weekdays[6 - Int(row)].prefix(1))) } }
             }
         }
         .chartXAxis {
             AxisMarks(values: [0, 6, 12, 18, 23].map { Double($0) + 0.5 }) { value in
-                AxisValueLabel { if let hour = value.as(Double.self) { Text("\(Int(hour)) h").typo(.mono(10)).foregroundStyle(Palette.inkSoft).fixedSize() } }
+                // Centred, « 23 h » would run past the plot's edge and be dropped: it hangs from its trailing edge instead.
+                let hour = value.as(Double.self) ?? 0
+                AxisValueLabel(anchor: hour > 23 ? .topTrailing : .top, collisionResolution: .disabled) { axisText("\(Int(hour)) h") }
             }
         }
         .chartOverlay { proxy in
@@ -472,8 +422,9 @@ private struct Heatmap: View {
                 selected = selected.map { $0.day == cell.day && $0.hour == cell.hour } == true ? nil : cell
             }
         }
-        .frame(height: 7 * 15 + 24)
-        .accessibilityLabel("Départs par jour et par heure. Créneau le plus fréquent : \(weekdays[busiest.day].lowercased()) de \(busiest.hour) h à \(busiest.hour + 1) h")
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .frame(height: 7 * cellHeight + 20)
+        .accessibilityLabel("Départs selon le jour et l’heure, le plus souvent le \(weekdays[busiest.day].lowercased()) entre \(busiest.hour) h et \(busiest.hour + 1) h")
     }
 }
 
@@ -485,6 +436,7 @@ private struct BikeTypes: View {
     private struct Part: Identifiable {
         let key: String
         let label: String
+        let spoken: String
         let count: Int
         let color: Color
         var id: String { key }
@@ -492,15 +444,15 @@ private struct BikeTypes: View {
 
     var body: some View {
         let parts = [
-            Part(key: "electrical", label: "Électrique", count: data.bikeTypes.electrical, color: Palette.red),
-            Part(key: "mechanical", label: "Mécanique", count: data.bikeTypes.mechanical, color: Palette.mist),
-            Part(key: "unknown", label: "Non renseigné", count: data.bikeTypes.unknown, color: Palette.white)
+            Part(key: "electrical", label: "Électrique", spoken: "en électrique", count: data.bikeTypes.electrical, color: Palette.red),
+            Part(key: "mechanical", label: "Mécanique", spoken: "en mécanique", count: data.bikeTypes.mechanical, color: Palette.mist),
+            Part(key: "unknown", label: "Non renseigné", spoken: "sans type connu", count: data.bikeTypes.unknown, color: Palette.white)
         ].filter { $0.count > 0 }
         let total = max(1, data.trips)
-        let share = { (count: Int) in "\(Int((Double(count) / Double(total) * 100).rounded())) %" }
-        let size: CGFloat = 168
-        let thickness: CGFloat = 24
-        VStack(spacing: 18) {
+        let share = { (count: Int) in "\(Int((Double(count) / Double(total) * 100).rounded()))\u{a0}%" }
+        let size: CGFloat = 152
+        let thickness: CGFloat = 22
+        VStack(spacing: 20) {
             ZStack {
                 Circle().strokeBorder(Palette.inkLine, lineWidth: 1)
                 Circle().strokeBorder(Palette.inkLine, lineWidth: 1).padding(thickness)
@@ -512,7 +464,7 @@ private struct BikeTypes: View {
                 if let part = parts.first(where: { $0.key == selected }) {
                     VStack(spacing: 2) {
                         Text(part.label).typo(.body(12, medium: true)).foregroundStyle(Palette.ink)
-                        Text("\(plural(part.count, "trajet")) · \(share(part.count))").typo(.body(12)).foregroundStyle(Palette.inkSoft)
+                        Text("\(plural(part.count, "trajet")), soit \(share(part.count))").typo(.body(12)).foregroundStyle(Palette.inkSoft)
                     }
                     .multilineTextAlignment(.center)
                     .frame(width: size - 2 * thickness - 8)
@@ -521,7 +473,7 @@ private struct BikeTypes: View {
             .frame(width: size, height: size)
             .contentShape(Circle())
             .onTapGesture { selected = selected == nil ? parts.first?.key : parts.firstIndex { $0.key == selected }.flatMap { $0 + 1 < parts.count ? parts[$0 + 1].key : nil } }
-            .accessibilityLabel("Répartition par type de vélo : \(parts.map { "\($0.label.lowercased()) \(share($0.count))" }.joined(separator: ", "))")
+            .accessibilityLabel("Trajets \(parts.map { "\($0.spoken) à \(share($0.count))" }.joined(separator: ", "))")
             VStack(spacing: 8) {
                 ForEach(parts) { part in
                     Button { selected = selected == part.key ? nil : part.key } label: {
@@ -529,7 +481,7 @@ private struct BikeTypes: View {
                             Circle().fill(part.color).frame(width: 10, height: 10).overlay(Circle().strokeBorder(part.key == "electrical" ? .clear : Palette.inkLine, lineWidth: 1))
                             Text(part.label).typo(.body(13)).foregroundStyle(Palette.ink)
                             Spacer(minLength: 0)
-                            Text(share(part.count)).typo(.mono(12)).foregroundStyle(Palette.ink)
+                            Text(share(part.count)).typo(.label(13)).foregroundStyle(Palette.ink)
                         }
                         .contentShape(Rectangle())
                     }
@@ -541,136 +493,66 @@ private struct BikeTypes: View {
     }
 }
 
-/// The points balance at the end of each day or month: a red line; a tap puts the cursor and the dot on the nearest point.
-private struct PointsChart: View {
-    let data: PeriodStats
-    @State private var selected: Int?
-    @State private var width: CGFloat = 320
+// MARK: Records and stations
 
-    var body: some View {
-        let values = data.buckets.map { $0.balance ?? 0 }
-        let low = values.min() ?? 0, high = values.max() ?? 0
-        let upper = high > low ? high : low + 1
-        let every = max(1, Int(ceil(Double(values.count) * 38 / max(1, width - 34))))
-        let shown = values.indices.filter { (values.count - 1 - $0) % every == 0 }
-        Chart {
-            ForEach(Array(values.enumerated()), id: \.offset) { index, value in
-                LineMark(x: .value("Période", index), y: .value("Points", value))
-                    .foregroundStyle(Palette.red)
-                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-            }
-            if let selected {
-                RuleMark(x: .value("Période", selected)).foregroundStyle(Palette.inkLine).lineStyle(StrokeStyle(lineWidth: 1))
-                PointMark(x: .value("Période", selected), y: .value("Points", values[selected]))
-                    .symbol { Circle().fill(Palette.white).overlay(Circle().strokeBorder(Palette.red, lineWidth: 2)).frame(width: 11, height: 11) }
-                    .annotation(position: .top, spacing: 6, overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))) {
-                        ChartTip(title: capitalize(bucketLabel(data.unit, data.buckets[selected].key)), detail: plural(Int(values[selected]), "point"))
-                    }
-            }
-        }
-        .chartXScale(domain: 0...max(1, values.count - 1))
-        .chartYScale(domain: low...upper)
-        .chartYAxis {
-            AxisMarks(position: .leading, values: Array(Set([low, high])).sorted()) { value in
-                AxisGridLine(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(Palette.line)
-                AxisValueLabel { if let amount = value.as(Double.self) { Text(number(amount)).typo(.mono(10)).foregroundStyle(Palette.inkSoft) } }
-            }
-        }
-        .chartXAxis {
-            AxisMarks(values: shown) { value in
-                AxisValueLabel {
-                    if let index = value.as(Int.self), data.buckets.indices.contains(index) {
-                        Text(axisLabel(data.unit, data.buckets[index].key)).typo(.mono(10)).foregroundStyle(Palette.inkSoft).fixedSize()
-                    }
-                }
-            }
-        }
-        .chartOverlay { proxy in
-            TapLayer(proxy: proxy) { point in
-                guard let position = proxy.value(atX: point.x, as: Double.self) else { return }
-                let index = min(values.count - 1, max(0, Int(position.rounded())))
-                selected = selected == index ? nil : index
-            }
-        }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-        .frame(height: 190)
-        .accessibilityLabel("Solde de points, de \(number(values.first ?? 0)) à \(number(values.last ?? 0))")
-    }
-}
-
-// MARK: Records and rankings
-
+/// `.stat-records` at the phone size: four tiles in two columns, a hairline before the second one of each row.
 private struct Records: View {
-    let data: PeriodStats
+    let records: StatsRecords
 
     var body: some View {
-        let records = data.records
-        VStack(alignment: .leading, spacing: 16) {
-            record("Plus long trajet", records.longest.map { hours($0.minutes) }, small: records.longest.map { longest in
-                let route = longest.from.flatMap { from in longest.to.map { from == $0 ? from : "\(from) → \($0)" } }
-                return [longest.startedAt.map { format($0, "dMMMMy") }, route].compactMap { $0 }.joined(separator: " · ")
-            })
-            record("Jour le plus actif", records.busiestDay.map { plural($0.trips, "trajet") },
-                   small: records.busiestDay.map { capitalize(format(keyDate($0.day), "EEEEdMMMMy")) })
-            record("Série de jours consécutifs", records.streak.map { plural($0.days, "jour") },
-                   small: records.streak.flatMap { $0.days > 1 ? "Du \(format(keyDate($0.from), "dMMMM")) au \(format(keyDate($0.to), "dMMMMy"))" : nil })
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Vélo le plus emprunté").typo(.label(11)).foregroundStyle(Palette.inkSoft)
-                if let bike = records.bike {
-                    NavigationLink(value: BikeRoute(number: bike.number, station: nil)) {
-                        Text(verbatim: "N° \(bike.number)").typo(.title(22)).foregroundStyle(Palette.redDeep).underline()
+        Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 22) {
+            GridRow {
+                tile("Plus long trajet", first: true) { value(records.longestMinutes.map(hours)) }
+                tile("Jour record", first: false) { value(records.busiestDayTrips.map { plural($0, "trajet") }) }
+            }
+            GridRow {
+                tile("Série", first: true) { value(records.streakDays.map { plural($0, "jour") }) }
+                tile("Vélo favori", first: false) {
+                    if let bike = records.bike {
+                        NavigationLink(value: BikeRoute(number: bike, station: nil)) {
+                            Text(verbatim: "N° \(bike)").typo(.title(23)).foregroundStyle(Palette.ink).underline(color: Palette.inkLine)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Voir la fiche du vélo \(bike)")
+                    } else {
+                        value(nil)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Voir la fiche du vélo \(bike.number)")
-                    Text(plural(bike.count, "trajet") + (bike.type == .electrical ? " · Électrique" : bike.type == .mechanical ? " · Mécanique" : ""))
-                        .typo(.body(12)).foregroundStyle(Palette.inkSoft)
-                } else {
-                    Text("—").typo(.title(22)).foregroundStyle(Palette.ink)
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func record(_ label: String, _ value: String?, small: String?) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label).typo(.label(11)).foregroundStyle(Palette.inkSoft)
-            Text(value ?? "—").typo(.title(22)).foregroundStyle(Palette.ink)
-            if let small, !small.isEmpty { Text(small).typo(.body(12)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true) }
+    private func value(_ text: String?) -> some View {
+        Text(text ?? "—").typo(.title(23)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
+    }
+
+    private func tile(_ label: String, first: Bool, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft).lineLimit(1)
+            content()
         }
+        .padding(.leading, first ? 0 : 14).padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .leading) { if !first { Rectangle().fill(Palette.line).frame(width: 1) } }
     }
 }
 
-/// `.stat-ranking`: rank, label, count, and a red bar on mist relative to the first.
+/// `.stat-ranking`: rank, station and count, one hairline between rows.
 private struct Ranking: View {
-    let items: [(label: String, count: Int)]
-    var empty = "Aucune station renseignée."
+    let items: [StationCount]
 
     var body: some View {
-        if items.isEmpty {
-            EmptyState(empty).padding(.vertical, -16)
-        } else {
-            let top = Double(items[0].count)
-            VStack(spacing: 14) {
-                ForEach(Array(items.enumerated()), id: \.offset) { index, item in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("\(index + 1)").typo(.mono(11)).foregroundStyle(Palette.inkSoft).frame(width: 20, alignment: .leading)
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(item.label).typo(.body(14)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
-                                Spacer(minLength: 0)
-                                Text(number(item.count)).typo(.mono(12)).foregroundStyle(Palette.ink)
-                            }
-                            GeometryReader { geometry in
-                                ZStack(alignment: .leading) {
-                                    Capsule().fill(Palette.mist)
-                                    Capsule().fill(Palette.red).frame(width: geometry.size.width * Double(item.count) / top)
-                                }
-                            }
-                            .frame(height: 4)
-                        }
-                    }
+        VStack(spacing: 0) {
+            ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                if index > 0 { Hairline() }
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("\(index + 1)").typo(.label(13)).foregroundStyle(Palette.inkSoft).frame(width: 18, alignment: .leading)
+                    Text(item.name).typo(.body(15)).foregroundStyle(Palette.ink).lineLimit(1).truncationMode(.tail)
+                    Spacer(minLength: 0)
+                    Text(number(item.count)).typo(.label(13)).foregroundStyle(Palette.ink).accessibilityLabel("\(number(item.count)) passages")
                 }
+                .padding(.top, index > 0 ? 13 : 0).padding(.bottom, index < items.count - 1 ? 13 : 0)
             }
         }
     }

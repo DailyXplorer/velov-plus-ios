@@ -45,7 +45,7 @@ struct SelectField<Value: Hashable>: View {
 
     @ViewBuilder
     private var title: some View {
-        if !hideLabel { Text(label).typo(.label(12)).foregroundStyle(Palette.inkSoft).fixedSize() }
+        if !hideLabel { Text(label).typo(.label(13)).foregroundStyle(Palette.inkSoft).fixedSize() }
     }
 
     private var trigger: some View {

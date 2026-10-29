@@ -256,7 +256,7 @@ struct BookingBanners: View {
                             Icon(.clock, .light, size: 17)
                                 .frame(width: 34, height: 34)
                                 .overlay(Circle().strokeBorder(Palette.white, lineWidth: 1.5))
-                            if let left { Text(clock(left)).typo(.countdown(26)).fixedSize().frame(minWidth: 70, alignment: .leading) }
+                            if let left { Text(clock(left)).typo(.countdown(26)).fixedSize().frame(width: 78, alignment: .leading) }
                         }
                         .foregroundStyle(Palette.white)
                         .accessibilityElement(children: .ignore)

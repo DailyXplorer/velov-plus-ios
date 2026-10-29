@@ -21,7 +21,7 @@ struct TripsPage: View {
                 TripsFilterLine {
                     SelectField(label: "Type de vélo", hideLabel: true, value: $filter, options: tripFilters)
                 } count: {
-                    Text(verbatim: "\(trips.count) trajet\(trips.count > 1 ? "s" : "")")
+                    Text(verbatim: "\(formatNumber(trips.count)) trajet\(trips.count > 1 ? "s" : "")")
                 }
                 .zIndex(1)
                 .onChange(of: filter) { limit = 10 }

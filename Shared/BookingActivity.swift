@@ -1,4 +1,5 @@
 import ActivityKit
+import CoreText
 import SwiftUI
 
 struct BookingActivityAttributes: ActivityAttributes {
@@ -16,7 +17,12 @@ enum ActivityStyle {
     static let red = Color(red: 0xdf / 255, green: 0x25 / 255, blue: 0x37 / 255)
     static let ink = Color(red: 0x1c / 255, green: 0x17 / 255, blue: 0x17 / 255)
 
-    static func title(_ size: CGFloat) -> Font { .custom("FacultyGlyphic-Regular", fixedSize: size) }
+    static let proportionalFigures = [[kCTFontOpenTypeFeatureTag: "pnum", kCTFontOpenTypeFeatureValue: 1]] as CFArray
+
+    static func title(_ size: CGFloat) -> Font {
+        let attributes = [kCTFontNameAttribute: "FacultyGlyphic-Regular", kCTFontFeatureSettingsAttribute: proportionalFigures] as CFDictionary
+        return Font(CTFontCreateWithFontDescriptor(CTFontDescriptorCreateWithAttributes(attributes), size, nil))
+    }
     static func timer(_ size: CGFloat) -> Font { .custom("FacultyGlyphicTimer-Regular", fixedSize: size) }
     static func label(_ size: CGFloat) -> Font { .custom("DM Sans", fixedSize: size).weight(.medium) }
 }

@@ -28,8 +28,8 @@ struct OverviewPage: View {
                 SummaryCard(tag: (.starFour, "Points"), detail: data.rewards.total.map { "\(formatNumber($0)) gagnés au total" } ?? Messages.missing, action: { model.page = .points }) {
                     Text(data.rewards.balance.map { formatNumber($0) } ?? "—").typo(.title(40))
                 }
-                SummaryCard(tag: (.personSimpleBike, "Trajets"), detail: data.trips == nil ? Messages.missing : minutes >= 60 ? "\(minutes / 60) h \(minutes % 60) min" : "\(minutes) min", action: { model.page = .trips }) {
-                    Text(data.trips.map { "\($0.count)" } ?? "—").typo(.title(40))
+                SummaryCard(tag: (.personSimpleBike, "Trajets"), detail: data.trips == nil ? Messages.missing : minutes >= 60 ? "\(formatNumber(minutes / 60)) h \(minutes % 60) min" : "\(minutes) min", action: { model.page = .trips }) {
+                    Text(data.trips.map { formatNumber($0.count) } ?? "—").typo(.title(40))
                 }
             }
             SummaryCard(tag: (.ticket, "Abonnement"),

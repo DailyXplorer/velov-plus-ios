@@ -45,21 +45,22 @@ enum FontBook {
 
     private static var cache: [String: Font] = [:]
 
-    static func font(_ file: String, size: CGFloat, weight: CGFloat? = nil, optical: Bool = false) -> Font {
-        let key = "\(file)|\(size)|\(weight ?? 0)|\(optical)"
+    static func font(_ file: String, size: CGFloat, weight: CGFloat? = nil, optical: Bool = false, proportional: Bool = false) -> Font {
+        let key = "\(file)|\(size)|\(weight ?? 0)|\(optical)|\(proportional)"
         if let cached = cache[key] { return cached }
         register()
         guard let name = names[file] else { return .system(size: size) }
-        defer { cache[key] = makeFont(name, size: size, weight: weight, optical: optical) }
-        return makeFont(name, size: size, weight: weight, optical: optical)
+        defer { cache[key] = makeFont(name, size: size, weight: weight, optical: optical, proportional: proportional) }
+        return makeFont(name, size: size, weight: weight, optical: optical, proportional: proportional)
     }
 
-    private static func makeFont(_ name: String, size: CGFloat, weight: CGFloat?, optical: Bool) -> Font {
+    private static func makeFont(_ name: String, size: CGFloat, weight: CGFloat?, optical: Bool, proportional: Bool) -> Font {
         var variation: [Int: CGFloat] = [:]
         if let weight { variation[weightAxis] = weight }
         if optical { variation[opticalAxis] = min(max(size, 9), 40) }
         var attributes: [CFString: Any] = [kCTFontNameAttribute: name]
         if !variation.isEmpty { attributes[kCTFontVariationAttribute] = variation as CFDictionary }
+        if proportional { attributes[kCTFontFeatureSettingsAttribute] = ActivityStyle.proportionalFigures }
         let descriptor = CTFontDescriptorCreateWithAttributes(attributes as CFDictionary)
         return Font(CTFontCreateWithFontDescriptor(descriptor, size, nil))
     }
@@ -74,7 +75,7 @@ enum Typo {
 
     var font: Font {
         switch self {
-        case .title(let size), .countdown(let size): FontBook.font("FacultyGlyphic-Regular", size: size)
+        case .title(let size), .countdown(let size): FontBook.font("FacultyGlyphic-Regular", size: size, proportional: true)
         case .body(let size, let medium): FontBook.font("DMSans", size: size, weight: medium ? 500 : 400, optical: true)
         case .label(let size), .caps(let size): FontBook.font("DMSans", size: size, weight: 500, optical: true)
         }

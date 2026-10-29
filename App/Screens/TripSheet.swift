@@ -102,8 +102,8 @@ struct TripSheet: View {
 
     private var pointsLine: String? {
         let earned = Int(trip.pointsEarned), spent = Int(trip.pointsSpent)
-        let points = { (count: Int) in "\(count) point\(count > 1 ? "s" : "")" }
-        if earned > 0 && spent > 0 { return "+\(points(earned)) gagné\(earned > 1 ? "s" : "") · \(spent) dépensé\(spent > 1 ? "s" : "")" }
+        let points = { (count: Int) in "\(formatNumber(count)) point\(count > 1 ? "s" : "")" }
+        if earned > 0 && spent > 0 { return "+\(points(earned)) gagné\(earned > 1 ? "s" : "") · \(formatNumber(spent)) dépensé\(spent > 1 ? "s" : "")" }
         if earned > 0 { return "+\(points(earned)) gagné\(earned > 1 ? "s" : "")" }
         if spent > 0 { return "\(points(spent)) dépensé\(spent > 1 ? "s" : "")" }
         return nil

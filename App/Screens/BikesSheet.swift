@@ -293,7 +293,7 @@ struct BikeDetail: View {
                             Stars(value: rating.value / 20)
                             Text(outOfFive(rating.value)) + Text("/5").foregroundStyle(Palette.inkSoft)
                         }
-                        Text(verbatim: "\(rating.count) avis\(fromNow(rating.lastAt).map { " · Dernier avis \($0)" } ?? "")").typo(.caps(12)).foregroundStyle(Palette.inkSoft)
+                        Text(verbatim: "\(formatNumber(rating.count)) avis\(fromNow(rating.lastAt).map { " · Dernier avis \($0)" } ?? "")").typo(.caps(12)).foregroundStyle(Palette.inkSoft)
                     }
                 } else {
                     Text("Pas encore d’avis")
@@ -345,7 +345,7 @@ struct BikeDetail: View {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let left = max(0, Int(endsAt.timeIntervalSince(context.date).rounded()))
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(verbatim: "Vélo réservé jusqu’à \(formatDate(endsAt, .time))").typo(.title(20)).foregroundStyle(Palette.ink).monospacedDigit()
+                            Text(verbatim: "Vélo réservé jusqu’à \(formatDate(endsAt, .time))").typo(.title(20)).foregroundStyle(Palette.ink)
                             HStack(spacing: 6) {
                                 Icon(.clock, .bold, size: 15)
                                 Text(left > 0 ? "Il reste \(clock(left))" : "Réservation expirée").typo(.caps(13)).monospacedDigit()

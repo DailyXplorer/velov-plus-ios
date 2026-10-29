@@ -122,9 +122,10 @@ final class StatsTests: XCTestCase {
         XCTAssertFalse(buildStats(partial).complete)
     }
 
-    func testThousandsUseAVisibleNoBreakSpace() {
-        XCTAssertEqual(formatNumber(1240), "1\u{00A0}240")
-        XCTAssertEqual(formatNumber(123456), "123\u{00A0}456")
+    func testThousandsUseANarrowNoBreakSpace() {
+        XCTAssertEqual(formatNumber(1240), "1\u{202F}240")
+        XCTAssertEqual(formatNumber(123456.0), "123\u{202F}456")
+        XCTAssertEqual(formatNumber(999), "999")
     }
 
     func testPartialStatsAreKeptOneMinuteAndCompleteOnesTenMinutes() async throws {

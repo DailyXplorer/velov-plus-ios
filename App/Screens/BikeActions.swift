@@ -20,7 +20,7 @@ struct Place: Equatable {
     }
 
     func ride(_ trip: Trip?, now: Date = Date()) -> Ride {
-        trip.map { Ride($0, now: now) } ?? Ride(tripId: nil, startedAt: now, station: stationName, bikeNumber: bikeNumber, bikeType: .unknown)
+        trip.map { Ride($0, now: now) } ?? Ride(tripId: nil, startedAt: now, station: stationName, bikeNumber: bikeNumber)
     }
 }
 

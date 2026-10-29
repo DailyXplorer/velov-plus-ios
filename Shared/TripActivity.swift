@@ -8,14 +8,11 @@ struct TripActivityAttributes: ActivityAttributes {
         var endedAt: Date?
         var station: String
         var bikeNumber: Int?
-        var bikeType: String
     }
 }
 
 extension TripActivityAttributes.ContentState {
     var bikeLine: String { "Vélo \(bikeNumber.map(String.init) ?? "—")" }
-    var typeLabel: String? { ["mechanical": "Mécanique", "electrical": "Électrique"][bikeType] }
-    var detailLine: String { [typeLabel, station].compactMap { $0 }.joined(separator: " · ") }
     var status: String { endedAt == nil ? "En trajet" : "Terminé" }
 }
 
@@ -32,7 +29,7 @@ struct TripElapsed: View {
                 Text(timerInterval: state.startedAt...Date.distantFuture, countsDown: false)
             }
         }
-        .font(ActivityStyle.title(size)).monospacedDigit().foregroundStyle(color)
+        .font(ActivityStyle.timer(size)).foregroundStyle(color)
     }
 }
 
@@ -44,7 +41,7 @@ struct TripLockScreenView: View {
             VStack(alignment: .leading, spacing: 6) {
                 ActivityPill(icon: .personSimpleBike, text: state.status)
                 Text(state.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
-                Text(state.detailLine).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
+                Text(state.station).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
             }
             Spacer(minLength: 0)
             TripElapsed(state: state, size: 34, color: .white).multilineTextAlignment(.trailing).frame(width: 118, alignment: .trailing)
@@ -76,7 +73,7 @@ struct TripIslandBottom: View {
     var body: some View {
         HStack(spacing: 6) {
             Icon(.personSimpleBike, size: 16).foregroundStyle(ActivityStyle.red)
-            Text(state.detailLine).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+            Text(state.station).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
         }
         .font(ActivityStyle.label(13))
         .frame(maxWidth: .infinity, alignment: .leading)

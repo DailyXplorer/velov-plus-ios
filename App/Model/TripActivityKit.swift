@@ -20,8 +20,7 @@ final class TripActivityKit: TripActivityHost {
     var rides: [RunningRide] {
         running.map { activity in
             let state = activity.content.state
-            return RunningRide(id: activity.id, ride: Ride(tripId: state.tripId, startedAt: state.startedAt, endedAt: state.endedAt, station: state.station,
-                                                          bikeNumber: state.bikeNumber, bikeType: BikeType(rawValue: state.bikeType) ?? .unknown))
+            return RunningRide(id: activity.id, ride: Ride(tripId: state.tripId, startedAt: state.startedAt, endedAt: state.endedAt, station: state.station, bikeNumber: state.bikeNumber))
         }
     }
 
@@ -50,6 +49,6 @@ final class TripActivityKit: TripActivityHost {
     }
 
     private static func state(_ ride: Ride) -> TripActivityAttributes.ContentState {
-        .init(tripId: ride.tripId, startedAt: ride.startedAt, endedAt: ride.endedAt, station: ride.station, bikeNumber: ride.bikeNumber, bikeType: ride.bikeType.rawValue)
+        .init(tripId: ride.tripId, startedAt: ride.startedAt, endedAt: ride.endedAt, station: ride.station, bikeNumber: ride.bikeNumber)
     }
 }

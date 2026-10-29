@@ -17,6 +17,7 @@ enum ActivityStyle {
     static let ink = Color(red: 0x1c / 255, green: 0x17 / 255, blue: 0x17 / 255)
 
     static func title(_ size: CGFloat) -> Font { .custom("FacultyGlyphic-Regular", fixedSize: size) }
+    static func timer(_ size: CGFloat) -> Font { .custom("FacultyGlyphicTimer-Regular", fixedSize: size) }
     static func label(_ size: CGFloat) -> Font { .custom("DM Sans", fixedSize: size).weight(.medium) }
 }
 
@@ -31,7 +32,7 @@ struct BookingCountdown: View {
 
     var body: some View {
         Text(timerInterval: Date.now...max(Date.now, endsAt), countsDown: true)
-            .font(ActivityStyle.title(size)).monospacedDigit().foregroundStyle(color)
+            .font(ActivityStyle.timer(size)).foregroundStyle(color)
     }
 }
 

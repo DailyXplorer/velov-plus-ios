@@ -6,16 +6,15 @@ public struct Ride: Equatable, Sendable {
     public var endedAt: Date?
     public var station: String
     public var bikeNumber: Int?
-    public var bikeType: BikeType
 
-    public init(tripId: String?, startedAt: Date, endedAt: Date? = nil, station: String, bikeNumber: Int?, bikeType: BikeType) {
+    public init(tripId: String?, startedAt: Date, endedAt: Date? = nil, station: String, bikeNumber: Int?) {
         self.tripId = tripId; self.startedAt = startedAt; self.endedAt = endedAt
-        self.station = station; self.bikeNumber = bikeNumber; self.bikeType = bikeType
+        self.station = station; self.bikeNumber = bikeNumber
     }
 
     public init(_ trip: Trip, now: Date) {
         self.init(tripId: trip.id, startedAt: trip.startedAt ?? now, station: trip.startStation ?? trip.startStationNumber.map { "Station \($0)" } ?? "Vélo’v",
-                  bikeNumber: trip.bikeNumber, bikeType: trip.bikeType)
+                  bikeNumber: trip.bikeNumber)
     }
 }
 

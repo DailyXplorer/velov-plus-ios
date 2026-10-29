@@ -28,6 +28,7 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>FacultyGlyphic-Regular.ttf</string>
+		<string>FacultyGlyphicTimer-Regular.ttf</string>
 		<string>DMSans.ttf</string>
 	</array>
 </dict>

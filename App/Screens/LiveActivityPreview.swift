@@ -9,7 +9,7 @@ struct LiveActivityPreview: View {
         BookingActivityAttributes(bookingId: booking.id, bikeNumber: booking.bikeNumber, standNumber: booking.standNumber, stationName: booking.stationName)
     }
     private let ride = TripActivityAttributes.ContentState(tripId: "t-sample", startedAt: SampleData.ago(12.4 / 60), endedAt: nil,
-                                                           station: SampleData.byNumber[2002]!.name, bikeNumber: 20449, bikeType: BikeType.electrical.rawValue)
+                                                           station: SampleData.byNumber[2002]!.name, bikeNumber: 20449)
 
     var body: some View {
         ZStack(alignment: .top) {

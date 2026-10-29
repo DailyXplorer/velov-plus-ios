@@ -34,18 +34,18 @@ final class TripActivitiesTests: XCTestCase {
     let host = FakeHost()
     lazy var activities = TripActivities(host: host, now: { [unowned self] in clock })
 
-    func ongoing(_ id: String = "t1", minutesAgo: Double = 3, type: BikeType = .electrical) -> Trip {
-        Trip(id: id, status: "ONGOING", startedAt: clock.addingTimeInterval(-minutesAgo * 60), startStation: "Bellecour", startStationNumber: 2002, bikeNumber: 20449, bikeType: type)
+    func ongoing(_ id: String = "t1", minutesAgo: Double = 3) -> Trip {
+        Trip(id: id, status: "ONGOING", startedAt: clock.addingTimeInterval(-minutesAgo * 60), startStation: "Bellecour", startStationNumber: 2002, bikeNumber: 20449)
     }
 
     func placeRide() -> Ride {
-        Ride(tripId: nil, startedAt: clock, station: "Bellecour", bikeNumber: 20449, bikeType: .unknown)
+        Ride(tripId: nil, startedAt: clock, station: "Bellecour", bikeNumber: 20449)
     }
 
     func testAnUnlockStartsOneActivityStaleAfterFourHoursAndEndsTheBooking() {
         let trip = ongoing(minutesAgo: 0)
         activities.unlocked(Ride(trip, now: clock))
-        XCTAssertEqual(host.started.map(\.ride), [Ride(tripId: "t1", startedAt: clock, station: "Bellecour", bikeNumber: 20449, bikeType: .electrical)])
+        XCTAssertEqual(host.started.map(\.ride), [Ride(tripId: "t1", startedAt: clock, station: "Bellecour", bikeNumber: 20449)])
         XCTAssertEqual(host.started.map(\.staleDate), [clock.addingTimeInterval(4 * 3600)])
         XCTAssertEqual(host.bookingsEnded, 1)
         clock.addTimeInterval(20)
@@ -77,7 +77,7 @@ final class TripActivitiesTests: XCTestCase {
         trip.startedAt = nil
         activities.observed([trip])
         XCTAssertEqual(host.started.count, 1)
-        XCTAssertEqual(host.rides.map(\.ride), [Ride(tripId: "t1", startedAt: clock.addingTimeInterval(-30), station: "Bellecour", bikeNumber: 20449, bikeType: .electrical)])
+        XCTAssertEqual(host.rides.map(\.ride), [Ride(tripId: "t1", startedAt: clock.addingTimeInterval(-30), station: "Bellecour", bikeNumber: 20449)])
         XCTAssertEqual(host.updated.map(\.staleDate), [clock.addingTimeInterval(4 * 3600 - 30)])
     }
 

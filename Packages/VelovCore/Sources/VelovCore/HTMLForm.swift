@@ -77,6 +77,15 @@ func serverRefusal(_ html: String) -> String? {
         if !text.isEmpty { return text }
     }
     let text = collapse(HTML.text(html))
+    // The one-device refusal sits in a page too long for the generic rule: quote its sentence.
+    for marker in ["autre appareil", "another device"] {
+        if let hit = text.range(of: marker, options: .caseInsensitive) {
+            let start = text[..<hit.lowerBound].lastIndex(where: { ".!?".contains($0) }).map { text.index(after: $0) } ?? text.startIndex
+            let end = text[hit.upperBound...].firstIndex(where: { ".!?".contains($0) }).map { text.index(after: $0) } ?? text.endIndex
+            let sentence = text[start..<end].trimmingCharacters(in: .whitespaces)
+            if !sentence.isEmpty && sentence.count <= 300 { return sentence }
+        }
+    }
     return text.isEmpty || text.count > 300 ? nil : text
 }
 

@@ -10,7 +10,7 @@ extension View {
     }
 }
 
-enum ButtonVariant { case primary, secondary, ghost, onRed }
+enum ButtonVariant { case primary, secondary, ghost }
 
 struct PillButton<Label: View>: View {
     var variant: ButtonVariant = .primary
@@ -50,14 +50,12 @@ struct PillButton<Label: View>: View {
         case .primary: return Palette.white
         case .secondary: return Palette.ink
         case .ghost: return Palette.inkSoft
-        case .onRed: return Palette.red
         }
     }
 
     private var background: Color {
         switch variant {
         case .primary: muted ? Palette.mist : Palette.red
-        case .onRed: muted ? Palette.mist : Palette.white
         default: .clear
         }
     }
@@ -115,7 +113,7 @@ struct Eyebrow: View {
 }
 
 struct CardTag: View {
-    enum Size { case regular, banner, stat, pick }
+    enum Size { case regular, stat, pick }
     let icon: IconName
     let text: String
     var size = Size.regular
@@ -123,7 +121,6 @@ struct CardTag: View {
     private var metrics: (gap: CGFloat, icon: CGFloat, glyph: CGFloat, font: CGFloat, leading: CGFloat, trailing: CGFloat, vertical: CGFloat) {
         switch size {
         case .regular: (10, 28, 13, 13, 7, 16, 7)
-        case .banner: (8, 26, 13, 13, 5, 12, 5)
         case .stat: (7, 22, 12, 12, 4, 10, 4)
         case .pick: (6, 20, 11, 12, 3, 10, 3)
         }

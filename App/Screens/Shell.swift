@@ -251,21 +251,41 @@ struct BookingBanners: View {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let left = booking.endsAt.map { max(0, Int($0.timeIntervalSince(context.date).rounded())) }
                 if left != 0 {
-                    HStack(spacing: 8) {
-                        CardTag(icon: .clock, text: "Réservé", size: .banner)
-                        if let left { Text(clock(left)).typo(.countdown(22)).foregroundStyle(Palette.white).fixedSize().accessibilityLabel("Reste \(clock(left))") }
-                        Spacer(minLength: 0)
-                        if Place(booking) != nil {
-                            PillButton(variant: .onRed, height: 40, action: { model.unlocking = booking }) { Text("Déverrouiller") }
-                                .fixedSize()
+                    HStack(spacing: 12) {
+                        HStack(spacing: 8) {
+                            Icon(.clock, .light, size: 17)
+                                .frame(width: 34, height: 34)
+                                .overlay(Circle().strokeBorder(Palette.white, lineWidth: 1.5))
+                            if let left { Text(clock(left)).typo(.countdown(26)).fixedSize().frame(minWidth: 70, alignment: .leading) }
                         }
+                        .foregroundStyle(Palette.white)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(left.map { "Vélo réservé, \($0 / 60) min \(String(format: "%02d", $0 % 60)) restantes" } ?? "Vélo réservé")
+                        Spacer(minLength: 0)
+                        if Place(booking) != nil { unlock(booking) }
                     }
-                    .padding(8)
+                    .padding(.leading, 16).padding(.trailing, 6).padding(.vertical, 6)
                     .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.red))
                     .padding(.bottom, bottom)
                 }
             }
         }
+    }
+
+    private func unlock(_ booking: Booking) -> some View {
+        Button { model.unlocking = booking } label: {
+            HStack(spacing: 10) {
+                Icon(.lockOpen, .light, size: 15).foregroundStyle(Palette.white)
+                    .frame(width: 32, height: 32).background(Circle().fill(Palette.red))
+                Text("Déverrouiller").tracking(0.52).typo(.caps(13)).foregroundStyle(Palette.ink)
+            }
+            .padding(.leading, 5).padding(.trailing, 18)
+            .frame(minHeight: 42)
+            .background(Capsule().fill(Palette.white))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .fixedSize()
     }
 }
 

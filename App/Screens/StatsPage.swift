@@ -13,7 +13,6 @@ struct TripsStack: View {
             PageScaffold(page: .trips)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: TripsRoute.self) { _ in StatsPage().heldWhile(model.operations.sending) }
-                .navigationDestination(for: BikeRoute.self) { route in BikeDetail(route: route) }
         }
         .task { if let snapshot = model.snapshot, snapshot.showsStats, path.isEmpty { path.append(TripsRoute.stats) } }
         .onLeaving(.trips) { path = NavigationPath() }
@@ -21,7 +20,7 @@ struct TripsStack: View {
 }
 
 extension SnapshotScreen {
-    var showsStats: Bool { [.stats, .statsCharts, .statsHeatmap, .statsRecords, .statsEnd].contains(self) }
+    var showsStats: Bool { [.stats, .statsCharts, .statsHeatmap, .statsRecords, .statsBike, .statsEnd].contains(self) }
 }
 
 struct StatsLink: View {
@@ -144,7 +143,7 @@ struct StatsPage: View {
             .toolbar(.hidden, for: .navigationBar)
             .task {
                 if let cachedStats, cachedStats.account == account { state = .ready(cachedStats.stats) } else { await load() }
-                let anchors: [SnapshotScreen: String] = [.statsCharts: "panel-charts", .statsHeatmap: "panel-heatmap", .statsRecords: "panel-records"]
+                let anchors: [SnapshotScreen: String] = [.statsCharts: "panel-charts", .statsHeatmap: "panel-heatmap", .statsRecords: "panel-records", .statsBike: "panel-records"]
                 guard let snapshot = model.snapshot, snapshot != .stats, snapshot.showsStats else { return }
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
                 if let anchor = anchors[snapshot] { proxy.scrollTo(anchor, anchor: .top) } else { position.scrollTo(edge: .bottom) }
@@ -494,8 +493,28 @@ private struct BikeTypes: View {
 
 private struct Records: View {
     let records: StatsRecords?
+    @Environment(AppModel.self) private var model
+    @State private var bikeOpen = false
 
     var body: some View {
+        grid
+            .sheet(isPresented: $bikeOpen) {
+                if let bike = records?.bike {
+                    BikeDetail(route: BikeRoute(number: bike, station: nil))
+                        .presentationDetents([.large])
+                        .interactiveDismissDisabled(model.operations.sending)
+                        .presentationBackground(Palette.white)
+                        .sheetCorners()
+                }
+            }
+            .task(id: records?.bike) {
+                guard model.snapshot == .statsBike, records?.bike != nil else { return }
+                try? await Task.sleep(nanoseconds: 2_500_000_000)
+                bikeOpen = true
+            }
+    }
+
+    private var grid: some View {
         Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 22) {
             GridRow {
                 tile("Plus long trajet", first: true) { value(records.map { $0.longestMinutes.map(hours) }) }
@@ -505,7 +524,7 @@ private struct Records: View {
                 tile("Série", first: true) { value(records.map { $0.streakDays.map { plural($0, "jour") } }) }
                 tile("Vélo favori", first: false) {
                     if let bike = records?.bike {
-                        NavigationLink(value: BikeRoute(number: bike, station: nil)) {
+                        Button { bikeOpen = true } label: {
                             Text(verbatim: "N° \(bike)").typo(.title(23)).foregroundStyle(Palette.ink).underline(color: Palette.inkLine)
                         }
                         .buttonStyle(.plain)

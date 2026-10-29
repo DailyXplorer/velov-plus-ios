@@ -99,7 +99,6 @@ private struct TypoModifier: ViewModifier {
     let typo: Typo
     func body(content: Content) -> some View {
         switch typo {
-        case .countdown: content.font(typo.font).tracking(typo.tracking).monospacedDigit()
         case .caps: content.font(typo.font).tracking(typo.tracking).textCase(.uppercase)
         default: content.font(typo.font).tracking(typo.tracking).textCase(nil)
         }

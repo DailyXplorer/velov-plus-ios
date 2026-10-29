@@ -51,5 +51,6 @@ shot stats 16a-stats 8
 shot statsCharts 16b-stats-charts 9
 shot statsHeatmap 16c-stats-heatmap 9
 shot statsRecords 16d-stats-records 9
+shot statsBike 16f-stats-bike-sheet 12
 shot statsEnd 16e-stats-end 9
 xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true

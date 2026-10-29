@@ -120,6 +120,20 @@ final class Review3Tests: XCTestCase {
         XCTAssertNil(cache.get("a@example.com"))
     }
 
+    func testTheStatsScreenCacheChecksAndStoresOnTheMainActorEvenWhenLoadedFromElsewhere() async {
+        final class Seen: @unchecked Sendable { var mainThread: [Bool] = [] }
+        let seen = Seen()
+        let session = SessionGeneration()
+        let cache = StatsScreenCache(now: {
+            seen.mainThread.append(Thread.isMainThread)
+            return Date(timeIntervalSince1970: 1_800_000_000)
+        })
+        let result = await Task.detached { await cache.load(account: "a", session: session) { stats(3) } }.value
+        guard case .success(let loaded)? = result else { return XCTFail("the stats load") }
+        XCTAssertEqual(loaded.balance, 3)
+        XCTAssertEqual(seen.mainThread, [true], "the generation check and the store run on the main actor, like clear()")
+    }
+
     func testEveryCallerOfASharedRefreshIsCheckedAgainstLogout() async {
         let helper = SessionTests()
         let store = InMemoryStore()

@@ -15,7 +15,7 @@ func matches(_ station: Station, _ filter: StationFilter, favorites: Set<Int>) -
     }
 }
 
-/// dashboard.tsx `StationsPage` on a phone: search, Autour de moi, the filter, the map filling the screen, a compact sheet on selection.
+/// dashboard.tsx `StationsPage` on a phone: search, Autour de moi, the filter, the map filling the screen, a card floating above the tab bar on selection.
 struct StationsPage: View {
     let onLogout: () -> Void
     @Environment(AppModel.self) private var model
@@ -28,6 +28,9 @@ struct StationsPage: View {
     @State private var locationError = ""
     @State private var locator = Locator()
     @FocusState private var searching: Bool
+    /// The band the tab bar takes under the map, and the station card's height: MapKit's attribution stays above both.
+    @State private var barBand: CGFloat = 0
+    @State private var cardHeight: CGFloat = 0
 
     private var stations: [Station] { model.stations.value?.stations ?? [] }
     private var favorites: Set<Int> { Set(model.dashboard?.profile.favorites ?? []) }
@@ -47,9 +50,7 @@ struct StationsPage: View {
             }
     }
 
-    private var selected: Binding<Station?> {
-        Binding(get: { filtered.first { $0.id == selectedId } }, set: { selectedId = $0?.id })
-    }
+    private var selected: Station? { filtered.first { $0.id == selectedId } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -71,9 +72,6 @@ struct StationsPage: View {
             .padding(.bottom, 12)
             .zIndex(2)
             map
-        }
-        .sheet(item: selected) { station in
-            StationSheet(station: station, favorite: favorites.contains(station.number), distance: here.map { haversine($0, station.point) })
         }
         .task {
             if model.snapshot == .stationSheet || model.snapshot == .bikeList || model.snapshot == .bikeSheet {
@@ -115,11 +113,28 @@ struct StationsPage: View {
     private var map: some View {
         ZStack(alignment: .top) {
             StationMapView(stations: filtered, selected: selectedId, camera: $camera, showsUser: position != nil) { select($0) }
+                // MapKit's logo and legal link sit above the tab bar and the station card, never under them.
+                .safeAreaPadding(.bottom, barBand + (selected == nil ? 0 : cardHeight + Concentric.gap))
             if !query.isEmpty, model.stations.value != nil { results.padding(12) }
         }
         .ignoresSafeArea(.keyboard)
         // The map runs down behind the floating tab bar, to the screen's edge.
         .ignoresSafeArea(.container, edges: .bottom)
+        .onGeometryChange(for: CGFloat.self, of: { $0.safeAreaInsets.bottom }) { barBand = $0 }
+        // The card floats `gap` above the tab bar, with its side insets; the bar stays in view.
+        .overlay(alignment: .bottom) {
+            if let station = selected {
+                StationCard(station: station, favorite: favorites.contains(station.number), distance: here.map { haversine($0, station.point) }) {
+                    selectedId = nil
+                }
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { cardHeight = $0 }
+                .padding(.horizontal, Concentric.inset)
+                .padding(.bottom, Concentric.gap)
+                .ignoresSafeArea(.keyboard)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy(duration: 0.3), value: selected?.id)
     }
 
     /// The search shows a short results list over the map.
@@ -156,12 +171,13 @@ struct StationsPage: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Pans on a new selection only: a refreshed station list must not move the map.
+    /// Pans on a new selection only: a refreshed station list must not move the map. The map's safe area already ends above
+    /// the card, so the station lands in the middle of what stays visible.
     private func select(_ id: String) {
         selectedId = id
         guard let station = stations.first(where: { $0.id == id }) else { return }
         withAnimation(.easeInOut(duration: 0.5)) {
-            camera = .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: station.lat - 0.0018, longitude: station.lon), distance: 1800))
+            camera = .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon), distance: 1800))
         }
     }
 
@@ -199,9 +215,9 @@ struct StationsPage: View {
             let mapPoint = MKMapPoint(CLLocationCoordinate2D(latitude: point.lat, longitude: point.lon))
             rect = rect.union(MKMapRect(x: mapPoint.x, y: mapPoint.y, width: 0, height: 0))
         }
-        let padX = max(rect.width * 0.25, 400), padTop = max(rect.height * 0.2, 400)
-        // Leave the lower part free for the station sheet.
-        rect = MKMapRect(x: rect.minX - padX, y: rect.minY - padTop, width: rect.width + 2 * padX, height: rect.height * 1.8 + padTop + 900)
+        // The map's safe area keeps the station card clear: the same margin all round.
+        let padX = max(rect.width * 0.25, 400), padY = max(rect.height * 0.2, 400)
+        rect = MKMapRect(x: rect.minX - padX, y: rect.minY - padY, width: rect.width + 2 * padX, height: rect.height + 2 * padY)
         withAnimation(.easeInOut(duration: 0.6)) { camera = .rect(rect) }
     }
 }

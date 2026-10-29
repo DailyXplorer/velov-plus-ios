@@ -1,19 +1,25 @@
 import SwiftUI
 import VelovCore
 
-/// `.station-sheet`: name, star and X; the three counts and the distance; « Voir les vélos » and « Itinéraire ».
-struct StationSheet: View {
+/// `.station-sheet` as a card floating over the map, above the tab bar: name, star and X; the three counts and the distance;
+/// « Voir les vélos » and « Itinéraire ». All four corners take the tab bar's radius, the buttons' pills concentric with it.
+struct StationCard: View {
     let station: Station
     let favorite: Bool
     let distance: Double?
-    @Environment(\.dismiss) private var dismiss
+    let close: () -> Void
     @Environment(\.openURL) private var openURL
+    @Environment(\.floatingRadius) private var radius
     @Environment(AppModel.self) private var model
     @State private var bikesOpen = false
     @State private var favoriteOpen = false
     @State private var wasFavorite = false
 
+    private static let pill: CGFloat = 40
+
     var body: some View {
+        // The bottom pills' curves run parallel to the card's.
+        let padding = max(radius - Self.pill / 2, 16)
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Text(station.name).typo(.title(18)).foregroundStyle(Palette.ink).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
@@ -21,28 +27,29 @@ struct StationSheet: View {
                 IconButton(icon: .star, weight: favorite ? .fill : .light, size: 19, frame: 36, color: favorite ? Palette.red : Palette.inkSoft,
                            label: favorite ? "Retirer des favoris" : "Ajouter aux favoris") { wasFavorite = favorite; favoriteOpen = true }
                     .accessibilityAddTraits(favorite ? .isSelected : [])
-                IconButton(icon: .x, size: 18, frame: 36, label: "Fermer") { dismiss() }
+                IconButton(icon: .x, size: 18, frame: 36, label: "Fermer", action: close)
             }
+            .padding(.trailing, -8)
             HStack(spacing: 12) {
                 StationNumbers(station: station, compact: true)
                 if let distance { Text(formatDistance(distance)).typo(.label(11)).foregroundStyle(Palette.inkSoft).fixedSize() }
             }
-            .padding(.trailing, 6)
             .padding(.top, 2)
             HStack(spacing: 8) {
-                PillButton(variant: .secondary, height: 40, fullWidth: true, action: { bikesOpen = true }) { Text("Voir les vélos").typo(.label(12)) }
-                PillButton(variant: .primary, height: 40, fullWidth: true, action: directions) {
+                PillButton(variant: .secondary, height: Self.pill, fullWidth: true, action: { bikesOpen = true }) { Text("Voir les vélos").typo(.label(12)) }
+                PillButton(variant: .primary, height: Self.pill, fullWidth: true, action: directions) {
                     Text("Itinéraire").typo(.label(12))
                     CircleArrow(external: true, style: .onPrimary)
                 }
             }
             .padding(.top, 10)
-            .padding(.trailing, 6)
         }
-        // No bottom padding: the floating sheet keeps its own clearance above the home indicator.
-        .padding(.leading, 16).padding(.trailing, 10).padding(.top, 14)
-        // As tall as its content: no empty band under the buttons.
-        .fitSheet(interactiveBackground: true)
+        .padding(.horizontal, padding).padding(.top, 14).padding(.bottom, padding)
+        .background {
+            RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Palette.white)
+                .shadow(color: Palette.ink.opacity(0.1), radius: 18, y: 12)
+                .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
+        }
         .sheet(isPresented: $bikesOpen) { BikesSheet(station: station) }
         .sheet(isPresented: $favoriteOpen) {
             WriteDialog(title: wasFavorite ? "Retirer des favoris ?" : "Ajouter aux favoris ?",
@@ -54,7 +61,7 @@ struct StationSheet: View {
                 Text(station.name) + Text(verbatim: "  n° \(station.number)").foregroundColor(Palette.inkSoft)
             }
         }
-        .task {
+        .task(id: station.id) {
             if model.snapshot == .bikeList || model.snapshot == .bikeSheet {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 bikesOpen = true

@@ -269,7 +269,7 @@ struct ReceiptRow: View {
         }
         .padding(.vertical, 12)
         .overlay(alignment: .bottom) { Hairline(color: Palette.inkLine) }
-        .sheet(item: $file) { ShareSheet(url: $0.url).presentationDetents([.medium, .large]) }
+        .sheet(item: $file) { ShareSheet(url: $0.url).presentationDetents([.medium, .large]).sheetCorners() }
     }
 
     private func download() {

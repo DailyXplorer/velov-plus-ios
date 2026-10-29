@@ -53,10 +53,9 @@ struct SheetHeading: View {
     }
 }
 
-/// A sheet exactly as tall as what it shows (up to the full screen, then it scrolls). Its corners are the system's: from iOS 26
-/// the floating sheet is concentric with the display, like the tab bar under it.
+/// A sheet exactly as tall as what it shows (up to the full screen, then it scrolls). From iOS 26 the system keeps its bottom
+/// corners concentric with the display; its top corners take the tab bar's radius to match.
 struct FitSheet: ViewModifier {
-    var interactiveBackground = false
     @State private var height: CGFloat = 260
 
     func body(content: Content) -> some View {
@@ -68,14 +67,14 @@ struct FitSheet: ViewModifier {
         // The floating sheet already keeps clear of the home indicator: no second inset under the content.
         .ignoresSafeArea(.container, edges: .bottom)
         .presentationDetents([.height(height)])
-        .presentationBackgroundInteraction(interactiveBackground ? .enabled(upThrough: .height(height)) : .automatic)
         .presentationBackground(Palette.white)
         .presentationDragIndicator(.hidden)
+        .sheetCorners()
     }
 }
 
 extension View {
-    func fitSheet(interactiveBackground: Bool = false) -> some View { modifier(FitSheet(interactiveBackground: interactiveBackground)) }
+    func fitSheet() -> some View { modifier(FitSheet()) }
 }
 
 /// account-actions.tsx `ConfirmDialog`: a question, one request per « Confirmer », then the result.

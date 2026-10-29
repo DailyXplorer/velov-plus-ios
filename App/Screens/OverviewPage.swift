@@ -70,6 +70,8 @@ struct OverviewPage: View {
         .frame(height: 310)
         .clipShape(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
+        // Scrolled to its end, the card and MapKit's attribution rest `gap` above the tab bar, like the station card.
+        .padding(.bottom, Concentric.gap)
         .id("stations-map")
     }
 }

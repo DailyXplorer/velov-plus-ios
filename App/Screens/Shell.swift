@@ -6,6 +6,7 @@ struct Shell: View {
     @Environment(AppModel.self) private var model
     @State private var logoutOpen = false
     @State private var homeIndicator: CGFloat = 0
+    @State private var radius = Concentric.fallback
 
     var body: some View {
         @Bindable var model = model
@@ -19,7 +20,9 @@ struct Shell: View {
         // The bar floats `inset` from the sides and the bottom, over the home indicator's band. The page scrolls behind it
         // and the end of every scroll view stops above it.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            TabBar().padding(.horizontal, Concentric.inset).padding(.bottom, Concentric.inset - homeIndicator)
+            TabBar(radius: radius)
+                .onGeometryChange(for: CGFloat.self, of: { Concentric.radius($0) }) { radius = $0 }
+                .padding(.horizontal, Concentric.inset).padding(.bottom, Concentric.inset - homeIndicator)
         }
         .background(Palette.white)
         .background {
@@ -29,14 +32,16 @@ struct Shell: View {
         .sheet(item: $model.unlocking) { booking in
             if let place = Place(booking) { BikeActionSheet(place: place, bookingId: booking.id, action: .unlock) }
         }
+        // The station card and every sheet take the bar's radius.
+        .environment(\.floatingRadius, radius)
     }
 }
 
 /// The web's mobile navigation as a floating white bar with the site's shadow ring, its corners concentric with the display's,
 /// the active tab's red pill concentric with the bar.
 struct TabBar: View {
+    let radius: CGFloat
     @Environment(AppModel.self) private var model
-    @State private var radius = Concentric.display - Concentric.inset
     private let padding: CGFloat = 10
 
     var body: some View {
@@ -65,7 +70,6 @@ struct TabBar: View {
                 .shadow(color: Palette.ink.opacity(0.1), radius: 18, y: 12)
                 .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
         }
-        .onGeometryChange(for: CGFloat.self, of: { Concentric.radius($0) }) { radius = $0 }
     }
 }
 
@@ -263,6 +267,7 @@ struct LogoutSheet: View {
         .padding(.horizontal, 22).padding(.top, 24).padding(.bottom, 24)
         .presentationDetents([.height(190)])
         .presentationBackground(Palette.white)
+        .sheetCorners()
         .interactiveDismissDisabled(pending)
     }
 }

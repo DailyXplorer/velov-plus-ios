@@ -43,6 +43,7 @@ struct TripSheet: View {
         .presentationDetents(model.snapshot == .rateCard ? [.large] : [.medium, .large])
         .presentationBackground(Palette.white)
         .presentationDragIndicator(.visible)
+        .sheetCorners()
     }
 
     private var times: some View {

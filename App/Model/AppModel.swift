@@ -43,7 +43,7 @@ enum Resource<T> {
 
 /// A screen the snapshot run opens straight away (`-VelovScreen tripSheet`).
 enum SnapshotScreen: String {
-    case overview, overviewMap, trips, tripSheet, rateCard, points, stations, stationSheet, bikeList, bikeSheet, account, accountEdit
+    case overview, overviewMap, trips, tripSheet, rateCard, points, stations, stationSheet, bikeList, bikeSheet, account, accountEnd, accountEdit
     case bookingBanner, unlockConfirm, unlockSuccess, liveActivityLock, liveActivityIsland
 
     /// The screens drawn with a running booking.
@@ -85,7 +85,7 @@ final class AppModel {
         case .trips?, .tripSheet?, .rateCard?: page = .trips
         case .points?: page = .points
         case .stations?, .stationSheet?, .bikeList?, .bikeSheet?: page = .stations
-        case .account?, .accountEdit?: page = .account
+        case .account?, .accountEnd?, .accountEdit?: page = .account
         default: break
         }
     }

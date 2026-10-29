@@ -42,7 +42,6 @@ struct TripSheet: View {
         }
         .presentationDetents(model.snapshot == .rateCard ? [.large] : [.medium, .large])
         .presentationBackground(Palette.white)
-        .presentationCornerRadius(Palette.radius)
         .presentationDragIndicator(.visible)
     }
 

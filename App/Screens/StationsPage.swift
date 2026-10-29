@@ -118,6 +118,8 @@ struct StationsPage: View {
             if !query.isEmpty, model.stations.value != nil { results.padding(12) }
         }
         .ignoresSafeArea(.keyboard)
+        // The map runs down behind the floating tab bar, to the screen's edge.
+        .ignoresSafeArea(.container, edges: .bottom)
     }
 
     /// The search shows a short results list over the map.

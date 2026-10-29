@@ -29,11 +29,13 @@ shot overview 01-overview 7
 shot overviewMap 01b-overview-map 8
 shot trips 02-trips
 shot tripSheet 03-trip-sheet 6
+shot stations 04a-stations 8
 shot stationSheet 04-stations-sheet 9
 shot bikeList 05-bike-list 9
 shot bikeSheet 06-bike-sheet 10
 shot points 07-points
 shot account 08-account
+shot accountEnd 08b-account-end 7
 shot bookingBanner 09-booking-banner 6
 shot liveActivityLock 10-live-activity-lock 5
 shot liveActivityIsland 11-live-activity-island 5

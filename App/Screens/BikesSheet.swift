@@ -74,7 +74,6 @@ struct BikesSheet: View {
         }
         .presentationDetents([.large])
         .presentationBackground(Palette.white)
-        .presentationCornerRadius(Palette.radius)
         .task {
             await load()
             if model.snapshot == .bikeSheet, let first = assessed?.first { path = [BikeRoute(number: first.bike.number, station: station)] }

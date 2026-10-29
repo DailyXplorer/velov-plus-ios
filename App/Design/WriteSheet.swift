@@ -53,7 +53,8 @@ struct SheetHeading: View {
     }
 }
 
-/// A sheet exactly as tall as what it shows (up to the full screen, then it scrolls).
+/// A sheet exactly as tall as what it shows (up to the full screen, then it scrolls). Its corners are the system's: from iOS 26
+/// the floating sheet is concentric with the display, like the tab bar under it.
 struct FitSheet: ViewModifier {
     var interactiveBackground = false
     @State private var height: CGFloat = 260
@@ -69,7 +70,6 @@ struct FitSheet: ViewModifier {
         .presentationDetents([.height(height)])
         .presentationBackgroundInteraction(interactiveBackground ? .enabled(upThrough: .height(height)) : .automatic)
         .presentationBackground(Palette.white)
-        .presentationCornerRadius(Palette.radius)
         .presentationDragIndicator(.hidden)
     }
 }

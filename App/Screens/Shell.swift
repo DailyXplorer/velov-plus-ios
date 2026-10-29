@@ -5,6 +5,7 @@ import VelovCore
 struct Shell: View {
     @Environment(AppModel.self) private var model
     @State private var logoutOpen = false
+    @State private var homeIndicator: CGFloat = 0
 
     var body: some View {
         @Bindable var model = model
@@ -15,9 +16,15 @@ struct Shell: View {
             }
         }
         .frame(maxHeight: .infinity)
-        // The bar insets the page: the end of every scroll view stops above it, nothing sits under it.
-        .safeAreaInset(edge: .bottom, spacing: 0) { TabBar() }
+        // The bar floats `inset` from the sides and the bottom, over the home indicator's band. The page scrolls behind it
+        // and the end of every scroll view stops above it.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            TabBar().padding(.horizontal, Concentric.inset).padding(.bottom, Concentric.inset - homeIndicator)
+        }
         .background(Palette.white)
+        .background {
+            Color.clear.ignoresSafeArea(.keyboard).onGeometryChange(for: CGFloat.self, of: { $0.safeAreaInsets.bottom }) { homeIndicator = $0 }
+        }
         .sheet(isPresented: $logoutOpen) { LogoutSheet() }
         .sheet(item: $model.unlocking) { booking in
             if let place = Place(booking) { BikeActionSheet(place: place, bookingId: booking.id, action: .unlock) }
@@ -25,34 +32,40 @@ struct Shell: View {
     }
 }
 
+/// The web's mobile navigation as a floating white bar with the site's shadow ring, its corners concentric with the display's,
+/// the active tab's red pill concentric with the bar.
 struct TabBar: View {
     @Environment(AppModel.self) private var model
+    @State private var radius = Concentric.display - Concentric.inset
+    private let padding: CGFloat = 10
 
     var body: some View {
-        VStack(spacing: 0) {
-            Hairline()
-            HStack(spacing: 0) {
-                ForEach(Page.allCases) { page in
-                    let active = model.page == page
-                    Button { model.page = page } label: {
-                        VStack(spacing: 5) {
-                            Icon(page.icon, .light, size: 22)
-                            Text(page.tab).typo(.body(11))
-                        }
-                        .foregroundStyle(active ? Palette.white : Palette.inkSoft)
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .padding(4)
-                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(active ? Palette.red : .clear))
-                        .contentShape(Rectangle())
+        HStack(spacing: 0) {
+            ForEach(Page.allCases) { page in
+                let active = model.page == page
+                Button { model.page = page } label: {
+                    VStack(spacing: 5) {
+                        Icon(page.icon, .light, size: 22)
+                        Text(page.tab).typo(.body(11))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(page.title)
-                    .accessibilityAddTraits(active ? .isSelected : [])
+                    .foregroundStyle(active ? Palette.white : Palette.inkSoft)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .padding(4)
+                    .background(RoundedRectangle(cornerRadius: radius - padding, style: .continuous).fill(active ? Palette.red : .clear))
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(page.title)
+                .accessibilityAddTraits(active ? .isSelected : [])
             }
-            .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 8)
         }
-        .background(Palette.white.ignoresSafeArea(edges: .bottom))
+        .padding(padding)
+        .background {
+            RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Palette.white)
+                .shadow(color: Palette.ink.opacity(0.1), radius: 18, y: 12)
+                .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
+        }
+        .onGeometryChange(for: CGFloat.self, of: { Concentric.radius($0) }) { radius = $0 }
     }
 }
 
@@ -103,9 +116,9 @@ struct PageScaffold: View {
     var body: some View {
         ScrollViewReader { proxy in
             scroll.task {
-                if model.snapshot == .overviewMap {
+                if model.snapshot == .overviewMap || model.snapshot == .accountEnd {
                     try? await Task.sleep(nanoseconds: 1_500_000_000)
-                    proxy.scrollTo("stations-map", anchor: .bottom)
+                    proxy.scrollTo(model.snapshot == .overviewMap ? "stations-map" : "page-end", anchor: .bottom)
                 }
             }
         }
@@ -133,6 +146,7 @@ struct PageScaffold: View {
                 }
                 .padding(.horizontal, 22)
                 .padding(.bottom, 40)
+                Color.clear.frame(height: 0).id("page-end")
             }
         }
         .scrollIndicators(.hidden)
@@ -249,7 +263,6 @@ struct LogoutSheet: View {
         .padding(.horizontal, 22).padding(.top, 24).padding(.bottom, 24)
         .presentationDetents([.height(190)])
         .presentationBackground(Palette.white)
-        .presentationCornerRadius(Palette.radius)
         .interactiveDismissDisabled(pending)
     }
 }

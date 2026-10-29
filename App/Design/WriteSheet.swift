@@ -111,7 +111,7 @@ struct WriteDialog<Question: View>: View {
     private var sending: Bool { entry?.status == .sending }
     private var busy: Bool { sending || checking }
     private var failure: Outcome? { entry?.status == .uncertain ? entry?.outcome : refused }
-    private var uncertain: Bool { failure?.isUncertain == true }
+    private var uncertain: Bool { entry?.status == .uncertain }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -123,7 +123,7 @@ struct WriteDialog<Question: View>: View {
                 VStack(alignment: .leading, spacing: 6) {
                     FormError(failure.message ?? (failure.isUncertain ? Messages.unverified : "La modification n’a pas abouti."))
                     RawStatus(outcome: failure)
-                    if failure.isUncertain { UncertainNote().padding(.top, 4) }
+                    if uncertain { UncertainNote().padding(.top, 4) }
                 }
                 .padding(.top, 14)
             }

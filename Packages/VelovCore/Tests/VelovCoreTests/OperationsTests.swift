@@ -249,6 +249,10 @@ final class OperationsTests: XCTestCase {
         let booking = Booking(id: "bk", stationNumber: 2002, stationName: "Bellecour", standNumber: 4, bikeNumber: 7, endsAt: nil, lat: nil, lon: nil)
         XCTAssertEqual(bookingCheck([booking], bike: 7), .applied)
         XCTAssertEqual(bookingCheck([booking], bike: 8), .unchanged)
+        let anonymous = Booking(id: "bk-x", stationNumber: 2002, stationName: "Bellecour", standNumber: 4, bikeNumber: nil, endsAt: nil, lat: nil, lon: nil)
+        XCTAssertEqual(bookingCheck([anonymous], bike: 8), .unknown, "a booking without a bike number may be ours")
+        XCTAssertEqual(bookingCheck([anonymous, booking], bike: 7), .applied)
+        XCTAssertEqual(bookingCheck([], bike: 7), .unchanged)
     }
 
     func dashboard(autoSpend: Bool? = true, favorites: [Int] = [2002], renewal: Bool? = false, rated: Bool? = true, balance: Double? = 150, movements: [RewardMovement] = []) -> Dashboard {

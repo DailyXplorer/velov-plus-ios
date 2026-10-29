@@ -66,7 +66,7 @@ struct BikeActionSheet: View {
         if let held { return held.entry.outcome }
         return refused
     }
-    private var uncertain: Bool { failure?.isUncertain == true }
+    private var uncertain: Bool { held?.entry.status == .uncertain }
     private var booked: Bool { model.bookings.contains { $0.bikeNumber == place.bikeNumber } }
 
     var body: some View {
@@ -96,7 +96,7 @@ struct BikeActionSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     FormError(failure.message ?? (action == .book ? "Réservation impossible." : "Déverrouillage impossible."))
                     RawStatus(outcome: failure, withState: true)
-                    if failure.isUncertain { UncertainNote(unlock: action == .unlock).padding(.top, 4) }
+                    if uncertain { UncertainNote(unlock: action == .unlock).padding(.top, 4) }
                 }
                 .padding(.top, 14)
             }

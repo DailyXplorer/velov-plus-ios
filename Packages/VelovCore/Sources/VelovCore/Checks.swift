@@ -42,7 +42,8 @@ public func unlockCheck(_ check: TripCheck, bike: Int, since: Date, now: Date, b
 }
 
 public func bookingCheck(_ bookings: [Booking], bike: Int) -> Check {
-    bookings.contains { $0.bikeNumber == bike } ? .applied : .unchanged
+    if bookings.contains(where: { $0.bikeNumber == bike }) { return .applied }
+    return bookings.contains { $0.bikeNumber == nil } ? .unknown : .unchanged
 }
 
 public func compare<T: Equatable>(_ actual: T?, _ wanted: T) -> Check {

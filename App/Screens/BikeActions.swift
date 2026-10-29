@@ -31,77 +31,41 @@ func knownDistance(to place: Place) async -> Double? {
     return haversine(GeoPoint(lat: here.coordinate.latitude, lon: here.coordinate.longitude), GeoPoint(lat: lat, lon: lon))
 }
 
-/// bike-actions.tsx `BikeActions` as a sheet: the confirmation, exactly one request per « Confirmer », then the result.
-/// A failure keeps Vélo’v's message and the raw line; nothing is sent again without a new confirmation.
+/// bike-actions.tsx `BikeActions` as a sheet: the confirmation and exactly one request per « Confirmer »; success closes the sheet
+/// and hands over to the page (the booking banner, the dock watch). A failure stays with Vélo’v's message and the raw line:
+/// a sure refusal may be confirmed again, an uncertain one only closes.
 struct BikeActionSheet: View {
-    enum Step {
-        case confirm(BikeAction)
-        case sending(BikeAction)
-        case booked(Booking?)
-        case unlocked(ongoing: [Trip]?)
-        case failed(BikeAction, Outcome)
-    }
-
     let place: Place
+    let action: BikeAction
     /// The account's booking of this bike, spent by an unlock.
     let bookingId: String?
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @State private var step: Step
+    @State private var sending = false
+    @State private var failure: Outcome?
     @State private var distance: Double?
-    @State private var booking: String?
 
     init(place: Place, bookingId: String? = nil, action: BikeAction) {
         self.place = place
         self.bookingId = bookingId
-        _step = State(initialValue: .confirm(action))
-        _booking = State(initialValue: bookingId)
+        self.action = action
     }
 
-    private var sending: Bool { if case .sending = step { true } else { false } }
+    private var uncertain: Bool { failure?.isUncertain == true }
 
     var body: some View {
+        let far = action == .unlock && (distance ?? 0) > Rules.releaseDistance
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: "Vélo \(place.bikeNumber)", closeDisabled: sending) { dismiss() }
-            switch step {
-            case .confirm(let action), .sending(let action): confirm(action)
-            case .booked(let booking): booked(booking)
-            case .unlocked(let ongoing): unlocked(ongoing)
-            case .failed(let action, let outcome): failed(action, outcome)
+            Text(action == .book ? "Réserver ce vélo ?" : "Déverrouiller ce vélo ?").typo(.title(20)).foregroundStyle(Palette.ink).padding(.top, 10)
+            Group {
+                if action == .book {
+                    Text("\(Rules.bookingPoints) points pour garder ce vélo \(Rules.bookingMinutes) minutes.").foregroundStyle(Palette.inkSoft)
+                } else {
+                    Text("Vous aurez ensuite 60 secondes pour appuyer sur le bouton de la borne \(place.standNumber) et retirer le vélo.").foregroundStyle(Palette.ink)
+                }
             }
-        }
-        .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
-        .fitSheet()
-        .interactiveDismissDisabled(sending)
-        .task {
-            distance = model.snapshot == nil ? await knownDistance(to: place) : 640
-            if model.snapshot == .unlockSuccess, case .confirm(let action) = step { send(action) }
-        }
-    }
-
-    // MARK: Steps
-
-    @ViewBuilder
-    private func confirm(_ action: BikeAction) -> some View {
-        let far = (distance ?? 0) > Rules.releaseDistance
-        Text(action == .book ? "Réserver ce vélo ?" : "Déverrouiller ce vélo ?").typo(.title(20)).foregroundStyle(Palette.ink).padding(.top, 10)
-        VStack(spacing: 0) {
-            DetailRow("Station", place.stationName)
-            DetailRow("Borne", "\(place.standNumber)")
-            DetailRow("Vélo", "\(place.bikeNumber)", last: action == .unlock && distance == nil)
-            if action == .book {
-                DetailRow("Coût", "\(Rules.bookingPoints) points", last: true)
-            } else if let distance {
-                DetailRow("Distance", "≈ \(formatDistance(distance))", last: true)
-            }
-        }
-        .padding(.top, 8)
-        if action == .book {
-            Text("Le vélo vous est réservé pendant \(Rules.bookingMinutes) minutes.")
-                .typo(.body(13)).foregroundStyle(Palette.inkSoft).padding(.top, 12)
-        } else {
-            Text("Vous aurez ensuite 60 secondes pour appuyer sur le bouton de la borne et retirer le vélo.")
-                .typo(.body(14, medium: true)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 12)
+            .typo(.body(14)).fixedSize(horizontal: false, vertical: true).padding(.top, 10)
             if far {
                 HStack(alignment: .top, spacing: 8) {
                     Icon(.warning, .bold, size: 16).padding(.top, 1)
@@ -113,78 +77,40 @@ struct BikeActionSheet: View {
                 .background(RoundedRectangle(cornerRadius: 12).fill(Palette.redTint))
                 .padding(.top, 12)
             }
-        }
-        HStack(spacing: 10) {
-            Spacer()
-            PillButton("Annuler", variant: .ghost) { dismiss() }.disabled(sending)
-            PillButton("Confirmer", pending: sending) { send(action) }
-        }
-        .padding(.top, 22)
-    }
-
-    private func booked(_ booking: Booking?) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ResultLine(ok: true) {
-                if let endsAt = booking?.endsAt {
-                    (Text("Vélo réservé jusqu’à ") + Text(formatDate(endsAt, .time)).font(Typo.clock(15).font)).typo(.body(15, medium: true))
-                    TimelineView(.periodic(from: .now, by: 1)) { context in
-                        let left = max(0, Int(endsAt.timeIntervalSince(context.date).rounded()))
-                        HStack(spacing: 6) {
-                            Icon(.clock, .bold, size: 14)
-                            if left > 0 {
-                                Text("Il reste").typo(.label(12))
-                                Text(clock(left)).typo(.clock(13))
-                            } else {
-                                Text("Réservation expirée").typo(.label(12))
-                            }
-                        }
-                        .foregroundStyle(Palette.redDeep)
-                    }
-                } else {
-                    Text("Vélo réservé pour \(Rules.bookingMinutes) minutes").typo(.body(15, medium: true))
+            if let failure {
+                VStack(alignment: .leading, spacing: 6) {
+                    FormError(failure.message ?? (action == .book ? "Réservation impossible." : "Déverrouillage impossible."))
+                    RawStatus(outcome: failure, withState: true)
+                    if failure.isUncertain { UncertainNote(unlock: action == .unlock).padding(.top, 4) }
                 }
-                Text("Vélo \(place.bikeNumber) · Borne \(place.standNumber)").typo(.body(13)).foregroundStyle(Palette.inkSoft)
+                .padding(.top, 14)
             }
-            VStack(spacing: 10) {
-                PillButton(fullWidth: true, action: { step = .confirm(.unlock) }) { Icon(.lockOpen, .light, size: 17); Text("Déverrouiller") }
-                PillButton("Fermer", variant: .secondary, fullWidth: true) { dismiss() }
+            PairedActions {
+                if uncertain {
+                    PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }
+                } else {
+                    PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(sending)
+                    PillButton("Confirmer", pending: sending, fullWidth: true) { send() }
+                }
             }
             .padding(.top, 22)
         }
-        .padding(.top, 14)
-    }
-
-    private func unlocked(_ ongoing: [Trip]?) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ResultLine(ok: true) {
-                Text("Vélo déverrouillé à la borne \(place.standNumber)").typo(.body(15, medium: true))
-                Text("Appuyez sur le bouton de la borne et retirez le vélo dans les 60 secondes.").typo(.body(14)).foregroundStyle(Palette.ink)
-                Text(ongoing?.isEmpty == false ? "Votre trajet a commencé." : "Votre trajet s’affichera une dizaine de secondes après le retrait du vélo.")
-                    .typo(.body(13)).foregroundStyle(Palette.inkSoft)
-            }
-            PillButton("Fermer", variant: .secondary, fullWidth: true) { dismiss() }.padding(.top, 22)
+        .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
+        .fitSheet()
+        .interactiveDismissDisabled(sending)
+        .task {
+            distance = model.snapshot == nil ? await knownDistance(to: place) : 640
+            if model.snapshot == .unlockUncertain { send() }
         }
-        .padding(.top, 14)
-    }
-
-    private func failed(_ action: BikeAction, _ outcome: Outcome) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ResultLine(ok: false) {
-                Text(action == .book ? "Réservation impossible" : "Déverrouillage impossible").typo(.body(15, medium: true))
-                Text(outcome.message ?? Messages.releaseFailed).typo(.body(14)).foregroundStyle(Palette.ink)
-            }
-            RawStatus(outcome: outcome, withState: true).padding(.top, 12)
-            PillButton("Retour", variant: .secondary, fullWidth: true) { dismiss() }.padding(.top, 22)
-        }
-        .padding(.top, 14)
     }
 
     // MARK: The one request
 
-    private func send(_ action: BikeAction) {
+    private func send() {
         guard !sending else { return }
         Haptics.confirm()
-        step = .sending(action)
+        sending = true
+        failure = nil
         Task {
             switch action {
             case .book:
@@ -195,12 +121,14 @@ struct BikeActionSheet: View {
                     return answer.outcome
                 }
                 Haptics.result(outcome.ok)
+                sending = false
                 if outcome.ok {
-                    self.booking = booking?.id
                     model.booked(booking)
-                    step = .booked(booking)
+                    dismiss()
                 } else {
-                    step = .failed(.book, outcome)
+                    failure = outcome
+                    // Only the booking's own state can be read back; the borne is checked by the user.
+                    if outcome.isUncertain { Task { await model.loadBookings() } }
                 }
             case .unlock:
                 var ongoing: [Trip]?
@@ -210,30 +138,14 @@ struct BikeActionSheet: View {
                     return answer.outcome
                 }
                 Haptics.result(outcome.ok)
+                sending = false
                 if outcome.ok {
-                    model.unlocked(bookingId: booking)
-                    step = .unlocked(ongoing: ongoing)
+                    model.unlocked(bookingId: bookingId, tripId: ongoing?.first?.id)
+                    dismiss()
                 } else {
-                    step = .failed(.unlock, outcome)
+                    failure = outcome
                 }
             }
         }
-    }
-}
-
-/// `.bike-action-result`: the red check (or X) circle and the lines beside it.
-struct ResultLine<Content: View>: View {
-    let ok: Bool
-    @ViewBuilder let content: () -> Content
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Icon(ok ? .check : .x, .bold, size: 14).foregroundStyle(Palette.white)
-                .frame(width: 28, height: 28).background(Circle().fill(Palette.red))
-            VStack(alignment: .leading, spacing: 6) { content() }
-                .foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
     }
 }

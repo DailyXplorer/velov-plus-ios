@@ -44,10 +44,13 @@ enum Resource<T> {
 /// A screen the snapshot run opens straight away (`-VelovScreen tripSheet`).
 enum SnapshotScreen: String {
     case overview, overviewMap, trips, tripSheet, rateCard, points, stations, stationSheet, bikeList, bikeSheet, account, accountEnd, accountEdit
-    case bookingBanner, unlockConfirm, bookConfirm, unlockSuccess, liveActivityLock, liveActivityIsland
+    case bookingBanner, unlockConfirm, bookConfirm, unlockUncertain, liveActivityLock, liveActivityIsland
+    case tripEnded, tripEndedStars
+    /// The Statistiques page pushed over Trajets: its top, its charts, the heatmap, its points and records, its end.
+    case stats, statsCharts, statsHeatmap, statsRecords, statsEnd
 
     /// The screens drawn with a running booking.
-    var withBooking: Bool { [.bookingBanner, .unlockConfirm, .unlockSuccess].contains(self) }
+    var withBooking: Bool { [.bookingBanner, .unlockConfirm, .unlockUncertain].contains(self) }
 }
 
 @MainActor
@@ -73,6 +76,23 @@ final class AppModel {
     var unlocking: Booking?
     /// Trips rated from this phone: the dashboard says so only after its next read.
     var ratedHere: Set<String> = []
+    /// The trip whose « Trajet terminé » sheet is open: just docked, or on launch a recent one still to rate.
+    var ended: Trip?
+    /// In the foreground: the dock watch polls only then.
+    var foreground = true
+    /// Trips already seen docked: a dashboard read lagging behind Vélo’v must not start watching them again.
+    private var docked: Set<String> = []
+    private var greeted = false
+    @ObservationIgnored private lazy var dockWatch: DockWatch = DockWatch(
+        check: { [unowned self] in
+            do { return try await service.tripCheck() } catch let error as VelovError where error.code == .expired {
+                phase = .guest("Session expirée. Reconnectez-vous.")
+                dockWatch.stop()
+                throw error
+            }
+        },
+        docked: { [unowned self] tripId, latest in tripDocked(tripId, latest: latest) },
+        visible: { [unowned self] in foreground })
     /// Where the invite codes are kept on this phone, before anything else happens to them.
     let promoBacking: PromoBacking
     private let activities = BookingActivities()
@@ -83,6 +103,7 @@ final class AppModel {
         self.promoBacking = promoBacking
         switch snapshot {
         case .trips?, .tripSheet?, .rateCard?: page = .trips
+        case .stats?, .statsCharts?, .statsHeatmap?, .statsRecords?, .statsEnd?: page = .trips
         case .points?: page = .points
         case .stations?, .stationSheet?, .bikeList?, .bikeSheet?, .bookConfirm?: page = .stations
         case .account?, .accountEnd?, .accountEdit?: page = .account
@@ -122,8 +143,11 @@ final class AppModel {
         refreshing = true
         defer { refreshing = false }
         do {
-            phase = .ready(try await service.dashboard())
+            let data = try await service.dashboard()
+            phase = .ready(data)
+            watchTrips(data)
         } catch let error as VelovError where error.code == .expired {
+            dockWatch.stop()
             phase = .guest(error.revoked ? error.message : "Votre session a expiré. Reconnectez-vous.")
         } catch {
             phase = .failed((error as? VelovError)?.message ?? "Votre compte est momentanément indisponible.")
@@ -143,13 +167,52 @@ final class AppModel {
         guard let value = try? await service.bookings() else { return }
         bookings = value
         if snapshot == nil { activities.sync(value) }
-        if snapshot == .unlockConfirm || snapshot == .unlockSuccess { unlocking = value.first }
+        if snapshot == .unlockConfirm || snapshot == .unlockUncertain { unlocking = value.first }
     }
 
-    /// Back in the foreground: the bookings may have run out or been used meanwhile.
+    /// Back in the foreground: the bookings may have run out or been used meanwhile, the bike may have been docked.
     func becameActive() {
+        foreground = true
         guard dashboard != nil else { return }
         Task { await loadBookings() }
+        Task { await dockWatch.becameVisible() }
+    }
+
+    /// In the background the dock watch sends nothing; the next `becameActive` checks at once.
+    func resignedActive() {
+        foreground = false
+    }
+
+    // MARK: The end of a trip
+
+    /// Watches any ongoing trip the account reports; on the first read without one, offers to rate a recent unrated trip.
+    private func watchTrips(_ data: Dashboard) {
+        if snapshot == .tripEnded || snapshot == .tripEndedStars {
+            ended = SampleData.trips.first
+            return
+        }
+        guard snapshot == nil else { return }
+        if let trip = data.ongoing?.first(where: { !docked.contains($0.id) }) { dockWatch.follow(trip.id) }
+        guard !greeted else { return }
+        greeted = true
+        if data.ongoing?.isEmpty != false, let trips = data.trips, let recent = tripToGreet(trips, store: UserDefaults.standard) { ended = recent }
+    }
+
+    /// The bike is back in a borne: the account is read again for the trip's price, then « Trajet terminé » opens.
+    /// The bookings are read too, which ends any Live Activity whose booking is gone.
+    private func tripDocked(_ tripId: String, latest: Trip?) {
+        docked.insert(tripId)
+        Task {
+            await loadDashboard()
+            if let trip = dashboard?.trips?.first(where: { $0.id == tripId }) ?? (latest?.id == tripId ? latest : nil) { ended = trip }
+            await loadBookings()
+        }
+    }
+
+    /// « Plus tard », or any other way out of « Trajet terminé »: that trip is not offered again on this phone.
+    func closeEnded(_ trip: Trip) {
+        if snapshot == nil { dismissTrip(UserDefaults.standard, trip.id) }
+        if ended?.id == trip.id { ended = nil }
     }
 
     // MARK: Effects of confirmed writes, applied here instead of reading the whole account again.
@@ -163,12 +226,13 @@ final class AppModel {
         Task { await loadBookings() }
     }
 
-    /// The release spends the booking: its banner and its Live Activity go.
-    func unlocked(bookingId: String?) {
+    /// The release spends the booking: its banner and its Live Activity go, and the dock watch starts.
+    func unlocked(bookingId: String?, tripId: String?) {
         if let bookingId {
             bookings.removeAll { $0.id == bookingId }
             activities.end(bookingId: bookingId)
         }
+        if snapshot == nil { dockWatch.follow(tripId) }
         Task {
             await loadBookings()
             await loadDashboard()
@@ -202,8 +266,10 @@ final class AppModel {
     /// Returns the notice to show when Vélo’v did not confirm the end of the session.
     func logout() async {
         let confirmed = await service.logout()
+        dockWatch.stop()
         bookings = []
         unlocking = nil
+        ended = nil
         activities.endAll()
         page = .overview
         phase = .guest(confirmed ? nil : Messages.remoteLogoutUnconfirmed)

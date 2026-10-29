@@ -48,13 +48,10 @@ struct StationCard: View {
         .ringed(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .sheet(isPresented: $bikesOpen) { BikesSheet(station: station) }
         .sheet(isPresented: $favoriteOpen) {
-            WriteDialog(title: wasFavorite ? "Retirer des favoris ?" : "Ajouter aux favoris ?",
-                        success: wasFavorite ? "Station retirée des favoris." : "Station ajoutée aux favoris.") { [wasFavorite] in
+            WriteDialog(title: wasFavorite ? "Retirer des favoris ?" : "Ajouter aux favoris ?") { [wasFavorite] in
                 let outcome = await attempt { try await model.service.setFavorite(station: station.number, on: !wasFavorite) }
                 if outcome.ok { model.setFavorite(station.number, !wasFavorite) }
                 return outcome
-            } question: {
-                Text(station.name) + Text(verbatim: "  n° \(station.number)").foregroundColor(Palette.inkSoft)
             }
         }
         .task(id: station.id) {

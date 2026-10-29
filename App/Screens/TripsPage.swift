@@ -16,6 +16,7 @@ struct TripsPage: View {
         if let all = data.trips {
             let trips = sorted(all.filter { filter == .all || $0.bikeType.rawValue == filter.rawValue })
             VStack(alignment: .leading, spacing: 0) {
+                StatsLink().padding(.bottom, 20)
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         SelectField(label: "Type de vélo", hideLabel: true, value: $filter, options: [
@@ -41,7 +42,10 @@ struct TripsPage: View {
                 }
             }
         } else {
-            EmptyState("\(Messages.missing).")
+            VStack(alignment: .leading, spacing: 0) {
+                StatsLink()
+                EmptyState("\(Messages.missing).")
+            }
         }
     }
 

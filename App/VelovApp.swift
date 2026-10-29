@@ -11,7 +11,7 @@ struct VelovApp: App {
         let defaults = UserDefaults.standard
         let snapshot = defaults.string(forKey: "VelovScreen").flatMap(SnapshotScreen.init)
         let sample = defaults.bool(forKey: "VelovSample") || snapshot != nil
-        let service: VelovService = sample ? SampleService(booking: snapshot?.withBooking == true ? SampleData.booking() : nil) : LiveService()
+        let service: VelovService = sample ? SampleService(booking: snapshot?.withBooking == true ? SampleData.booking() : nil, failUnlock: snapshot == .unlockUncertain) : LiveService()
         let promos: PromoBacking = sample ? InMemoryPromoBacking() : FilePromoBacking(directory: AppModel.promoDirectory())
         _model = State(initialValue: AppModel(service: service, snapshot: snapshot, promoBacking: promos))
     }
@@ -25,7 +25,7 @@ struct VelovApp: App {
                 .task { await model.start() }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { model.becameActive() }
+            if phase == .active { model.becameActive() } else { model.resignedActive() }
         }
     }
 }

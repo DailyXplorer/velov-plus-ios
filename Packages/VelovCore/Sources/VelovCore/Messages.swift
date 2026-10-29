@@ -36,6 +36,8 @@ public enum Messages {
         "REJECTED": "Refusé", "TIMEOUT": "Expiré", "ERROR": "En erreur", "WARNING": "Avertissement", "REVERSED": "Annulé"
     ]
 
+    public static let uncertain = "Le résultat est incertain : vérifiez avant de réessayer."
+    public static let uncertainUnlock = "Le résultat est incertain : vérifiez la borne avant de réessayer."
     public static let releaseFailed = "Le déverrouillage n’a pas abouti."
     public static let bookingFailed = "La réservation de votre vélo n’a pas fonctionné."
     public static let sessionRefused = "Votre session n’est plus valide. Reconnectez-vous."

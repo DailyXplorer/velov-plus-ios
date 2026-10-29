@@ -115,13 +115,16 @@ final class WritesTests: XCTestCase {
 
     func testARatingPostsTheOfficialBodyOnceAndARefusalIsNotRetried() async throws {
         let server = MockServer { _, _ in .status(200, body: "{}") }
-        try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .recommend, http: server.transport)
+        _ = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .recommend, http: server.transport)
         XCTAssertEqual(server.calls[0].url, "https://api.cyclocity.fr/contracts/lyon/accounts/acc-1/trips/trip-1/rate")
         XCTAssertEqual(server.calls[0].bodyText, #"{"bikeId":20449,"recommended":true,"contract":"lyon","rating":null}"#)
-        for (status, code) in [(401, VelovError.Code.expired), (404, .unavailable), (502, .unavailable)] {
+        let expired = MockServer { _, _ in .status(401) }
+        do { _ = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .warn(30), http: expired.transport); XCTFail("no error") }
+        catch { XCTAssertEqual((error as? VelovError)?.code, .expired) }
+        for status in [404, 502] {
             let failing = MockServer { _, _ in .status(status) }
-            do { try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .warn(30), http: failing.transport); XCTFail("no error") }
-            catch { XCTAssertEqual((error as? VelovError)?.code, code) }
+            let outcome = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .warn(30), http: failing.transport)
+            XCTAssertEqual([outcome.ok, outcome.httpStatus == status], [false, true])
             XCTAssertEqual(failing.calls.count, 1)
         }
     }

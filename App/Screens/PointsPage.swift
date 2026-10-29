@@ -99,8 +99,7 @@ struct AutoSpendSetting: View {
         .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
         .sheet(isPresented: $asking) {
-            WriteDialog(title: next ? "Activer l’utilisation automatique ?" : "Désactiver l’utilisation automatique ?",
-                        success: next ? "Utilisation automatique activée." : "Utilisation automatique désactivée.") { [next] in
+            WriteDialog(title: next ? "Activer l’utilisation automatique ?" : "Désactiver l’utilisation automatique ?") { [next] in
                 var answered: Bool?
                 let outcome = await attempt {
                     let result = try await model.service.setAutoSpend(next)

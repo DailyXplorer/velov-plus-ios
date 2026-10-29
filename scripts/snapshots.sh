@@ -41,7 +41,14 @@ shot liveActivityLock 10-live-activity-lock 5
 shot liveActivityIsland 11-live-activity-island 5
 shot bookConfirm 12a-book-confirm 12
 shot unlockConfirm 12-unlock-confirm 7
-shot unlockSuccess 13-unlock-success 8
+shot unlockUncertain 13-unlock-uncertain 9
 shot rateCard 14-rate-card 6
 shot accountEdit 15-account-edit 6
+shot tripEnded 17-trip-ended 6
+shot tripEndedStars 18-trip-ended-stars 6
+shot stats 16a-stats 8
+shot statsCharts 16b-stats-charts 9
+shot statsHeatmap 16c-stats-heatmap 9
+shot statsRecords 16d-stats-records 9
+shot statsEnd 16e-stats-end 9
 xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true

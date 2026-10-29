@@ -3,7 +3,7 @@ import UIKit
 import VelovCore
 
 // The pieces every state-changing action shares: a confirmation sheet sized to its content, a haptic on « Confirmer »,
-// one request per confirmation, a success state, and the raw status line on failure only.
+// one request per confirmation, the sheet closing on success, and the raw status line on failure only.
 
 enum Haptics {
     static func confirm() { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
@@ -26,6 +26,23 @@ struct FormError: View {
     let text: String
     init(_ text: String) { self.text = text }
     var body: some View { Text(text).typo(.body(14)).foregroundStyle(Palette.formError).fixedSize(horizontal: false, vertical: true) }
+}
+
+/// `.uncertain-note`: under a failure that may have gone through, when only « Fermer » is left.
+struct UncertainNote: View {
+    var unlock = false
+    var body: some View {
+        Text(unlock ? Messages.uncertainUnlock : Messages.uncertain)
+            .typo(.body(13, medium: true)).foregroundStyle(Palette.redDeep).fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// `.modal-actions`, `.bike-action-buttons` on a phone: the buttons of a row share its width, each as wide and as tall as the others.
+struct PairedActions<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    var body: some View {
+        HStack(spacing: 10) { content() }.fixedSize(horizontal: false, vertical: true)
+    }
 }
 
 /// `.write-done`: a check and the success sentence.
@@ -77,14 +94,12 @@ extension View {
     func fitSheet() -> some View { modifier(FitSheet()) }
 }
 
-/// account-actions.tsx `ConfirmDialog`: a question, one request per « Confirmer », then the result.
+/// account-actions.tsx `ConfirmDialog`: a question, one request per « Confirmer »; success closes the sheet, a failure stays with its raw status.
+/// A failure that may have gone through leaves only « Fermer ».
 struct WriteDialog<Question: View>: View {
-    enum Step { case confirm, sending, done, failed(Outcome) }
+    enum Step { case confirm, sending, failed(Outcome) }
 
     let title: String
-    let success: String
-    /// Off where the core reports a failure as a message only (the rating, as on the web).
-    var showsRawLine = true
     /// Sends the one request; applies its effect itself when it succeeds.
     let run: () async -> Outcome
     @ViewBuilder let question: () -> Question
@@ -92,29 +107,31 @@ struct WriteDialog<Question: View>: View {
     @State private var step = Step.confirm
 
     private var sending: Bool { if case .sending = step { true } else { false } }
+    private var failure: Outcome? { if case .failed(let outcome) = step { outcome } else { nil } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: title, closeDisabled: sending) { dismiss() }
-            if case .done = step {
-                DoneLine(text: success).padding(.top, 18)
-                PillButton("Fermer", variant: .secondary) { dismiss() }.frame(maxWidth: .infinity, alignment: .trailing).padding(.top, 24)
-            } else {
+            if Question.self != EmptyView.self {
                 question().typo(.body(15)).foregroundStyle(Palette.ink).padding(.top, 14)
-                if case .failed(let outcome) = step {
-                    VStack(alignment: .leading, spacing: 6) {
-                        FormError(outcome.message ?? "La modification n’a pas abouti.")
-                        if showsRawLine { RawStatus(outcome: outcome) }
-                    }
-                    .padding(.top, 14)
-                }
-                HStack(spacing: 10) {
-                    Spacer()
-                    PillButton("Annuler", variant: .ghost) { dismiss() }.disabled(sending)
-                    PillButton("Confirmer", pending: sending) { confirm() }
-                }
-                .padding(.top, 24)
             }
+            if let failure {
+                VStack(alignment: .leading, spacing: 6) {
+                    FormError(failure.message ?? "La modification n’a pas abouti.")
+                    RawStatus(outcome: failure)
+                    if failure.isUncertain { UncertainNote().padding(.top, 4) }
+                }
+                .padding(.top, 14)
+            }
+            PairedActions {
+                if failure?.isUncertain == true {
+                    PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }
+                } else {
+                    PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(sending)
+                    PillButton("Confirmer", pending: sending, fullWidth: true) { confirm() }
+                }
+            }
+            .padding(.top, 24)
         }
         .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
         .fitSheet()
@@ -128,8 +145,15 @@ struct WriteDialog<Question: View>: View {
         Task {
             let outcome = await run()
             Haptics.result(outcome.ok)
-            step = outcome.ok ? .done : .failed(outcome)
+            if outcome.ok { dismiss() } else { step = .failed(outcome) }
         }
+    }
+}
+
+extension WriteDialog where Question == EmptyView {
+    /// Only the title asks: « Ajouter aux favoris ? », « Enregistrer les modifications ? ».
+    init(title: String, run: @escaping () async -> Outcome) {
+        self.init(title: title, run: run) { EmptyView() }
     }
 }
 

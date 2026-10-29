@@ -13,71 +13,12 @@ func countryName(_ code: String?) -> String? { countries.first { $0.value == cod
 
 // MARK: Coordinates
 
-struct ProfileDraft: Equatable {
-    var address: String
-    var complement: String
-    var zipCode: String
-    var city: String
-    var country: String
-    var phone: String
-
-    init(_ profile: Profile) {
-        address = profile.address ?? ""; complement = profile.addressComplement ?? ""; zipCode = profile.zipCode ?? ""
-        city = profile.city ?? ""; country = profile.country ?? "FR"; phone = profile.phoneNumber ?? ""
-    }
-}
-
-struct ProfileChange: Identifiable {
-    let label: String
-    let before: String
-    let after: String
-    var id: String { label }
-}
-
 struct ProfileReview: Identifiable {
     let body: ProfileBody
-    let changes: [ProfileChange]
     let id = UUID()
 }
 
-/// `changesOf`: the PATCH body with only the fields that changed, or the first problem to fix; nil when nothing changed.
-func reviewProfile(_ profile: Profile, _ draft: ProfileDraft) -> Result<ProfileReview, ProfileProblem>? {
-    var body = ProfileBody()
-    var changes: [ProfileChange] = []
-    let trim = { (value: String) in value.trimmingCharacters(in: .whitespacesAndNewlines) }
-    let address = trim(draft.address), complement = trim(draft.complement), zipCode = trim(draft.zipCode), city = trim(draft.city)
-    let changed = { (value: String, before: String?) in value != (before ?? "") }
-    if changed(address, profile.address) || changed(complement, profile.addressComplement) {
-        if address.isEmpty { return .failure(ProfileProblem("Saisissez une adresse.")) }
-        body.address = ProfileAddress(name: address, complement: complement)
-        let before = [profile.address, profile.addressComplement].compactMap { $0 }.joined(separator: ", ")
-        changes.append(ProfileChange(label: "Adresse", before: before.isEmpty ? "—" : before, after: [address, complement].filter { !$0.isEmpty }.joined(separator: ", ")))
-    }
-    if changed(zipCode, profile.zipCode) { body.zipCode = zipCode; changes.append(ProfileChange(label: "Code postal", before: profile.zipCode ?? "—", after: zipCode)) }
-    if changed(city, profile.city) { body.city = city; changes.append(ProfileChange(label: "Ville", before: profile.city ?? "—", after: city)) }
-    if changed(draft.country, profile.country) {
-        body.country = draft.country
-        changes.append(ProfileChange(label: "Pays", before: countryName(profile.country) ?? "—", after: countryName(draft.country) ?? draft.country))
-    }
-    let phone = normalizePhone(draft.phone, country: draft.country)
-    if phone != (profile.phoneNumber ?? ""), trim(draft.phone) != (profile.phoneNumber ?? "") {
-        body.phoneNumber = phone
-        changes.append(ProfileChange(label: "Téléphone", before: profile.phoneNumber ?? "—", after: phone))
-    }
-    if changes.isEmpty { return nil }
-    switch body.problem() {
-    case nil: return .success(ProfileReview(body: body, changes: changes))
-    case .phoneNumber?: return .failure(ProfileProblem("Numéro de téléphone invalide. Exemple : 06 12 34 56 78."))
-    case .zipCode?: return .failure(ProfileProblem("Code postal invalide."))
-    case .city?: return .failure(ProfileProblem("Saisissez une ville."))
-    case .address?: return .failure(ProfileProblem("L’adresse ne doit pas dépasser \(Rules.addressMax) caractères."))
-    default: return .failure(ProfileProblem("Coordonnées invalides."))
-    }
-}
-
-struct ProfileProblem: Error { let message: String; init(_ message: String) { self.message = message } }
-
-/// `ProfileCoordinates`: address, postcode, city, country and phone only; names, email and secret code stay with Vélo’v.
+/// `ProfileCoordinates`: first and last name, address, postcode, city, country and phone (PATCH /accounts/{id}); email and secret code stay with Vélo’v.
 struct ProfileCoordinates: View {
     let profile: Profile
     @Environment(AppModel.self) private var model
@@ -91,19 +32,14 @@ struct ProfileCoordinates: View {
         }
         .task { if model.snapshot == .accountEdit, draft == nil { draft = ProfileDraft(profile) } }
         .sheet(item: $review) { review in
-            WriteDialog(title: "Enregistrer les modifications ?", success: "Coordonnées enregistrées.") {
+            WriteDialog(title: "Enregistrer les modifications ?") {
                 let outcome = await attempt { try await model.service.updateProfile(review.body) }
+                // Back to the coordinates, read again from Vélo’v.
                 if outcome.ok {
                     draft = nil
                     Task { await model.loadDashboard() }
                 }
                 return outcome
-            } question: {
-                VStack(spacing: 0) {
-                    ForEach(Array(review.changes.enumerated()), id: \.element.id) { index, change in
-                        DetailRow(label: change.label, last: index == review.changes.count - 1) { StackedValue(value: change.after, small: "Avant : \(change.before)") }
-                    }
-                }
             }
         }
     }
@@ -125,6 +61,9 @@ struct ProfileCoordinates: View {
         }
         let country = draft?.country ?? "FR"
         return VStack(alignment: .leading, spacing: 14) {
+            // `.name-pair` on a phone: one field per row.
+            FormField(label: "Prénom", text: binding(\.firstName), maxLength: Rules.nameMax, content: .givenName)
+            FormField(label: "Nom", text: binding(\.lastName), maxLength: Rules.nameMax, content: .familyName)
             FormField(label: "Adresse", text: binding(\.address), maxLength: Rules.addressMax, content: .streetAddressLine1)
             FormField(label: "Complément", text: binding(\.complement), maxLength: Rules.addressMax, content: .streetAddressLine2)
             HStack(alignment: .top, spacing: 10) {
@@ -137,10 +76,9 @@ struct ProfileCoordinates: View {
                 .zIndex(2)
             FormField(label: "Téléphone", text: binding(\.phone), maxLength: 20, keyboard: .phonePad, content: .telephoneNumber)
             if let error { FormError(error) }
-            HStack(spacing: 10) {
-                Spacer()
-                PillButton("Annuler", variant: .ghost) { draft = nil }
-                PillButton("Enregistrer") { submit() }
+            FormActions {
+                PillButton("Annuler", variant: .ghost, fullWidth: true) { draft = nil }
+                PillButton("Enregistrer", fullWidth: true) { submit() }
             }
         }
         .padding(.top, 16)
@@ -151,23 +89,31 @@ struct ProfileCoordinates: View {
         switch reviewProfile(profile, draft) {
         case nil: error = "Vous n’avez rien modifié."
         case .failure(let problem)?: error = problem.message
-        case .success(let value)?: error = nil; review = value
+        case .success(let body)?: error = nil; review = ProfileReview(body: body)
         }
     }
 }
 
+/// `.profile-form-actions` on a phone: one full-width button per row, all the same size.
+struct FormActions<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    var body: some View { VStack(spacing: 8) { content() } }
+}
+
 // MARK: Auto-renewal
 
-/// auto-renewal.tsx: the switch shows only when Vélo’v offers it, the state shown after a change is the one read back.
+/// auto-renewal.tsx: the switch shows only when Vélo’v offers it; success closes the sheet and the state shown is the one read back.
 struct AutoRenewalSetting: View {
     let subscription: Subscription
     @Environment(AppModel.self) private var model
     @State private var asking = false
     @State private var pending = false
-    @State private var result: AutoRenewalResult?
+    @State private var failure: Outcome?
+    /// Vélo’v's answer to the last change, shown until the account is read again.
+    @State private var saved: AutoRenewalResult?
 
-    private var actual: Bool? { result?.outcome.ok == true ? result?.autoRenewal : subscription.autoRenewal }
-    private var canChange: Bool { result?.outcome.ok == true ? result!.autoRenewalAllowed : subscription.autoRenewalAllowed }
+    private var actual: Bool? { saved.map(\.autoRenewal) ?? subscription.autoRenewal }
+    private var canChange: Bool { saved?.autoRenewalAllowed ?? subscription.autoRenewalAllowed }
     private var next: Bool { !(actual ?? false) }
 
     var body: some View {
@@ -178,41 +124,32 @@ struct AutoRenewalSetting: View {
             }
             Spacer(minLength: 0)
             if canChange, subscription.id != nil, let actual {
-                VelovSwitch(on: actual) { result = nil; asking = true }
-                    .disabled(result != nil)
+                VelovSwitch(on: actual) { failure = nil; asking = true }
                     .accessibilityLabel("Renouvellement automatique").accessibilityValue(actual ? "Activé" : "Désactivé")
             }
         }
         .padding(.top, 20)
-        .sheet(isPresented: $asking, onDismiss: { if result != nil { Task { await model.loadDashboard() } } }) { sheet }
+        .onChange(of: subscription) { saved = nil }
+        .sheet(isPresented: $asking) { sheet }
     }
 
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: "Renouvellement automatique", closeDisabled: pending) { asking = false }
-            Group {
-                if let result {
-                    if result.outcome.ok {
-                        DoneLine(text: !result.verified || result.autoRenewal == nil
-                                 ? "Demande envoyée. Actualisez pour vérifier le réglage."
-                                 : "Renouvellement automatique \(result.autoRenewal! ? "activé" : "désactivé").")
-                    } else {
-                        VStack(alignment: .leading, spacing: 6) {
-                            FormError(result.outcome.message ?? "Vélo’v n’a pas enregistré le renouvellement automatique.")
-                            RawStatus(outcome: result.outcome)
-                        }
-                    }
-                } else {
-                    Text(next ? "Activer le renouvellement automatique ? Votre abonnement sera renouvelé et facturé à son échéance."
-                              : "Désactiver le renouvellement automatique de votre abonnement ?")
-                        .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
-                }
+            SheetHeading(title: next ? "Activer le renouvellement automatique ?" : "Désactiver le renouvellement automatique ?", closeDisabled: pending) { asking = false }
+            if next {
+                Text("Votre abonnement sera renouvelé et facturé à son échéance.")
+                    .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
             }
-            .padding(.top, 14)
-            HStack(spacing: 10) {
-                Spacer()
-                PillButton(result == nil ? "Annuler" : "Fermer", variant: .secondary) { asking = false }.disabled(pending)
-                if result == nil { PillButton("Confirmer", pending: pending) { confirm() } }
+            if let failure {
+                VStack(alignment: .leading, spacing: 6) {
+                    FormError(failure.message ?? "Vélo’v n’a pas enregistré le renouvellement automatique.")
+                    RawStatus(outcome: failure)
+                }
+                .padding(.top, 14)
+            }
+            PairedActions {
+                PillButton("Annuler", variant: .secondary, fullWidth: true) { asking = false }.disabled(pending)
+                PillButton("Confirmer", pending: pending, fullWidth: true) { confirm() }
             }
             .padding(.top, 24)
         }
@@ -222,10 +159,11 @@ struct AutoRenewalSetting: View {
     }
 
     private func confirm() {
-        guard !pending, result == nil, let id = subscription.id else { return }
+        guard !pending, let id = subscription.id else { return }
         let next = next
         Haptics.confirm()
         pending = true
+        failure = nil
         Task {
             let value: AutoRenewalResult
             do {
@@ -235,8 +173,11 @@ struct AutoRenewalSetting: View {
                 value = AutoRenewalResult(outcome: outcome, autoRenewal: nil, autoRenewalAllowed: false, verified: false)
             }
             Haptics.result(value.outcome.ok)
-            result = value
             pending = false
+            guard value.outcome.ok else { failure = value.outcome; return }
+            if value.verified, value.autoRenewal != nil { saved = value }
+            asking = false
+            Task { await model.loadDashboard() }
         }
     }
 }
@@ -321,7 +262,7 @@ struct ShareSheet: UIViewControllerRepresentable {
 
 private let subjects: [SelectOption<String>] = zip(Guesses.mailComplaintTypes, ["Un trajet", "Mon abonnement", "Mes paiements", "Un parking"]).map { .init(value: $0, label: $1) }
 
-/// contact-support.tsx: one multipart message after the review.
+/// contact-support.tsx: one multipart message after « Confirmer »; success clears and closes the form.
 struct ContactSupport: View {
     let trips: [Trip]?
     @Environment(AppModel.self) private var model
@@ -348,16 +289,11 @@ struct ContactSupport: View {
                 form
             }
         }
-        .sheet(item: $draft, onDismiss: nil) { draft in
-            WriteDialog(title: "Envoyer au service client ?", success: "Message envoyé au service client.") {
+        .sheet(item: $draft) { draft in
+            WriteDialog(title: "Envoyer au service client ?") {
                 let outcome = await attempt { try await model.service.contactSupport(draft.body) }
-                if outcome.ok { message = ""; tripId = "none" }
+                if outcome.ok { message = ""; tripId = "none"; open = false }
                 return outcome
-            } question: {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(subjects.first { $0.value == draft.body.complaintType }?.label ?? "Demande").typo(.label(12)).foregroundStyle(Palette.inkSoft)
-                    Text(contactMessage(draft.body)).fixedSize(horizontal: false, vertical: true)
-                }
             }
         }
     }
@@ -379,10 +315,9 @@ struct ContactSupport: View {
                     .onChange(of: message) { _, value in if value.count > 1500 { message = String(value.prefix(1500)) } }
             }
             if let error { FormError(error) }
-            HStack(spacing: 10) {
-                Spacer()
-                PillButton("Annuler", variant: .ghost) { open = false }
-                PillButton("Vérifier et envoyer") { review() }
+            FormActions {
+                PillButton("Annuler", variant: .ghost, fullWidth: true) { open = false }
+                PillButton("Envoyer", fullWidth: true) { review() }
             }
         }
     }

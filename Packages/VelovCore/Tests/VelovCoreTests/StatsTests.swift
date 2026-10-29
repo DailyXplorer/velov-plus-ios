@@ -1,0 +1,231 @@
+import XCTest
+@testable import VelovCore
+
+final class StatsTests: XCTestCase {
+    /// Thursday 29 October 2026, noon in Lyon (winter time, UTC+1).
+    let now = date("2026-10-29T11:00:00Z")
+    let coords: [Int: GeoPoint] = [1: GeoPoint(lat: 45.75, lon: 4.83), 2: GeoPoint(lat: 45.76, lon: 4.85)]
+
+    func trip(_ id: String, _ start: String, minutes: Double? = 10, from: Int? = 1, to: Int? = 2, bike: Int? = 100, type: BikeType = .mechanical,
+              price: Double? = 0, status: String = "FINISHED", earned: Double = 0) -> Trip {
+        Trip(id: id, status: status, startedAt: date(start), startStation: from.map { "Station \($0)" }, endStation: to.map { "Station \($0)" },
+             startStationNumber: from, endStationNumber: to, bikeNumber: bike, bikeType: type, duration: minutes, price: price, pointsEarned: earned)
+    }
+
+    func input(_ trips: [Trip], movements: [StatsMovement]? = nil, balance: Double? = nil, complete: Bool = true) -> StatsInput {
+        StatsInput(trips: trips, coords: coords, movements: movements, balance: balance, complete: complete, now: now)
+    }
+
+    func testParisTimeFollowsLyonsCalendarAcrossMidnightAndSummerTime() {
+        XCTAssertEqual(parisTime(date("2026-10-28T23:30:00Z")), ParisTime(day: "2026-10-29", month: "2026-10", hour: 0, weekday: 3))
+        XCTAssertEqual(parisTime(date("2026-07-31T22:30:00Z")), ParisTime(day: "2026-08-01", month: "2026-08", hour: 0, weekday: 5))
+        XCTAssertEqual(parisTime(date("2026-10-26T06:00:00Z")).weekday, 0)
+        XCTAssertEqual(shiftDay("2026-03-01", -1), "2026-02-28")
+        XCTAssertEqual(shiftDay("2026-12-31", 1), "2027-01-01")
+        XCTAssertEqual(shiftMonth("2026-01", -11), "2025-02")
+        XCTAssertEqual(shiftMonth("2026-12", 1), "2027-01")
+    }
+
+    func testTheDistanceIsTheStraightLineLengthenedZeroForALoopAndUnknownWithoutCoordinates() {
+        let straight = haversine(coords[1]!, coords[2]!)
+        XCTAssertEqual(estimateDistance(trip("a", "2026-10-28T10:00:00Z"), coords: coords)!, straight * 1.3, accuracy: 0.001)
+        XCTAssertEqual(estimateDistance(trip("b", "2026-10-28T10:00:00Z", from: 1, to: 1), coords: coords), 0)
+        XCTAssertNil(estimateDistance(trip("c", "2026-10-28T10:00:00Z", from: 1, to: 9), coords: coords))
+        XCTAssertNil(estimateDistance(trip("d", "2026-10-28T10:00:00Z", from: nil, to: 2), coords: coords))
+
+        let stats = periodStats(.all, input([trip("a", "2026-10-28T10:00:00Z"), trip("b", "2026-10-27T10:00:00Z", from: 1, to: 1), trip("c", "2026-10-26T10:00:00Z", from: 1, to: 9)]))
+        XCTAssertEqual(stats.distance, DistanceEstimate(metres: (straight * 1.3).rounded(), known: 2, unknown: 1))
+        XCTAssertEqual(stats.co2Grams, (straight * 1.3 / 1000 * 200).rounded())
+    }
+
+    func testEachPeriodKeepsItsTripsByParisDayOrMonthAndDropsReversedOnes() {
+        let trips = [
+            trip("today", "2026-10-29T08:00:00Z", minutes: 12),
+            trip("edge-in", "2026-09-29T22:30:00Z", minutes: 30),   // 30 September 00:30 in Lyon: the first day of the 30.
+            trip("edge-out", "2026-09-29T21:59:00Z", minutes: 7),   // 29 September 23:59 in Lyon.
+            trip("year", "2025-11-03T10:00:00Z", minutes: 20),
+            trip("old", "2024-05-10T10:00:00Z", minutes: 5),
+            trip("reversed", "2026-10-28T10:00:00Z", status: "REVERSED")
+        ]
+        let stats = buildStats(input(trips))
+        XCTAssertEqual(stats.days30.trips, 2)
+        XCTAssertEqual(stats.days30.minutes, 42)
+        XCTAssertEqual(stats.days30.unit, .day)
+        XCTAssertEqual(stats.days30.buckets.count, 30)
+        XCTAssertEqual(stats.days30.buckets.first?.key, "2026-09-30")
+        XCTAssertEqual(stats.days30.buckets.first?.minutes, 30)
+        XCTAssertEqual(stats.days30.buckets.last, StatsBucket(key: "2026-10-29", minutes: 12, trips: 1, balance: nil))
+        XCTAssertEqual(stats.months12.trips, 4)
+        XCTAssertEqual(stats.months12.buckets.map(\.key).first, "2025-11")
+        XCTAssertEqual(stats.months12.buckets.count, 12)
+        XCTAssertEqual(stats.all.trips, 5)
+        XCTAssertEqual(stats.all.buckets.first?.key, "2024-05")
+        XCTAssertEqual(stats.all.buckets.count, 30)
+        XCTAssertTrue(stats.complete)
+        XCTAssertFalse(stats.pointsAvailable)
+        // Thursday, 9 h in Lyon.
+        XCTAssertEqual(stats.days30.heatmap[3][9], 1)
+        XCTAssertEqual(stats.days30.heatmap.flatMap { $0 }.reduce(0, +), 2)
+    }
+
+    func testDurationsMoneyTypesAndStationLessTrips() {
+        let trips = [
+            trip("a", "2026-10-28T10:00:00Z", minutes: 4, type: .electrical, price: 150),
+            trip("b", "2026-10-27T10:00:00Z", minutes: 5, price: -20),
+            trip("c", "2026-10-26T10:00:00Z", minutes: 30, from: nil, to: nil, type: .unknown),
+            trip("d", "2026-10-25T10:00:00Z", minutes: nil)
+        ]
+        var discounted = trips
+        discounted[0].discount = 40
+        let stats = periodStats(.days30, input(discounted))
+        XCTAssertEqual(stats.durations, [DurationCount(label: "0-5", count: 1), DurationCount(label: "5-10", count: 1), DurationCount(label: "10-20", count: 0),
+                                         DurationCount(label: "20-30", count: 0), DurationCount(label: "30+", count: 1)])
+        XCTAssertEqual(stats.spentCents, 150)
+        XCTAssertEqual(stats.savedCents, 40)
+        XCTAssertEqual(stats.bikeTypes, BikeTypeCounts(mechanical: 2, electrical: 1, unknown: 1))
+        XCTAssertEqual(stats.withoutStations, 1)
+        XCTAssertEqual(stats.minutes, 39)
+    }
+
+    func testRankingsKeepTheTopFiveMostCountedThenByNameAndPairsNeedTwoTrips() {
+        var trips: [Trip] = []
+        let counts = [10: 1, 11: 3, 12: 2, 13: 2, 14: 1, 15: 1]
+        for (station, count) in counts.sorted(by: { $0.key < $1.key }) {
+            for index in 0..<count { trips.append(trip("s\(station)-\(index)", "2026-10-28T10:00:00Z", from: station, to: 2)) }
+        }
+        let stats = periodStats(.days30, input(trips))
+        XCTAssertEqual(stats.starts.map(\.name), ["Station 11", "Station 12", "Station 13", "Station 10", "Station 14"])
+        XCTAssertEqual(stats.starts.map(\.count), [3, 2, 2, 1, 1])
+        XCTAssertEqual(stats.ends, [StationCount(number: 2, name: "Station 2", count: 10)])
+        XCTAssertEqual(stats.pairs, [PairCount(from: "Station 11", to: "Station 2", count: 3), PairCount(from: "Station 12", to: "Station 2", count: 2),
+                                     PairCount(from: "Station 13", to: "Station 2", count: 2)])
+    }
+
+    func testRecordsLongestTripBusiestDayStreakAndFavouriteBike() {
+        let trips = [
+            trip("a", "2026-10-20T08:00:00Z", minutes: 15, bike: 7, type: .mechanical),
+            trip("b", "2026-10-21T08:00:00Z", minutes: 45, bike: 7, type: .electrical),
+            trip("c", "2026-10-22T08:00:00Z", minutes: 10, bike: 8),
+            trip("d", "2026-10-22T17:00:00Z", minutes: 12, bike: 8),
+            trip("e", "2026-10-25T08:00:00Z", minutes: 45, bike: 9)
+        ]
+        let records = periodStats(.days30, input(trips)).records
+        XCTAssertEqual(records.longest, .init(minutes: 45, startedAt: date("2026-10-25T08:00:00Z"), from: "Station 1", to: "Station 2"))
+        XCTAssertEqual(records.busiestDay, .init(day: "2026-10-22", trips: 2, minutes: 22))
+        XCTAssertEqual(records.streak, .init(days: 3, from: "2026-10-20", to: "2026-10-22"))
+        // Bikes 7 and 8 both twice: the one ridden last wins, with the type of its latest trip.
+        XCTAssertEqual(records.bike, .init(number: 8, count: 2, type: .mechanical))
+        XCTAssertNil(periodStats(.days30, input([])).records.longest)
+        XCTAssertNil(periodStats(.days30, input([])).records.streak)
+    }
+
+    func testTheBalanceSeriesCountsBackFromTodaysBalanceOrRunsTheSumWithoutIt() {
+        let movements = [StatsMovement(date: date("2026-10-28T10:00:00Z"), amount: 5), StatsMovement(date: date("2026-09-10T10:00:00Z"), amount: -10),
+                         StatsMovement(date: date("2025-01-10T10:00:00Z"), amount: 50), StatsMovement(date: nil, amount: 1000)]
+        let known = periodStats(.months12, input([], movements: movements, balance: 100))
+        XCTAssertEqual(known.buckets.suffix(3).map(\.balance), [105, 95, 100])
+        XCTAssertEqual(known.pointsEarned, 5)
+        let running = periodStats(.months12, input([], movements: movements))
+        XCTAssertEqual(running.buckets.suffix(3).map(\.balance), [50, 40, 45])
+        XCTAssertEqual(periodStats(.all, input([], movements: movements)).pointsEarned, 55)
+        // Without the points history: what the trips say they earned.
+        XCTAssertEqual(periodStats(.days30, input([trip("a", "2026-10-28T10:00:00Z", earned: 10)])).pointsEarned, 10)
+        XCTAssertTrue(buildStats(input([], movements: movements)).pointsAvailable)
+    }
+
+    struct Boom: Error {}
+
+    func testCollectPagesStopsOnAnEmptyOrRepeatedPageAndKeepsWhatWasReadOnALateFailure() async throws {
+        let empty = try await collectPages(id: { $0 }) { page in page < 2 ? ["p\(page)a", "p\(page)b"] : [] }
+        XCTAssertEqual(empty.items, ["p0a", "p0b", "p1a", "p1b"])
+        XCTAssertTrue(empty.complete)
+
+        var asked: [Int] = []
+        let repeated = try await collectPages(id: { $0 }) { page in asked.append(page); return ["same", "other"] }
+        XCTAssertEqual(repeated.items, ["same", "other"])
+        XCTAssertTrue(repeated.complete)
+        XCTAssertEqual(asked, [0, 1])
+
+        let capped = try await collectPages(maxPages: 3, id: { $0 }) { page in ["p\(page)"] }
+        XCTAssertEqual(capped.items, ["p0", "p1", "p2"])
+        XCTAssertFalse(capped.complete)
+
+        let late = try await collectPages(id: { $0 }) { page in if page == 1 { throw Boom() }; return ["p\(page)"] }
+        XCTAssertEqual(late.items, ["p0"])
+        XCTAssertFalse(late.complete)
+
+        do {
+            _ = try await collectPages(id: { (item: String) in item }) { _ in throw Boom() }
+            XCTFail("the first page's failure must throw")
+        } catch is Boom {}
+    }
+
+    func testTheAPIReadsEveryPageInTurnWithGETsOnlyAndKeepsTheResultTenMinutes() async throws {
+        let accountId = "0b6e1f6c-1d2e-4f3a-9b8c-7d6e5f4a3b2c"
+        let account = "/accounts/\(accountId)"
+        let raw = { (id: String, start: String) -> [String: Any] in
+            ["id": id, "status": "FINISHED", "startDateTime": start, "startStation": 2002, "endStation": 7001, "bikeNumber": 4, "bikeType": 1, "duration": 12, "price": 0]
+        }
+        let server = MockServer { call, _ in
+            let url = call.url
+            if url.hasSuffix("/client_tokens") { return .json(["accessToken": "app"]) }
+            if url.contains("/gbfs/v3/station_information") { return .json(UpstreamTests.information) }
+            if url.contains("/gbfs/v3/station_status") { return .json(UpstreamTests.status) }
+            if url.hasSuffix("/accounts/person%40example.com/id") { return .json(accountId) }
+            if url.contains("\(account)/trips?status=FINISHED&status=ERROR&status=REVERSED&page=0&size=100") {
+                return .json([raw("t-1", "2026-10-28T09:00:00"), raw("t-2", "2026-10-27T09:00:00")])
+            }
+            if url.contains("\(account)/trips?status=FINISHED&status=ERROR&status=REVERSED&page=1&size=100") { return .json([raw("t-3", "2026-01-10T09:00:00")]) }
+            if url.contains("\(account)/trips?") { return .json([]) }
+            if url.contains("\(account)/rewards/history?page=0") {
+                return .json(["content": [["id": "m-1", "createdAt": "2026-10-28T10:00:00", "direction": "CREDIT", "amount": 5]]])
+            }
+            if url.contains("\(account)/rewards/history?page=1") { return .status(500) }
+            if url.hasSuffix("\(account)/rewards") { return .json(["balance": 42]) }
+            return .status(404)
+        }
+        let clock = date("2026-10-29T11:00:00Z")
+        let api = VelovAPI(transport: server.transport, pause: noPause)
+        let identity = Identity(accessToken: "user-access", email: "person@example.com")
+        let stats = try await api.stats(identity, now: { clock })
+        XCTAssertEqual(stats.all.trips, 3)
+        XCTAssertEqual(stats.days30.trips, 2)
+        XCTAssertGreaterThan(stats.all.distance.metres, 0)
+        XCTAssertEqual(stats.all.starts.first?.name, "Bellecour / Saint-Exupéry")
+        XCTAssertEqual(stats.days30.buckets.last?.balance, 42)
+        XCTAssertTrue(stats.pointsAvailable)
+        // The points history failed on its second page: older movements may be missing.
+        XCTAssertFalse(stats.complete)
+
+        let paths = server.calls.map(\.url).filter { $0.contains("/trips?") || $0.contains("/rewards") }.map { $0.components(separatedBy: accountId).last! }
+        XCTAssertEqual(paths, [
+            "/trips?status=FINISHED&status=ERROR&status=REVERSED&page=0&size=100",
+            "/trips?status=FINISHED&status=ERROR&status=REVERSED&page=1&size=100",
+            "/trips?status=FINISHED&status=ERROR&status=REVERSED&page=2&size=100",
+            "/rewards/history?page=0", "/rewards/history?page=1", "/rewards"
+        ])
+        XCTAssertEqual(Set(server.calls.filter { !$0.url.hasSuffix("/client_tokens") }.map(\.method)), ["GET"])
+        XCTAssertEqual(server.calls.first { $0.url.contains("/trips?") }?.header("Accept"), "application/vnd.trip.v6+json")
+
+        let count = server.calls.count
+        _ = try await api.stats(identity, now: { clock })
+        XCTAssertEqual(server.calls.count, count)
+    }
+
+    func testTheFirstHistoryPageFailingFailsTheStats() async {
+        let server = MockServer { call, _ in
+            if call.url.hasSuffix("/client_tokens") { return .json(["accessToken": "app"]) }
+            if call.url.hasSuffix("/id") { return .json("0b6e1f6c-1d2e-4f3a-9b8c-7d6e5f4a3b2c") }
+            return .status(500)
+        }
+        let api = VelovAPI(transport: server.transport, pause: noPause)
+        do {
+            _ = try await api.stats(Identity(accessToken: "a", email: "person@example.com"))
+            XCTFail("expected a failure")
+        } catch let error as VelovError {
+            XCTAssertEqual(error.code, .unavailable)
+        } catch {
+            XCTFail("unexpected \(error)")
+        }
+    }
+}

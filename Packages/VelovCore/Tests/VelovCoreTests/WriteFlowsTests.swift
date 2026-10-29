@@ -113,7 +113,7 @@ final class WriteFlowsTests: XCTestCase {
     func testTheAccountWritesGoOutOnceToTheAccount() async throws {
         let server = cyclocity(write: .json(["autoSpend": false]))
         let api = api(server)
-        try await api.rate(identity, tripId: "t-1", bikeNumber: 20449, vote: .warn(60))
+        _ = try await api.rate(identity, tripId: "t-1", bikeNumber: 20449, vote: .warn(60))
         let spend = try await api.setAutoSpend(identity, false)
         XCTAssertEqual(spend.autoSpend, false)
         _ = try await api.setFavorite(identity, station: 2002, on: true)

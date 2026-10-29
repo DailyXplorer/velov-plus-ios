@@ -49,6 +49,29 @@ public func capitalize(_ text: String) -> String {
     return String(first).uppercased(with: french) + text.dropFirst()
 }
 
+private let particles: Set<String> = ["de", "du", "des", "la", "le"]
+
+/// "jean-pierre de la tour" -> "Jean-Pierre de la Tour", "D'ARTAGNAN" -> "D'Artagnan": display only, never sent to Vélo’v.
+public func formatName(_ name: String) -> String {
+    let words = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(with: french).split(whereSeparator: \.isWhitespace).map(String.init)
+    return words.enumerated().map { index, word in
+        if index > 0 && particles.contains(word) { return word }
+        return word.split(separator: "-", omittingEmptySubsequences: false).enumerated().map { partIndex, part -> String in
+            let characters = Array(part)
+            if characters.count >= 3, characters[0] == "d", "’'".contains(characters[1]) {
+                return (index > 0 || partIndex > 0 ? "d" : "D") + String(characters[1]) + capitalize(String(characters[2...]))
+            }
+            // "o'neil" -> "O'Neil": every piece after an apostrophe opens with a capital.
+            var pieces = [""]
+            for character in part {
+                pieces[pieces.count - 1].append(character)
+                if "’'".contains(character) { pieces.append("") }
+            }
+            return pieces.map(capitalize).joined()
+        }.joined(separator: "-")
+    }.joined(separator: " ")
+}
+
 /// "350 m", "1,2 km", "14 km".
 public func formatDistance(_ metres: Double) -> String {
     if metres < 1000 { return "\(max(10, Int((metres / 10).rounded()) * 10)) m" }

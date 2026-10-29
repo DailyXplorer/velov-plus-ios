@@ -12,10 +12,13 @@ protocol VelovService: Sendable {
     func stationBikes(_ station: Int) async throws -> [Bike]
     func bike(_ number: Int) async throws -> Bike?
     func bookings() async throws -> [Booking]
+    /// The Statistiques page: the whole history read page after page (GETs only), kept 10 minutes.
+    func stats() async throws -> Stats
 
     func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?)
     func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?)
-    func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws
+    func tripCheck() async throws -> TripCheck
+    func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome
     func setAutoSpend(_ value: Bool) async throws -> (outcome: Outcome, autoSpend: Bool?)
     func setFavorite(station: Int, on: Bool) async throws -> Outcome
     func receipt(subscriptionId: String, periodId: String) async throws -> (outcome: Outcome, filename: String?, pdf: Data?)
@@ -47,6 +50,7 @@ final class LiveService: VelovService {
     func stationBikes(_ station: Int) async throws -> [Bike] { try await api.stationBikes(station) }
     func bike(_ number: Int) async throws -> Bike? { try await api.bike(number) }
     func bookings() async throws -> [Booking] { try await api.bookings(try await identity()) }
+    func stats() async throws -> Stats { try await api.stats(try await identity()) }
 
     func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?) {
         try await api.book(try await identity(), stationNumber: stationNumber, bikeNumber: bikeNumber)
@@ -54,7 +58,8 @@ final class LiveService: VelovService {
     func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?) {
         try await api.unlock(try await identity(), stationNumber: stationNumber, standNumber: standNumber, bikeNumber: bikeNumber)
     }
-    func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws {
+    func tripCheck() async throws -> TripCheck { try await api.tripCheck(try await identity()) }
+    func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome {
         try await api.rate(try await identity(), tripId: tripId, bikeNumber: bikeNumber, vote: vote)
     }
     func setAutoSpend(_ value: Bool) async throws -> (outcome: Outcome, autoSpend: Bool?) { try await api.setAutoSpend(try await identity(), value) }
@@ -72,11 +77,12 @@ final class LiveService: VelovService {
 }
 
 /// A thrown write (expired session, an account read before the write) shown like a refusal: message, then the raw line.
+/// Vélo’v errors are thrown on the phone before the write goes out, so they are sure refusals (`local.`); anything else may hide a write.
 func attempt(_ run: () async throws -> Outcome) async -> Outcome {
     do {
         return try await run()
     } catch let error as VelovError {
-        return Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: error.code.rawValue, message: error.message)
+        return Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: "local.\(error.code.rawValue)", message: error.message)
     } catch {
         return Outcome(ok: false, httpStatus: 0, code: "network", message: "Le serveur ne répond pas. Actualisez avant de réessayer.")
     }

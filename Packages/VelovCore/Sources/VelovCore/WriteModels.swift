@@ -17,24 +17,38 @@ public struct ProfileAddress: Equatable, Sendable {
     public init(name: String, complement: String) { self.name = name; self.complement = complement }
 }
 
+/// " jean  pierre " -> "jean pierre".
+public func cleanName(_ value: String) -> String { trimmed(value).replacing(/\ {2,}/, with: " ") }
+
+/// `personName`: letters (accents included), spaces, apostrophes and hyphens, starting with a letter.
+private func validName(_ value: String) -> Bool {
+    let name = cleanName(value)
+    return !name.isEmpty && name.utf16.count <= Rules.nameMax && name.wholeMatch(of: /\p{L}[\p{L}\p{M} ’'\-]*/) != nil
+}
+
 /// The first field of a profile body Vélo’v would refuse, or `.empty` when nothing changes.
-public enum ProfileField: Equatable, Sendable { case address, zipCode, city, country, phoneNumber, empty }
+public enum ProfileField: Equatable, Sendable { case firstName, lastName, address, zipCode, city, country, phoneNumber, empty }
 
 /// The fields of PATCH /accounts/{id} the app edits, each optional: only what changed is sent.
 public struct ProfileBody: Equatable, Sendable {
+    public var firstName: String?
+    public var lastName: String?
     public var address: ProfileAddress?
     public var zipCode: String?
     public var city: String?
     public var country: String?
     public var phoneNumber: String?
 
-    public init(address: ProfileAddress? = nil, zipCode: String? = nil, city: String? = nil, country: String? = nil, phoneNumber: String? = nil) {
+    public init(firstName: String? = nil, lastName: String? = nil, address: ProfileAddress? = nil, zipCode: String? = nil, city: String? = nil, country: String? = nil, phoneNumber: String? = nil) {
+        self.firstName = firstName; self.lastName = lastName
         self.address = address; self.zipCode = zipCode; self.city = city; self.country = country; self.phoneNumber = phoneNumber
     }
 
     /// `profileBodySchema`: nil when the body may be sent.
     public func problem() -> ProfileField? {
-        if address == nil, zipCode == nil, city == nil, country == nil, phoneNumber == nil { return .empty }
+        if firstName == nil, lastName == nil, address == nil, zipCode == nil, city == nil, country == nil, phoneNumber == nil { return .empty }
+        if let firstName, !validName(firstName) { return .firstName }
+        if let lastName, !validName(lastName) { return .lastName }
         if let address, !validLine(address.name, max: Rules.addressMax, min: 1) || !validLine(address.complement, max: Rules.addressMax) { return .address }
         if let zipCode, !validLine(zipCode, max: 10) || trimmed(zipCode).wholeMatch(of: /[A-Za-z0-9][A-Za-z0-9 -]{1,9}/) == nil { return .zipCode }
         if let city, !validLine(city, max: 60, min: 1) { return .city }
@@ -45,7 +59,8 @@ public struct ProfileBody: Equatable, Sendable {
 
     /// The body as sent: text fields trimmed, like the schema's output.
     var trimmedForSending: ProfileBody {
-        ProfileBody(address: address.map { ProfileAddress(name: trimmed($0.name), complement: trimmed($0.complement)) },
+        ProfileBody(firstName: firstName.map(cleanName), lastName: lastName.map(cleanName),
+                    address: address.map { ProfileAddress(name: trimmed($0.name), complement: trimmed($0.complement)) },
                     zipCode: zipCode.map(trimmed), city: city.map(trimmed), country: country, phoneNumber: phoneNumber)
     }
 }

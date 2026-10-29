@@ -13,6 +13,7 @@ struct Shell: View {
         Group {
             switch model.page {
             case .stations: StationsPage(onLogout: { logoutOpen = true })
+            case .trips: TripsStack(onLogout: { logoutOpen = true })
             default: PageScaffold(page: model.page, onLogout: { logoutOpen = true }).id(model.page) // a fresh scroll view per tab: every tab opens at the top
             }
         }
@@ -32,6 +33,7 @@ struct Shell: View {
         .sheet(item: $model.unlocking) { booking in
             if let place = Place(booking) { BikeActionSheet(place: place, bookingId: booking.id, action: .unlock) }
         }
+        .sheet(item: $model.ended) { TripEndedSheet(trip: $0) }
         // The station card and every sheet take the bar's radius.
         .environment(\.floatingRadius, radius)
     }
@@ -73,6 +75,7 @@ struct TabBar: View {
 struct Header: View {
     let title: String
     @Environment(AppModel.self) private var model
+    private var fullName: String { model.dashboard.map { formatName("\($0.profile.firstName) \($0.profile.lastName)") } ?? "" }
 
     var body: some View {
         HStack(spacing: 3) {
@@ -89,8 +92,8 @@ struct Header: View {
             .accessibilityLabel(model.dashboard.map { "Actualisé à \(formatDate($0.updatedAt, .time))" } ?? "Actualiser")
             Button { model.page = .account } label: {
                 Group {
-                    if let initial = model.dashboard?.profile.firstName.first {
-                        Text(String(initial).uppercased()).typo(.title(18))
+                    if let initial = model.dashboard.flatMap({ formatName($0.profile.firstName).first }) {
+                        Text(String(initial)).typo(.title(18))
                     } else {
                         Icon(.userCircle, .light, size: 22)
                     }
@@ -101,7 +104,7 @@ struct Header: View {
             }
             .buttonStyle(.plain)
             .padding(.leading, 4)
-            .accessibilityLabel("Mon compte")
+            .accessibilityLabel(fullName.isEmpty ? "Mon compte" : "Mon compte, \(fullName)")
         }
         .padding(.horizontal, 22).padding(.top, 24).padding(.bottom, 28)
     }
@@ -247,10 +250,9 @@ struct LogoutSheet: View {
                 Spacer()
                 IconButton(icon: .x, label: "Fermer") { dismiss() }.padding(.trailing, -10)
             }
-            HStack(spacing: 10) {
-                Spacer()
-                PillButton("Annuler", variant: .secondary) { dismiss() }.disabled(pending)
-                PillButton("Se déconnecter", pending: pending) {
+            PairedActions {
+                PillButton("Annuler", variant: .secondary, fullWidth: true) { dismiss() }.disabled(pending)
+                PillButton("Se déconnecter", pending: pending, fullWidth: true) {
                     pending = true
                     Task {
                         await model.logout()

@@ -31,7 +31,12 @@ struct TripSheet: View {
                     facts.padding(.top, 22)
                     if let points = pointsLine { Text(points).typo(.mono(12)).foregroundStyle(Palette.inkSoft).padding(.top, 10) }
                     if trip.litigious { litigious }
-                    if let bike = trip.bikeNumber, canRate(trip) || model.ratedHere.contains(trip.id) { RateBike(trip: trip, bikeNumber: bike) }
+                    if let bike = trip.bikeNumber, canRate(trip) || model.ratedHere.contains(trip.id) {
+                        RateBike(trip: trip, bikeNumber: bike) {
+                            model.closeEnded(trip)
+                            dismiss()
+                        }
+                    }
                     details
                 }
                 .padding(.horizontal, 22).padding(.top, 20).padding(.bottom, 28)

@@ -2,7 +2,8 @@ import SwiftUI
 import VelovCore
 
 /// via-action.tsx: « 15 minutes de plus » during a trip, to bring the bike back to another station when this one is full.
-/// The station is chosen, reviewed, rechecked by the core before the one request; a result cannot be sent again.
+/// The station is chosen, reviewed, rechecked by the core before the one request; success closes the sheet,
+/// a failure stays with its raw status, and only a sure refusal may be confirmed again.
 struct ViaAction: View {
     @State private var open = false
 
@@ -23,7 +24,7 @@ private struct ViaSheet: View {
     @State private var locationRaw = ""
     @State private var reviewing = false
     @State private var pending = false
-    @State private var result: Outcome?
+    @State private var failure: Outcome?
 
     private var choices: [Station] { fullStations(model.stations.value?.stations ?? [], query: query, position: position) }
     private var station: Station? { choices.first { $0.number == selected } }
@@ -32,7 +33,7 @@ private struct ViaSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: "15 minutes de plus", closeDisabled: pending) { dismiss() }
             Group {
-                if let result { done(result) } else if reviewing, let station { review(station) } else { pick }
+                if reviewing, let station { review(station) } else { pick }
             }
             .padding(.top, 14)
         }
@@ -41,27 +42,27 @@ private struct ViaSheet: View {
         .interactiveDismissDisabled(pending)
     }
 
-    private func done(_ result: Outcome) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if result.ok {
-                DoneLine(text: "Vélo’v vous accorde 15 minutes de plus.")
-            } else {
-                FormError(result.message ?? "Les 15 minutes supplémentaires n’ont pas été accordées.")
-                RawStatus(outcome: result)
-            }
-            PillButton("Fermer", variant: .secondary) { dismiss() }.frame(maxWidth: .infinity, alignment: .trailing).padding(.top, 18)
-        }
-    }
 
     private func review(_ station: Station) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             (Text("La station ") + Text(verbatim: "\(station.name) (n° \(station.number))").fontWeight(.semibold)
              + Text(" est pleine. Demander 15 minutes de plus pour rejoindre une autre station ?"))
                 .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 10) {
-                Spacer()
-                PillButton("Retour", variant: .ghost) { reviewing = false }.disabled(pending)
-                PillButton("Confirmer", pending: pending) { confirm(station) }
+            if let failure {
+                VStack(alignment: .leading, spacing: 6) {
+                    FormError(failure.message ?? "Les 15 minutes supplémentaires n’ont pas été accordées.")
+                    RawStatus(outcome: failure)
+                    if failure.isUncertain { UncertainNote().padding(.top, 4) }
+                }
+                .padding(.top, 14)
+            }
+            PairedActions {
+                if failure?.isUncertain == true {
+                    PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }
+                } else {
+                    PillButton("Retour", variant: .ghost, fullWidth: true) { failure = nil; reviewing = false }.disabled(pending)
+                    PillButton("Confirmer", pending: pending, fullWidth: true) { confirm(station) }
+                }
             }
             .padding(.top, 24)
         }
@@ -102,10 +103,9 @@ private struct ViaSheet: View {
                     }
                 }
             }
-            HStack(spacing: 10) {
-                Spacer()
-                PillButton("Annuler", variant: .ghost) { dismiss() }
-                PillButton("Continuer") { reviewing = true }.disabled(station == nil)
+            PairedActions {
+                PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }
+                PillButton("Continuer", fullWidth: true) { reviewing = true }.disabled(station == nil)
             }
             .padding(.top, 12)
         }
@@ -130,14 +130,15 @@ private struct ViaSheet: View {
     }
 
     private func confirm(_ station: Station) {
-        guard !pending, result == nil else { return }
+        guard !pending else { return }
         Haptics.confirm()
         pending = true
+        failure = nil
         Task {
             let outcome = await attempt { try await model.service.requestExtraTime(stationNumber: station.number) }
             Haptics.result(outcome.ok)
-            result = outcome
             pending = false
+            if outcome.ok { dismiss() } else { failure = outcome }
         }
     }
 }

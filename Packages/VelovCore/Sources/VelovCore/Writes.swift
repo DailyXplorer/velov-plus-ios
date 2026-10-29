@@ -51,14 +51,23 @@ func orderedJSON(_ pairs: [(String, Any?)]) -> Data {
 }
 
 public enum Writes {
-    /// Rates the bike of a trip, once.
-    public static func rate(_ auth: WriteAuth, tripId: String, bikeNumber: Int, vote: RateVote, http: HTTPTransport) async throws {
+    /// Rates the bike of a trip, once; a failure keeps its raw status for the line under the stars.
+    public static func rate(_ auth: WriteAuth, tripId: String, bikeNumber: Int, vote: RateVote, http: HTTPTransport) async throws -> Outcome {
         let url = URL(string: "\(accountURL(auth.accountId))/trips/\(pathSegment(tripId))/rate")!
         let body = orderedJSON([("bikeId", bikeNumber), ("recommended", vote.recommended), ("contract", "lyon"), ("rating", vote.rating)])
-        let response = try await http.send(makeRequest(url, method: "POST", headers: [
-            "Authorization": "Taknv1 \(auth.token)", "Identity": auth.identity, "Content-Type": "application/vnd.trip.v6+json"], body: body, timeout: 15))
+        let response: HTTPResponse
+        do {
+            response = try await http.send(makeRequest(url, method: "POST", headers: [
+                "Authorization": "Taknv1 \(auth.token)", "Identity": auth.identity, "Content-Type": "application/vnd.trip.v6+json"], body: body, timeout: 25))
+        } catch {
+            var outcome = Outcome.refusal("network", "La note n’a pas pu être envoyée.")
+            outcome.detail = networkFailure(error)
+            return outcome
+        }
         if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
-        guard response.ok else { throw VelovError(.unavailable, "Vélo’v n’a pas enregistré la note. Réessayez dans un instant.") }
+        if response.ok { return Outcome(ok: true, httpStatus: response.status) }
+        let reply = ErrorReply(response)
+        return Outcome(ok: false, httpStatus: response.status, code: reply.code, message: "Vélo’v n’a pas enregistré la note. Réessayez dans un instant.", detail: reply.detail)
     }
 
     /// Releases a bike, exactly once: the borne may already have opened, so a lost answer must never be retried.
@@ -154,8 +163,14 @@ public enum Writes {
     public static func setProfile(_ auth: WriteAuth, _ body: ProfileBody, http: HTTPTransport) async throws -> Outcome {
         let body = body.trimmedForSending
         let address = body.address.map { orderedJSON([("name", $0.name), ("complement", $0.complement)]) }
-        let pairs: [(String, Any?)] = [("country", body.country), ("zipCode", body.zipCode), ("city", body.city), ("phoneNumber", body.phoneNumber), ("address", address)]
-        return try await accountCall(URL(string: accountURL(auth.accountId))!, method: "PATCH", headers: ["Content-Type": "application/vnd.account.v4+json"],
-                                     body: orderedJSON(pairs.filter { $0.1 != nil }), auth: auth, failed: "Vélo’v n’a pas enregistré ces coordonnées.", http: http).outcome
+        let pairs: [(String, Any?)] = [("firstName", body.firstName), ("lastName", body.lastName), ("country", body.country), ("zipCode", body.zipCode),
+                                       ("city", body.city), ("phoneNumber", body.phoneNumber), ("address", address)]
+        var outcome = try await accountCall(URL(string: accountURL(auth.accountId))!, method: "PATCH", headers: ["Content-Type": "application/vnd.account.v4+json"],
+                                            body: orderedJSON(pairs.filter { $0.1 != nil }), auth: auth, failed: "Vélo’v n’a pas enregistré ces coordonnées.", http: http).outcome
+        // The app only sends names to complete a new account: on a complete one, a 4xx is most likely the name refused.
+        if body.firstName != nil || body.lastName != nil, (400..<500).contains(outcome.httpStatus) {
+            outcome.message = "Vélo’v n’a pas accepté ce changement de nom."
+        }
+        return outcome
     }
 }

@@ -19,6 +19,9 @@ struct InviteFriend: View {
     @State private var outcome: PromoResult?
     @State private var copied: String?
 
+    /// A debit that may have happened is never offered again from the same sheet.
+    private var settled: Bool { outcome.map { $0.outcome.ok || $0.outcome.isUncertain } ?? false }
+
     private var canObtain: Bool {
         guard let cost, let balance, key != nil else { return false }
         return cost >= 0 && balance >= cost
@@ -78,16 +81,16 @@ struct InviteFriend: View {
                     } else {
                         FormError(outcome.outcome.message ?? "Le code n’a pas pu être obtenu.")
                         RawStatus(outcome: outcome.outcome)
+                        if outcome.outcome.isUncertain { UncertainNote().padding(.top, 4) }
                     }
                     codeList.padding(.top, 8)
                 }
                 .padding(.top, 14)
             }
             if let warning { FormError(warning).padding(.top, 12) }
-            HStack(spacing: 10) {
-                Spacer()
-                PillButton(outcome == nil ? "Annuler" : "Fermer", variant: .ghost) { asking = false }.disabled(pending)
-                if outcome == nil { PillButton("Confirmer", pending: pending) { confirm() }.disabled(!canObtain) }
+            PairedActions {
+                PillButton(settled ? "Fermer" : "Annuler", variant: .ghost, fullWidth: true) { asking = false }.disabled(pending)
+                if !settled { PillButton("Confirmer", pending: pending, fullWidth: true) { confirm() }.disabled(!canObtain) }
             }
             .padding(.top, 24)
         }
@@ -107,7 +110,7 @@ struct InviteFriend: View {
     }
 
     private func confirm() {
-        guard let cost, let key, !pending, outcome == nil else { return }
+        guard let cost, let key, !pending, !settled else { return }
         // Fail before the debit if the storage is already unusable; never erase earlier codes.
         do { _ = try PromoStore.prepare(model.promoBacking, key: key) } catch {
             warning = "Ce téléphone ne peut pas enregistrer le code. Vos points n’ont pas été utilisés."
@@ -121,9 +124,9 @@ struct InviteFriend: View {
             do {
                 result = try await model.service.consumePromoCode(expectedCost: cost)
             } catch let error as VelovError {
-                result = PromoResult(outcome: Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: error.code.rawValue, message: error.message), promoCode: nil)
+                result = PromoResult(outcome: Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: "local.\(error.code.rawValue)", message: error.message), promoCode: nil)
             } catch {
-                result = PromoResult(outcome: Outcome(ok: false, httpStatus: 0, code: "network", message: "Vélo’v ne répond pas. Vos points ont peut-être été débités : vérifiez votre solde avant de recommencer."), promoCode: nil)
+                result = PromoResult(outcome: Outcome(ok: false, httpStatus: 0, code: "network", message: "Vélo’v ne répond pas. Vos points ont peut-être été débités."), promoCode: nil)
             }
             if let code = result.promoCode {
                 // Written to this phone before anything else; if that fails, at least on screen.

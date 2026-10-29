@@ -41,7 +41,8 @@ enum SampleData {
     ]
 
     static let dashboard = Dashboard(
-        profile: Profile(firstName: "Camille", lastName: "Martin", email: "camille@example.com", locked: false, complete: true,
+        // Vélo’v stores names in lower case; the app shows them with `formatName`.
+        profile: Profile(firstName: "camille", lastName: "martin", email: "camille@example.com", locked: false, complete: true,
                          phoneNumber: "+33600000000", address: "1 place de l’Exemple", addressComplement: nil, zipCode: "69002", city: "Lyon", country: "FR", favorites: [2002, 3001]),
         rewards: Rewards(balance: 85, total: 1240, autoSpend: true, movements: [
             RewardMovement(id: "m1", date: ago(1.2), label: "Vélo évalué", amount: 5),
@@ -83,6 +84,8 @@ enum SampleData {
 struct SampleService: VelovService {
     /// The booking the snapshot screens show; none elsewhere.
     var booking: Booking?
+    /// The unlock answer is lost, as the uncertain snapshot shows it.
+    var failUnlock = false
 
     func hasSession() async -> Bool { true }
     func signIn(email: String, code: String) async throws {}
@@ -98,9 +101,15 @@ struct SampleService: VelovService {
         (Outcome(ok: true, httpStatus: 200), SampleData.booking(bike: bikeNumber, minutesLeft: 15))
     }
     func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?) {
-        (Outcome(ok: true, httpStatus: 200, transactionState: "OK"), [])
+        if failUnlock {
+            var lost = Outcome.refusal("network", "Vélo’v ne répond pas. Le vélo est peut-être déverrouillé : regardez la borne avant de réessayer.")
+            lost.detail = "TimeoutError"
+            return (lost, nil)
+        }
+        return (Outcome(ok: true, httpStatus: 200, transactionState: "OK"), [])
     }
-    func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws {}
+    func tripCheck() async throws -> TripCheck { TripCheck(ongoing: [], latest: nil) }
+    func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome { Outcome(ok: true, httpStatus: 200) }
     func setAutoSpend(_ value: Bool) async throws -> (outcome: Outcome, autoSpend: Bool?) { (Outcome(ok: true, httpStatus: 200), value) }
     func setFavorite(station: Int, on: Bool) async throws -> Outcome { Outcome(ok: true, httpStatus: 204) }
     func receipt(subscriptionId: String, periodId: String) async throws -> (outcome: Outcome, filename: String?, pdf: Data?) {

@@ -45,3 +45,14 @@ If `make build` still reports missing profiles, open `VelovCompagnon.xcodeproj` 
 ### Not verified over ssh
 
 - The signed build: `make build` stops at « No Accounts » / « No profiles » over ssh; `make build-unsigned` (same sources, device SDK) succeeds. The signed build, the install and a real booking on the phone are for the lead (`INSTALL.md`, `scripts/install.command`).
+
+## Web sync 3 (done)
+
+- Trip end: `DockWatch` (core) polls the light trip check every 20 s while a trip is ongoing and the app is in the foreground, one request at a time, 3 h at most, and checks at once on return to the foreground; it starts after an unlock and whenever the account reports an ongoing trip. At the dock the account and the bookings are read again (leftover booking Live Activities end), then « Trajet terminé » opens: arrival station, duration, price and the stars. On launch, the latest rateable trip never dismissed on this phone is offered once.
+- Five stars everywhere instead of « Je recommande / Je déconseille »: 5–4 recommend, 3–2 send 60, 1 sends 30; Parfait, Bien, Moyen, Décevant, À réparer; « Envoyer · +5 points », « Plus tard », then « Merci ! +5 points » in place.
+- Profile: Prénom and Nom, shown with `formatName`, sent only when changed; a 4xx on a name change reads « Vélo’v n’a pas accepté ce changement de nom. ». The form logic moved to the core (`ProfileDraft.swift`).
+- Confirm once: no success screen and no before/after list; sheets close on success, except the invite code. A failure that may have gone through (`Outcome.isUncertain`) leaves only « Fermer » and « Le résultat est incertain : vérifiez avant de réessayer. » (« … vérifiez la borne … » for an unlock).
+- Paired buttons share their row equally; form actions stack full width. The unlock note is in ink.
+- Statistiques: a button at the top of Trajets pushes the page (not a tab). `Stats.swift` ports `lib/stats.ts`; `stats(identity)` reads the trip history page after page (50 pages at most), the points history, the balance and the stations, kept 10 min per account. Swift Charts in red and mist only, no shadow; heatmap by square size and a mist donut part ringed in ink-line, so nothing turns pink.
+- Tests (`make test`): 143 tests, 1 live test skipped, 0 failures (dock watch with a fake clock, stars, uncertain outcomes, names, profile draft, stats aggregation and paging). No request was sent to Cyclocity.
+- Snapshots: `13-unlock-uncertain` replaces the unlock success; new `16a`–`16e` (Statistiques), `17-trip-ended`, `18-trip-ended-stars`; `15-account-edit` shows Prénom and Nom.

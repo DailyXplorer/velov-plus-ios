@@ -34,7 +34,7 @@ struct AccountPage: View {
 
     private var profile: some View {
         let person = data.profile
-        let name = [person.firstName, person.lastName].filter { !$0.isEmpty }.joined(separator: " ")
+        let name = formatName("\(person.firstName) \(person.lastName)")
         return section("Profil") {
             Text(name.isEmpty ? "Compte Vélo’v" : name).typo(.title(22)).foregroundStyle(Palette.ink).padding(.top, 18)
             Text(person.email).typo(.body(14)).foregroundStyle(Palette.inkSoft).padding(.top, 6)

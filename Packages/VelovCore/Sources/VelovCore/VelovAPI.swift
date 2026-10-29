@@ -9,6 +9,8 @@ public final class VelovAPI: Sendable {
     private let accountIds = Memo<String>(ttl: 10 * 60)
     private let offers = Memo<[JSON]>(ttl: 10 * 60)
     private let rules = Memo<[JSON]>(ttl: 10 * 60)
+    /// The whole trip history per account: read page after page, so not on every visit.
+    let statsMemo = Memo<Stats>(ttl: 10 * 60)
 
     public init(transport: HTTPTransport, pause: @escaping @Sendable (Double) async -> Void = { try? await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }) {
         let client = ReadClient(transport: transport, pause: pause)
@@ -103,6 +105,22 @@ public final class VelovAPI: Sendable {
         }
         let byNumber = await stations
         return bookings.map { toBooking($0, stations: byNumber, bikeNumbers: bikeNumbers) }
+    }
+
+    /// The dock watch's poll: the ongoing trips, and only once none is left the latest finished one (two small reads, no dashboard).
+    public func tripCheck(_ identity: Identity) async throws -> TripCheck {
+        let account = "/accounts/\(try await accountId(identity))"
+        let trips = { [self] (path: String) in try RawTrip.list(try await read("\(account)/\(path)", identity, accept: "application/vnd.trip.v6+json")) }
+        let ongoing: [RawTrip]?
+        do { ongoing = try await trips("trips/ongoing") } catch let error as VelovError where error.code == .expired { throw error } catch { ongoing = nil }
+        if let ongoing, ongoing.isEmpty {
+            async let history = try? trips("trips?status=FINISHED")
+            async let stations = stationsByNumber()
+            let (finished, byNumber) = await (history, stations)
+            return TripCheck(ongoing: [], latest: latestFinished((finished ?? []).map { normalizeTrip($0, stations: byNumber) }))
+        }
+        let byNumber = ongoing == nil ? [:] : await stationsByNumber()
+        return TripCheck(ongoing: ongoing?.map { normalizeTrip($0, stations: byNumber) }, latest: nil)
     }
 
     /// Only the account id and the profile are needed: every other read degrades to a warning and a missing piece.

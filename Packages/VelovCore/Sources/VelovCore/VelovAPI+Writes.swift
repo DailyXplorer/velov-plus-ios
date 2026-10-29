@@ -72,7 +72,7 @@ extension VelovAPI {
 
     // MARK: Account
 
-    public func rate(_ identity: Identity, tripId: String, bikeNumber: Int, vote: RateVote) async throws {
+    public func rate(_ identity: Identity, tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome {
         try await Writes.rate(try await writer(identity), tripId: tripId, bikeNumber: bikeNumber, vote: vote, http: http)
     }
 

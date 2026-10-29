@@ -237,9 +237,22 @@ public struct Outcome: Equatable, Sendable {
     public static func refusal(_ code: String, _ message: String) -> Outcome {
         Outcome(ok: false, httpStatus: 0, code: code, message: message)
     }
+
+    /// Release states after which the bike surely stayed locked (§ 5.6). Not TIME_OUT: the borne may have opened without answering.
+    private static let failedStates: Set<String> = ["NOK", "ABORT", "NOT_CONNECTED"]
+
+    /// outcome.ts `isUncertain`: whether a failed state-changing call may still have gone through, so the same sheet must not offer it again.
+    /// Sure refusals: stopped on the phone before sending (no HTTP status, a `local.` code), a 4xx carrying an error code, a definite failure state.
+    /// Anything else is uncertain: no answer, a timeout, a 5xx or a gateway page, a 2xx that could not be read, a 4xx without a code.
+    public var isUncertain: Bool {
+        if ok { return false }
+        if let transactionState, Self.failedStates.contains(transactionState), httpStatus < 500 { return false }
+        if httpStatus == 0 { return code?.hasPrefix("local.") != true }
+        return !((400..<500).contains(httpStatus) && code != nil)
+    }
 }
 
-/// "Je déconseille" carries the rating of the chosen defect: 30 for a serious one, 60 otherwise.
+/// Vélo’v keeps three levels: recommended (100), or not with 60 for a minor problem and 30 for a serious one.
 public enum RateVote: Equatable, Sendable {
     case recommend
     case warn(Int)
@@ -265,6 +278,8 @@ public enum Rules {
     public static let releaseDistance = 200.0
     /// Vélo’v caps the address at 38 characters.
     public static let addressMax = 38
+    /// First and last names, as the web form caps them.
+    public static let nameMax = 50
     /// The official app offers the rating for 3 hours after the trip ends.
     public static let ratingWindow: TimeInterval = 3 * 3600
 }

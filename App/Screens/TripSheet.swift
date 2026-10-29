@@ -107,7 +107,7 @@ struct TripSheet: View {
     private var litigious: some View {
         let subject = "Trajet litigieux\(trip.token.map { " \($0)" } ?? "")"
         return HStack(spacing: 12) {
-            Text("Trajet signalé comme litigieux par Vélo’v").typo(.body(13)).foregroundStyle(Palette.ink)
+            Text("Vélo’v a signalé ce trajet comme litigieux.").typo(.body(13)).foregroundStyle(Palette.ink)
             Spacer(minLength: 0)
             Button {
                 var components = URLComponents()

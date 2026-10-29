@@ -86,28 +86,28 @@ struct BikeActionSheet: View {
     @ViewBuilder
     private func confirm(_ action: BikeAction) -> some View {
         let far = (distance ?? 0) > Rules.releaseDistance
-        Text(action == .book ? "Réserver ce vélo ?" : "Déverrouiller ce vélo ?").typo(.title(20)).foregroundStyle(Palette.ink).padding(.top, 10)
+        Text(action == .book ? "Réserver ce vélo ?" : "Déverrouiller ce vélo ?").typo(.title(20)).foregroundStyle(Palette.ink).padding(.top, 10)
         VStack(spacing: 0) {
             DetailRow("Station", place.stationName)
             DetailRow("Borne", "\(place.standNumber)")
             DetailRow("Vélo", "\(place.bikeNumber)", last: action == .unlock && distance == nil)
             if action == .book {
-                DetailRow("Coût", "\(Rules.bookingPoints) points · \(Rules.bookingMinutes) min", last: true)
+                DetailRow("Coût", "\(Rules.bookingPoints) points", last: true)
             } else if let distance {
                 DetailRow("Distance", "≈ \(formatDistance(distance))", last: true)
             }
         }
         .padding(.top, 8)
         if action == .book {
-            Text("Le vélo vous attend \(Rules.bookingMinutes) min, puis la réservation expire. Elle ne s’annule pas.")
+            Text("Le vélo vous est réservé pendant \(Rules.bookingMinutes) minutes.")
                 .typo(.body(13)).foregroundStyle(Palette.inkSoft).padding(.top, 12)
         } else {
-            Text("Appuyez ensuite sur le bouton de la borne dans les 60 secondes, puis retirez le vélo. Passé ce délai, la borne le reverrouille.")
+            Text("Vous aurez ensuite 60 secondes pour appuyer sur le bouton de la borne et retirer le vélo.")
                 .typo(.body(14, medium: true)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 12)
             if far {
                 HStack(alignment: .top, spacing: 8) {
                     Icon(.warning, .bold, size: 16).padding(.top, 1)
-                    Text("Vous semblez à plus de \(Int(Rules.releaseDistance)) m de la station : un vélo libéré à distance peut partir sur votre compte.")
+                    Text("Vous semblez être à plus de \(Int(Rules.releaseDistance)) m de la station. Si quelqu’un d’autre prend le vélo, le trajet vous sera facturé.")
                         .typo(.body(13)).fixedSize(horizontal: false, vertical: true)
                 }
                 .foregroundStyle(Palette.formError)
@@ -134,16 +134,16 @@ struct BikeActionSheet: View {
                         HStack(spacing: 6) {
                             Icon(.clock, .bold, size: 14)
                             if left > 0 {
-                                Text("reste").typo(.label(12))
+                                Text("Il reste").typo(.label(12))
                                 Text(clock(left)).typo(.clock(13))
                             } else {
-                                Text("réservation expirée").typo(.label(12))
+                                Text("Réservation expirée").typo(.label(12))
                             }
                         }
                         .foregroundStyle(Palette.redDeep)
                     }
                 } else {
-                    Text("Vélo réservé pour \(Rules.bookingMinutes) min").typo(.body(15, medium: true))
+                    Text("Vélo réservé pour \(Rules.bookingMinutes) minutes").typo(.body(15, medium: true))
                 }
                 Text("Vélo \(place.bikeNumber) · Borne \(place.standNumber)").typo(.body(13)).foregroundStyle(Palette.inkSoft)
             }
@@ -159,9 +159,9 @@ struct BikeActionSheet: View {
     private func unlocked(_ ongoing: [Trip]?) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ResultLine(ok: true) {
-                Text("Vélo déverrouillé — Borne \(place.standNumber)").typo(.body(15, medium: true))
-                Text("Appuyez maintenant sur le bouton de la borne (60 s), puis retirez le vélo.").typo(.body(14)).foregroundStyle(Palette.ink)
-                Text(ongoing?.isEmpty == false ? "Trajet en cours." : "Le trajet apparaît une dizaine de secondes après le retrait du vélo.")
+                Text("Vélo déverrouillé à la borne \(place.standNumber)").typo(.body(15, medium: true))
+                Text("Appuyez sur le bouton de la borne et retirez le vélo dans les 60 secondes.").typo(.body(14)).foregroundStyle(Palette.ink)
+                Text(ongoing?.isEmpty == false ? "Votre trajet a commencé." : "Votre trajet s’affichera une dizaine de secondes après le retrait du vélo.")
                     .typo(.body(13)).foregroundStyle(Palette.inkSoft)
             }
             PillButton("Fermer", variant: .secondary, fullWidth: true) { dismiss() }.padding(.top, 22)
@@ -172,7 +172,7 @@ struct BikeActionSheet: View {
     private func failed(_ action: BikeAction, _ outcome: Outcome) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ResultLine(ok: false) {
-                Text(action == .book ? "Réservation refusée" : "Déverrouillage refusé").typo(.body(15, medium: true))
+                Text(action == .book ? "Réservation impossible" : "Déverrouillage impossible").typo(.body(15, medium: true))
                 Text(outcome.message ?? Messages.releaseFailed).typo(.body(14)).foregroundStyle(Palette.ink)
             }
             RawStatus(outcome: outcome, withState: true).padding(.top, 12)

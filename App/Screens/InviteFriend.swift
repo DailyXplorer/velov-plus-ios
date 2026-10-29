@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 import VelovCore
 
-private let storageWarning = "Conservation locale indisponible. Copiez le code maintenant et gardez cette page ouverte."
+private let storageWarning = "Ce téléphone ne peut pas garder le code. Copiez-le maintenant."
 
 /// invite-friend.tsx: points for a code to pass on. The storage is checked before the one debit, and a returned code is
 /// written to this phone before anything else happens; no subscription process is ever sent.
@@ -28,16 +28,16 @@ struct InviteFriend: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(verbatim: "Inviter un ami\(cost.map { " · \($0) points" } ?? "")").typo(.label(12)).foregroundStyle(Palette.inkSoft)
-                    Text("Échanger vos points contre un code à transmettre à votre ami.").typo(.body(13)).foregroundStyle(Palette.inkSoft)
+                    Text("Inviter un ami").typo(.label(12)).foregroundStyle(Palette.inkSoft)
+                    Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(13)).foregroundStyle(Palette.inkSoft)
                     if cost == nil {
-                        SoonNote(text: "L’offre est momentanément indisponible. Vos codes conservés restent accessibles ci-dessous.")
+                        SoonNote(text: "L’offre est momentanément indisponible.")
                     } else if let cost, let balance, balance < cost {
                         SoonNote(text: "Il vous manque \(cost - balance) points.")
                     }
                 }
                 Spacer(minLength: 0)
-                PillButton(codes.isEmpty ? "Obtenir" : "Obtenir un autre code", variant: .secondary) { outcome = nil; asking = true }
+                PillButton(codes.isEmpty ? "Obtenir un code" : "Obtenir un autre code", variant: .secondary) { outcome = nil; asking = true }
                     .disabled(!canObtain || pending)
             }
             .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
@@ -61,20 +61,20 @@ struct InviteFriend: View {
                         PillButton(variant: .secondary, action: { copy(entry.code) }) { Icon(.copy, .light, size: 16); Text(copied == entry.code ? "Copié" : "Copier") }
                     }
                 }
-                SoonNote(text: "Conservé sur ce téléphone pour ce compte. Le ticket n’est pas activé automatiquement.")
+                SoonNote(text: "Enregistré sur ce téléphone.")
             }
         }
     }
 
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: "Échanger \(cost ?? 0) points ?", closeDisabled: pending) { asking = false }
-            Text("Solde affiché : \(balance ?? 0) points. \(cost ?? 0) points seront débités dès la création du code, même si vous ne l’utilisez pas. Aucun ticket ne sera activé automatiquement.")
+            SheetHeading(title: "Échanger \(cost ?? 0) points ?", closeDisabled: pending) { asking = false }
+            Text("Les \(cost ?? 0) points sont débités dès la création du code, même s’il n’est jamais utilisé.")
                 .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
             if let outcome {
                 VStack(alignment: .leading, spacing: 6) {
                     if outcome.outcome.ok {
-                        DoneLine(text: "Code obtenu. Copiez-le avant de quitter cette page.")
+                        DoneLine(text: "Code créé. Copiez-le pour l’envoyer à votre ami.")
                     } else {
                         FormError(outcome.outcome.message ?? "Le code n’a pas pu être obtenu.")
                         RawStatus(outcome: outcome.outcome)
@@ -102,7 +102,7 @@ struct InviteFriend: View {
             codes = try PromoStore.read(model.promoBacking, key: key)
             self.key = key
         } catch {
-            warning = "Impossible de lire les codes conservés sur ce téléphone. Aucun point ne sera échangé."
+            warning = "Impossible de lire les codes enregistrés sur ce téléphone."
         }
     }
 
@@ -110,7 +110,7 @@ struct InviteFriend: View {
         guard let cost, let key, !pending, outcome == nil else { return }
         // Fail before the debit if the storage is already unusable; never erase earlier codes.
         do { _ = try PromoStore.prepare(model.promoBacking, key: key) } catch {
-            warning = "Le téléphone ne peut pas conserver le code. Aucun point n’a été échangé."
+            warning = "Ce téléphone ne peut pas enregistrer le code. Vos points n’ont pas été utilisés."
             return
         }
         Haptics.confirm()
@@ -123,7 +123,7 @@ struct InviteFriend: View {
             } catch let error as VelovError {
                 result = PromoResult(outcome: Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: error.code.rawValue, message: error.message), promoCode: nil)
             } catch {
-                result = PromoResult(outcome: Outcome(ok: false, httpStatus: 0, code: "network", message: "Pas de réponse : les points ont peut-être été débités. Ne recommencez pas ; vérifiez votre compte ou contactez Vélo’v."), promoCode: nil)
+                result = PromoResult(outcome: Outcome(ok: false, httpStatus: 0, code: "network", message: "Vélo’v ne répond pas. Vos points ont peut-être été débités : vérifiez votre solde avant de recommencer."), promoCode: nil)
             }
             if let code = result.promoCode {
                 // Written to this phone before anything else; if that fails, at least on screen.

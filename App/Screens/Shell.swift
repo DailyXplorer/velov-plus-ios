@@ -37,7 +37,7 @@ struct Shell: View {
     }
 }
 
-/// The web's mobile navigation as a floating white bar with the site's shadow ring, its corners concentric with the display's,
+/// The web's mobile navigation as a floating white bar on the 1 pt ink-line ring (no shadow), its corners concentric with the display's,
 /// the active tab's red pill concentric with the bar.
 struct TabBar: View {
     let radius: CGFloat
@@ -65,11 +65,7 @@ struct TabBar: View {
             }
         }
         .padding(padding)
-        .background {
-            RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Palette.white)
-                .shadow(color: Palette.ink.opacity(0.1), radius: 18, y: 12)
-                .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
-        }
+        .ringed(RoundedRectangle(cornerRadius: radius, style: .continuous))
     }
 }
 
@@ -190,7 +186,7 @@ struct DataNotice: View {
     let warnings: [String]
     var body: some View {
         if !warnings.isEmpty {
-            Disclosure(title: "Informations indisponibles") {
+            Disclosure(title: "Certaines informations sont indisponibles") {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(warnings, id: \.self) { Text(verbatim: "• \($0)").typo(.body(13)) }
                 }
@@ -247,7 +243,7 @@ struct LogoutSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Se déconnecter ?").typo(.title(26)).foregroundStyle(Palette.ink)
+                Text("Se déconnecter ?").typo(.title(26)).foregroundStyle(Palette.ink)
                 Spacer()
                 IconButton(icon: .x, label: "Fermer") { dismiss() }.padding(.trailing, -10)
             }

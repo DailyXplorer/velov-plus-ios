@@ -77,7 +77,7 @@ struct BikesSheet: View {
         .sheetCorners()
         .task {
             await load()
-            if model.snapshot == .bikeSheet, let first = assessed?.first { path = [BikeRoute(number: first.bike.number, station: station)] }
+            if model.snapshot == .bikeSheet || model.snapshot == .bookConfirm, let first = assessed?.first { path = [BikeRoute(number: first.bike.number, station: station)] }
         }
     }
 
@@ -258,7 +258,7 @@ struct BikeDetail: View {
                             Stars(value: rating.value / 20)
                             Text(outOfFive(rating.value)) + Text("/5").foregroundStyle(Palette.inkSoft)
                         }
-                        Text(verbatim: "\(rating.count) avis\(fromNow(rating.lastAt).map { " · Le dernier \($0)" } ?? "")").typo(.body(12)).foregroundStyle(Palette.inkSoft)
+                        Text(verbatim: "\(rating.count) avis\(fromNow(rating.lastAt).map { " · Dernier avis \($0)" } ?? "")").typo(.body(12)).foregroundStyle(Palette.inkSoft)
                     }
                 } else {
                     Text("Pas encore d’avis")
@@ -309,13 +309,14 @@ struct BikeDetail: View {
             if mine, let endsAt = booking?.endsAt {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let left = max(0, Int(endsAt.timeIntervalSince(context.date).rounded()))
-                    (Text("Vélo réservé jusqu’à ") + Text(formatDate(endsAt, .time)).font(Typo.clock(14).font) + Text(left > 0 ? " · Reste " : " · Réservation expirée") + Text(left > 0 ? clock(left) : "").font(Typo.clock(14).font))
+                    (Text("Vélo réservé jusqu’à ") + Text(formatDate(endsAt, .time)).font(Typo.clock(14).font) + Text(left > 0 ? " · Il reste " : " · Réservation expirée") + Text(left > 0 ? clock(left) : "").font(Typo.clock(14).font))
                         .typo(.body(14, medium: true)).foregroundStyle(Palette.ink)
                 }
             }
             if !mine {
+                // The cost and the duration show in the confirmation only.
                 PillButton(variant: .secondary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: nil, action: .book) }) {
-                    Text(verbatim: "Réserver (\(Rules.bookingMinutes) min · \(Rules.bookingPoints) points)")
+                    Icon(.timer, .light, size: 17); Text("Réserver")
                 }
             }
             PillButton(variant: .primary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: booking?.id, action: .unlock) }) { Icon(.lockOpen, .light, size: 17); Text("Déverrouiller") }
@@ -323,6 +324,11 @@ struct BikeDetail: View {
         .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 16)
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
         .padding(.top, 18)
+        .task {
+            guard model.snapshot == .bookConfirm, !mine else { return }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            pending = PendingAction(place: place, bookingId: nil, action: .book)
+        }
     }
 }
 

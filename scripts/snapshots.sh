@@ -39,6 +39,7 @@ shot accountEnd 08b-account-end 7
 shot bookingBanner 09-booking-banner 6
 shot liveActivityLock 10-live-activity-lock 5
 shot liveActivityIsland 11-live-activity-island 5
+shot bookConfirm 12a-book-confirm 12
 shot unlockConfirm 12-unlock-confirm 7
 shot unlockSuccess 13-unlock-success 8
 shot rateCard 14-rate-card 6

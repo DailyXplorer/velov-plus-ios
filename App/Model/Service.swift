@@ -78,6 +78,6 @@ func attempt(_ run: () async throws -> Outcome) async -> Outcome {
     } catch let error as VelovError {
         return Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: error.code.rawValue, message: error.message)
     } catch {
-        return Outcome(ok: false, httpStatus: 0, code: "network", message: "Pas de réponse du serveur : actualisez avant de réessayer.")
+        return Outcome(ok: false, httpStatus: 0, code: "network", message: "Le serveur ne répond pas. Actualisez avant de réessayer.")
     }
 }

@@ -297,7 +297,7 @@ final class AccountWritesTests: XCTestCase {
             XCTAssertEqual(server.calls.count, 1)
             XCTAssertFalse(result.outcome.ok)
             XCTAssertEqual(result.outcome.code, "local.promo.unreadable")
-            XCTAssert(result.outcome.message!.contains("Ne recommencez pas"))
+            XCTAssert(result.outcome.message!.contains("avant de recommencer"))
         }
     }
 

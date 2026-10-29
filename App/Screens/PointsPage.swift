@@ -14,8 +14,8 @@ struct PointsPage: View {
         let invite = rewards.rules.first { $0.name == "PROMOCODE" }
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 10) {
-                figure(.starFour, "Solde", rewards.balance.map { formatNumber($0) } ?? "—", accent: true)
-                figure(.trendUp, "Total gagné", rewards.total.map { formatNumber($0) } ?? "—", accent: false)
+                figure(.starFour, "Solde actuel", rewards.balance.map { formatNumber($0) } ?? "—")
+                figure(.trendUp, "Total gagné", rewards.total.map { formatNumber($0) } ?? "—")
             }
             .fixedSize(horizontal: false, vertical: true)
             .padding(.bottom, 16)
@@ -28,7 +28,7 @@ struct PointsPage: View {
                 VStack(spacing: 8) {
                     ForEach(rules, id: \.name) { rule in
                         HStack(spacing: 16) {
-                            Text(rewardLabel(rule.label)).typo(.body(13)).foregroundStyle(Palette.inkSoft)
+                            Text(rule.label == "Vélo évalué" ? "Évaluation d’un vélo après un trajet" : rule.label).typo(.body(13)).foregroundStyle(Palette.inkSoft)
                             Spacer()
                             Text(verbatim: "+\(formatNumber(rule.points))").typo(.title(23)).foregroundStyle(Palette.red)
                         }
@@ -52,7 +52,7 @@ struct PointsPage: View {
                     .padding(.vertical, 16).frame(minHeight: 76)
                     Hairline()
                 }
-                if rewards.movements.isEmpty { EmptyState("Aucun mouvement.") }
+                if rewards.movements.isEmpty { EmptyState("Aucun mouvement de points.") }
                 if rewards.movements.count > limit {
                     PillButton("Voir plus", variant: .secondary) { limit += 12 }.frame(maxWidth: .infinity).padding(.vertical, 24)
                 }
@@ -61,11 +61,11 @@ struct PointsPage: View {
     }
 
     /// `.points-summary > div`: one of two equal mist cards sharing the row.
-    private func figure(_ icon: IconName, _ label: String, _ value: String, accent: Bool) -> some View {
+    private func figure(_ icon: IconName, _ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Eyebrow(icon: icon, text: label)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(value).typo(.title(40)).foregroundStyle(accent ? Palette.red : Palette.ink)
+                Text(value).typo(.title(40)).foregroundStyle(Palette.ink)
                 Text("points").typo(.label(11)).foregroundStyle(Palette.inkSoft)
             }
             .lineLimit(1).minimumScaleFactor(0.5)
@@ -99,7 +99,7 @@ struct AutoSpendSetting: View {
         .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
         .sheet(isPresented: $asking) {
-            WriteDialog(title: next ? "Activer l’utilisation automatique ?" : "Désactiver l’utilisation automatique ?",
+            WriteDialog(title: next ? "Activer l’utilisation automatique ?" : "Désactiver l’utilisation automatique ?",
                         success: next ? "Utilisation automatique activée." : "Utilisation automatique désactivée.") { [next] in
                 var answered: Bool?
                 let outcome = await attempt {
@@ -110,8 +110,8 @@ struct AutoSpendSetting: View {
                 if outcome.ok { model.setAutoSpend(answered ?? next) }
                 return outcome
             } question: {
-                Text(next ? "Vos points paieront automatiquement le dépassement de la période gratuite de vos trajets."
-                          : "Vos points ne paieront plus le dépassement de la période gratuite de vos trajets.")
+                Text(next ? "Vos points régleront automatiquement les minutes au-delà de la période gratuite."
+                          : "Vos points ne régleront plus les minutes au-delà de la période gratuite.")
             }
         }
     }

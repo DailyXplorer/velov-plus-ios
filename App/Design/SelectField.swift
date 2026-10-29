@@ -3,69 +3,112 @@ import SwiftUI
 struct SelectOption<Value: Hashable>: Identifiable {
     let value: Value
     let label: String
+    /// The trigger's text when the field sits inline in the stations search; the list always shows `label`.
+    var short: String?
     var id: Value { value }
 }
 
-/// `SelectField` of ui.tsx: a mono label, a grey field and the web's own dropdown (white card, check on the chosen option),
-/// not the iOS menu. The row that holds it needs `.zIndex(1)` so the list draws over what follows.
+/// `SelectField` of ui.tsx: the web's own dropdown, not the iOS menu. A white pill on the ring with a mist chevron circle;
+/// the list a white card on the ring, the chosen option in red without a check. No focus or open ring.
+/// `hideLabel` keeps the label for VoiceOver only, when the chosen value already says what the field is.
+/// `.row` puts the label beside the pill (filters), `.stacked` above it at full width (forms), `.inline` drops the pill to sit
+/// after a divider inside another one (the stations search) and shows the short labels.
+/// The row that holds it needs `.zIndex(1)` so the list draws over what follows.
 struct SelectField<Value: Hashable>: View {
+    enum Layout { case row, stacked, inline }
+
     let label: String
+    var hideLabel = false
     @Binding var value: Value
     let options: [SelectOption<Value>]
-    var background = Palette.fieldFill
+    var layout = Layout.row
     @State private var open = false
+    @State private var width: CGFloat = 0
 
     private var selected: SelectOption<Value>? { options.first { $0.value == value } ?? options.first }
+    private var inline: Bool { layout == .inline }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Text(label).typo(.label(11)).foregroundStyle(Palette.inkSoft).fixedSize()
-            Button { withAnimation(.easeOut(duration: 0.16)) { open.toggle() } } label: {
-                HStack(spacing: 10) {
-                    Text(selected?.label ?? "").typo(.body(16)).foregroundStyle(Palette.ink).lineLimit(1)
-                    Icon(.caretDown, .light, size: 14).foregroundStyle(Palette.inkSoft).rotationEffect(.degrees(open ? 180 : 0))
-                }
-                .padding(.leading, 11.25).padding(.trailing, 12)
-                .frame(height: 42)
-                .background(RoundedRectangle(cornerRadius: 5.625).fill(background))
-                .overlay(RoundedRectangle(cornerRadius: 5.625).strokeBorder(Palette.fieldLine, lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("\(label), \(selected?.label ?? "")")
-            .overlay(alignment: .topLeading) {
-                if open {
-                    list.offset(y: 48).transition(.opacity.combined(with: .offset(y: -4)))
+        Group {
+            switch layout {
+            case .row: HStack(spacing: 12) { title; trigger }
+            case .stacked: VStack(alignment: .leading, spacing: 6) { title; trigger }
+            case .inline:
+                HStack(spacing: 0) {
+                    Rectangle().fill(Palette.inkLine).frame(width: 1, height: 22).padding(.leading, 8)
+                    trigger
                 }
             }
         }
         .zIndex(open ? 100 : 0)
     }
 
+    @ViewBuilder
+    private var title: some View {
+        if !hideLabel { Text(label).typo(.label(12)).foregroundStyle(Palette.inkSoft).fixedSize() }
+    }
+
+    private var trigger: some View {
+        Button { withAnimation(.easeOut(duration: 0.16)) { open.toggle() } } label: {
+            HStack(spacing: inline ? 8 : 12) {
+                shown.frame(maxWidth: layout == .stacked ? .infinity : nil, alignment: .leading)
+                Icon(.arrowRight, .bold, size: 13).foregroundStyle(Palette.ink)
+                    .rotationEffect(.degrees(open ? -90 : 90))
+                    .frame(width: 28, height: 28).background(Circle().fill(Palette.mist))
+            }
+            .padding(.leading, inline ? 10 : 18).padding(.trailing, inline ? 0 : 7)
+            .frame(height: 42)
+            .background { if !inline { Capsule().fill(Palette.white) } }
+            .overlay { if !inline { Capsule().strokeBorder(Palette.inkLine, lineWidth: 1) } }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(label), \(selected?.label ?? "")")
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        // Inline, the list hangs under the search pill's right edge, 7 pt past the trigger.
+        .overlay(alignment: inline ? .topTrailing : .topLeading) {
+            if open {
+                list.offset(x: inline ? 7 : 0, y: 50).transition(.opacity.combined(with: .offset(y: -4)))
+            }
+        }
+    }
+
+    /// The chosen label; outside the search, as wide as the widest option so the pill keeps its size.
+    @ViewBuilder
+    private var shown: some View {
+        if inline {
+            Text(selected?.short ?? selected?.label ?? "").typo(.body(14)).foregroundStyle(Palette.ink).lineLimit(1)
+        } else {
+            ZStack(alignment: .leading) {
+                ForEach(options) { Text($0.label).lineLimit(1).hidden() }
+                Text(selected?.label ?? "").foregroundStyle(Palette.ink).lineLimit(1)
+            }
+            .typo(.body(15))
+        }
+    }
+
     private var list: some View {
         VStack(spacing: 0) {
             ForEach(options) { option in
+                let chosen = option.value == value
                 Button {
                     value = option.value
                     withAnimation(.easeOut(duration: 0.16)) { open = false }
                 } label: {
-                    HStack(spacing: 16) {
-                        Text(option.label).typo(.body(14)).lineLimit(1)
-                        Spacer(minLength: 0)
-                        if option.value == value { Icon(.check, .bold, size: 16) }
-                    }
-                    .foregroundStyle(option.value == value ? Palette.red : Palette.ink)
-                    .padding(.horizontal, 12).frame(minHeight: 40)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(option.value == value ? Palette.mist : .clear))
-                    .contentShape(Rectangle())
+                    Text(option.label).typo(.body(14)).lineLimit(1)
+                        .foregroundStyle(chosen ? Palette.red : Palette.ink)
+                        .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(chosen ? Palette.mist : .clear))
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(chosen ? .isSelected : [])
             }
         }
         .padding(6)
-        .frame(width: 220)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.white))
-        .overlay(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
-        .shadow(color: Palette.ink.opacity(0.1), radius: 18, y: 12)
+        .frame(width: inline ? 220 : max(width, 200))
+        .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
         .fixedSize(horizontal: false, vertical: true)
     }
 }

@@ -26,7 +26,7 @@ extension Writes {
         }
         let (answer, value) = try await accountCall(URL(string: "\(accountURL(auth.accountId))/subscriptions/\(pathSegment(subscriptionId))/via")!, method: "POST",
                                                     headers: ["Content-Type": Guesses.viaMediaType], body: orderedJSON([(Guesses.viaStationField, stationId)]), auth: auth,
-                                                    failed: "Vélo’v n’a pas accordé les 15 minutes supplémentaires.", http: http, preserveUnauthorized: true)
+                                                    failed: "Les 15 minutes supplémentaires n’ont pas été accordées.", http: http, preserveUnauthorized: true)
         guard answer.ok else { return answer }
         // VLSKit SubscriptionService.requestExtraTime returns TransactionState, not an HTTP-only acknowledgement.
         var outcome = answer
@@ -49,13 +49,13 @@ extension Writes {
     public static func promoCode(_ auth: WriteAuth, http: HTTPTransport) async throws -> PromoResult {
         let (answer, value) = try await accountCall(URL(string: "\(accountURL(auth.accountId))/rewards/consume/promocode")!, method: "POST",
                                                     headers: ["Accept": Guesses.promocodeAccept], body: nil, auth: auth,
-                                                    failed: "Vélo’v n’a pas fourni de code d’invitation.", http: http, preserveUnauthorized: true)
+                                                    failed: "Le code n’a pas pu être créé.", http: http, preserveUnauthorized: true)
         let code = value?[Guesses.promocodeCodeField]?.string.flatMap { $0.isEmpty ? nil : $0 }
         var outcome = answer
         if outcome.ok && code == nil {
             outcome.ok = false
             outcome.code = "local.promo.unreadable"
-            outcome.message = "Les points ont peut-être été débités, mais aucun code lisible n’a été reçu. Ne recommencez pas : contactez Vélo’v."
+            outcome.message = "Aucun code n’a été reçu, mais vos points ont peut-être été débités. Contactez Vélo’v avant de recommencer."
         }
         return PromoResult(outcome: outcome, promoCode: code)
     }

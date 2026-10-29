@@ -67,10 +67,10 @@ func reviewProfile(_ profile: Profile, _ draft: ProfileDraft) -> Result<ProfileR
     if changes.isEmpty { return nil }
     switch body.problem() {
     case nil: return .success(ProfileReview(body: body, changes: changes))
-    case .phoneNumber?: return .failure(ProfileProblem("Numéro de téléphone invalide : 06 12 34 56 78 ou +33 6 12 34 56 78."))
+    case .phoneNumber?: return .failure(ProfileProblem("Numéro de téléphone invalide. Exemple : 06 12 34 56 78."))
     case .zipCode?: return .failure(ProfileProblem("Code postal invalide."))
     case .city?: return .failure(ProfileProblem("Saisissez une ville."))
-    case .address?: return .failure(ProfileProblem("Adresse invalide (\(Rules.addressMax) caractères au plus)."))
+    case .address?: return .failure(ProfileProblem("L’adresse ne doit pas dépasser \(Rules.addressMax) caractères."))
     default: return .failure(ProfileProblem("Coordonnées invalides."))
     }
 }
@@ -91,7 +91,7 @@ struct ProfileCoordinates: View {
         }
         .task { if model.snapshot == .accountEdit, draft == nil { draft = ProfileDraft(profile) } }
         .sheet(item: $review) { review in
-            WriteDialog(title: "Enregistrer ?", success: "Coordonnées enregistrées.") {
+            WriteDialog(title: "Enregistrer les modifications ?", success: "Coordonnées enregistrées.") {
                 let outcome = await attempt { try await model.service.updateProfile(review.body) }
                 if outcome.ok {
                     draft = nil
@@ -101,7 +101,7 @@ struct ProfileCoordinates: View {
             } question: {
                 VStack(spacing: 0) {
                     ForEach(Array(review.changes.enumerated()), id: \.element.id) { index, change in
-                        DetailRow(label: change.label, last: index == review.changes.count - 1) { StackedValue(value: change.after, small: "Avant : \(change.before)") }
+                        DetailRow(label: change.label, last: index == review.changes.count - 1) { StackedValue(value: change.after, small: "Avant : \(change.before)") }
                     }
                 }
             }
@@ -133,7 +133,7 @@ struct ProfileCoordinates: View {
             }
             SelectField(label: "Pays", value: binding(\.country),
                         options: countries.contains { $0.value == country } ? countries : countries + [.init(value: country, label: country)],
-                        background: Palette.white)
+                        layout: .stacked)
                 .zIndex(2)
             FormField(label: "Téléphone", text: binding(\.phone), maxLength: 20, keyboard: .phonePad, content: .telephoneNumber)
             if let error { FormError(error) }
@@ -149,7 +149,7 @@ struct ProfileCoordinates: View {
     private func submit() {
         guard let draft else { return }
         switch reviewProfile(profile, draft) {
-        case nil: error = "Aucune modification."
+        case nil: error = "Vous n’avez rien modifié."
         case .failure(let problem)?: error = problem.message
         case .success(let value)?: error = nil; review = value
         }
@@ -174,7 +174,7 @@ struct AutoRenewalSetting: View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Renouvellement automatique").typo(.label(12)).foregroundStyle(Palette.inkSoft)
-                Text(actual == nil ? "État à actualiser" : actual! ? "Activé" : "Désactivé").typo(.body(15, medium: true)).foregroundStyle(Palette.ink)
+                Text(actual == nil ? "Indisponible pour le moment" : actual! ? "Activé" : "Désactivé").typo(.body(15, medium: true)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
             if canChange, subscription.id != nil, let actual {
@@ -194,8 +194,8 @@ struct AutoRenewalSetting: View {
                 if let result {
                     if result.outcome.ok {
                         DoneLine(text: !result.verified || result.autoRenewal == nil
-                                 ? "Demande acceptée, mais l’état n’a pas pu être relu. Actualisez sans renvoyer la demande."
-                                 : "État confirmé par Vélo’v : renouvellement \(result.autoRenewal! ? "activé" : "désactivé").")
+                                 ? "Demande envoyée. Actualisez pour vérifier le réglage."
+                                 : "Renouvellement automatique \(result.autoRenewal! ? "activé" : "désactivé").")
                     } else {
                         VStack(alignment: .leading, spacing: 6) {
                             FormError(result.outcome.message ?? "Vélo’v n’a pas enregistré le renouvellement automatique.")
@@ -203,8 +203,8 @@ struct AutoRenewalSetting: View {
                         }
                     }
                 } else {
-                    Text(next ? "Activer le renouvellement automatique de votre abonnement ? Il pourra être renouvelé et facturé à son échéance."
-                              : "Désactiver le renouvellement automatique de votre abonnement ?")
+                    Text(next ? "Activer le renouvellement automatique ? Votre abonnement sera renouvelé et facturé à son échéance."
+                              : "Désactiver le renouvellement automatique de votre abonnement ?")
                         .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -302,7 +302,7 @@ func periodLabel(_ receipt: Receipt) -> String {
     case let (start?, end?): "Du \(formatDate(start, .dayMonthYear)) au \(formatDate(end, .dayMonthYear))"
     case let (start?, nil): "Depuis le \(formatDate(start, .dayMonthYear))"
     case let (nil, end?): "Jusqu’au \(formatDate(end, .dayMonthYear))"
-    default: "Période sans dates"
+    default: "Dates inconnues"
     }
 }
 
@@ -349,7 +349,7 @@ struct ContactSupport: View {
             }
         }
         .sheet(item: $draft, onDismiss: nil) { draft in
-            WriteDialog(title: "Envoyer au service client ?", success: "Message envoyé au service client.") {
+            WriteDialog(title: "Envoyer au service client ?", success: "Message envoyé au service client.") {
                 let outcome = await attempt { try await model.service.contactSupport(draft.body) }
                 if outcome.ok { message = ""; tripId = "none" }
                 return outcome
@@ -364,17 +364,18 @@ struct ContactSupport: View {
 
     private var form: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SelectField(label: "Objet", value: $subject, options: subjects, background: Palette.white).zIndex(3)
+            SelectField(label: "Objet", value: $subject, options: subjects, layout: .stacked).zIndex(3)
             if !recent.isEmpty {
                 SelectField(label: "Trajet (facultatif)", value: $tripId,
                             options: [.init(value: "none", label: "Aucun")] + recent.map { .init(value: $0.id, label: "\(formatDate($0.startedAt)) · \($0.startStation ?? "Trajet")") },
-                            background: Palette.white).zIndex(2)
+                            layout: .stacked).zIndex(2)
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("Message").typo(.label(12)).foregroundStyle(Palette.inkSoft)
+                // `.field textarea`: the ring on the card radius; TextEditor's own inset brings the text to 18 × 12.
                 TextEditor(text: $message).typo(.body(16)).frame(minHeight: 110).scrollContentBackground(.hidden)
-                    .padding(6).background(RoundedRectangle(cornerRadius: 5.625).fill(Palette.white))
-                    .overlay(RoundedRectangle(cornerRadius: 5.625).strokeBorder(Palette.fieldLine, lineWidth: 1))
+                    .padding(.horizontal, 13).padding(.vertical, 4)
+                    .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
                     .onChange(of: message) { _, value in if value.count > 1500 { message = String(value.prefix(1500)) } }
             }
             if let error { FormError(error) }
@@ -389,7 +390,7 @@ struct ContactSupport: View {
     private func review() {
         let body = contact
         guard body.isValid else {
-            error = "Saisissez un message et une catégorie valides (4 Ko au maximum)."
+            error = "Votre message est vide ou trop long."
             return
         }
         error = nil

@@ -133,7 +133,7 @@ struct WriteDialog<Question: View>: View {
     }
 }
 
-/// A form field like `.field`: the mono label above a grey input.
+/// A form field like `.field`: the mono label above a white pill.
 struct FormField: View {
     let label: String
     @Binding var text: String
@@ -147,9 +147,7 @@ struct FormField: View {
             TextField("", text: $text)
                 .typo(.body(16)).foregroundStyle(Palette.ink)
                 .keyboardType(keyboard).textContentType(content).autocorrectionDisabled()
-                .padding(.horizontal, 11.25).frame(minHeight: 42)
-                .background(RoundedRectangle(cornerRadius: 5.625).fill(Palette.white))
-                .overlay(RoundedRectangle(cornerRadius: 5.625).strokeBorder(Palette.fieldLine, lineWidth: 1))
+                .fieldPill()
                 .onChange(of: text) { _, value in if value.count > maxLength { text = String(value.prefix(maxLength)) } }
                 .accessibilityLabel(label)
         }

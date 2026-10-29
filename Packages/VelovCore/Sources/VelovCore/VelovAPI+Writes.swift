@@ -4,7 +4,7 @@ import Foundation
 // that send nothing, then exactly one state-changing request from `Writes`.
 
 private let currentSubscriptions = "subscriptions?periods=CURRENT&typeList=ST&typeList=LT&isLocked=false"
-private let noSubscription = Outcome.refusal("local.no.subscription", "Aucun abonnement valide : achetez un ticket ou un abonnement dans l’app Vélo’v.")
+private let noSubscription = Outcome.refusal("local.no.subscription", "Aucun abonnement valide : achetez un ticket ou un abonnement dans l’app Vélo’v.")
 
 extension VelovAPI {
     /// The account, the app token and the user's token, as every write needs them.
@@ -46,9 +46,9 @@ extension VelovAPI {
         guard let subscriptionId else { return (noSubscription, nil) }
         guard let bike, bike.status == "AVAILABLE" else { return (.refusal("local.bike.gone", "Ce vélo n’est plus disponible à cette station."), nil) }
         if bike.isReserved == true { return (.refusal("local.bike.reserved", "Ce vélo est déjà réservé."), nil) }
-        guard let standNumber = bike.standNumber else { return (.refusal("local.bike.no.stand", "Ce vélo n’est pas accroché à une borne : il ne peut pas être réservé."), nil) }
+        guard let standNumber = bike.standNumber else { return (.refusal("local.bike.no.stand", "Ce vélo n’est pas accroché à une borne : il ne peut pas être réservé."), nil) }
         guard let bikeId = bike.id, let station else {
-            return (.refusal("local.missing.id", "Vélo’v n’a pas donné l’identifiant de la station ou du vélo. Réessayez dans un instant."), nil)
+            return (.refusal("local.missing.id", "Ce vélo ne peut pas être réservé pour le moment. Réessayez dans un instant."), nil)
         }
         let (outcome, booking) = try await Writes.book(try await writer(identity), stationId: station, stationNumber: stationNumber, standNumber: standNumber,
                                                        subscriptionId: subscriptionId, bikeId: bikeId, http: http)
@@ -128,15 +128,15 @@ extension VelovAPI {
             if ongoing { renting.append(id) }
         }
         guard renting.count == 1 else {
-            return .refusal("local.via.trip", renting.isEmpty ? "Aucun trajet en cours : les minutes supplémentaires ne peuvent pas être demandées."
-                                                              : "Plusieurs locations sont en cours : utilisez l’app Vélo’v pour choisir le trajet.")
+            return .refusal("local.via.trip", renting.isEmpty ? "Vous n’avez aucun trajet en cours."
+                                                              : "Vous avez plusieurs trajets en cours. Utilisez l’app Vélo’v.")
         }
         // v4 gives the UUID too; GBFS station.id is only a station number and cannot be used as the UUID fallback.
         let station = try await read("/stations/\(stationNumber)", identity, accept: "application/vnd.station.v4+json")
         guard let uuid = station["id"]?.string, let number = station["number"]?.int, let open = station["open"]?.bool,
               let stands = station["availabilities"]?["main"]?["stands"]?.number else { throw ShapeError("station v4") }
         guard number == stationNumber, open, stands == 0 else {
-            return .refusal("local.via.not.full", "Cette station n’est plus pleine ou n’est pas ouverte. Choisissez une autre station.")
+            return .refusal("local.via.not.full", "Cette station n’est plus pleine ou est fermée. Choisissez-en une autre.")
         }
         let target: ViaStation = Guesses.viaStationIdentifier == .uuid ? .uuid(uuid) : .number(number)
         return try await Writes.via(auth, subscriptionId: renting[0], station: target, http: http)
@@ -144,7 +144,7 @@ extension VelovAPI {
 
     /// Sends one customer-service message after the confirmation. An invalid body never leaves the phone.
     public func contactSupport(_ identity: Identity, _ body: ContactBody) async throws -> Outcome {
-        guard body.isValid else { return .refusal("local.contact.invalid", "Saisissez un message et une catégorie valides (4 Ko au maximum).") }
+        guard body.isValid else { return .refusal("local.contact.invalid", "Votre message est vide ou trop long.") }
         return try await Writes.contactMail(try await writer(identity), body, http: http)
     }
 
@@ -157,10 +157,10 @@ extension VelovAPI {
         guard let list = rules.array, let balance = account["balance"]?.number else { throw ShapeError("rewards") }
         let rule = list.first { $0["name"]?.string == Guesses.promocodeReward && $0["enable"]?.bool == true }
         guard let cost = rule?["reward"]?.number, cost == Double(expectedCost) else {
-            return PromoResult(outcome: .refusal("local.promo.price.changed", "L’offre ou son coût a changé. Actualisez les points avant de confirmer."), promoCode: nil)
+            return PromoResult(outcome: .refusal("local.promo.price.changed", "L’offre a changé. Actualisez avant de confirmer."), promoCode: nil)
         }
         if balance < cost {
-            return PromoResult(outcome: .refusal("local.promo.balance", "Votre solde ne permet plus cet échange. Actualisez les points."), promoCode: nil)
+            return PromoResult(outcome: .refusal("local.promo.balance", "Votre solde de points est insuffisant."), promoCode: nil)
         }
         return try await Writes.promoCode(auth, http: http)
     }

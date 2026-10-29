@@ -43,9 +43,9 @@ private struct ViaSheet: View {
     private func done(_ result: Outcome) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             if result.ok {
-                DoneLine(text: "Vélo’v a accepté la demande de minutes supplémentaires.")
+                DoneLine(text: "Vélo’v vous accorde 15 minutes de plus.")
             } else {
-                FormError(result.message ?? "Vélo’v n’a pas accordé les 15 minutes supplémentaires.")
+                FormError(result.message ?? "Les 15 minutes supplémentaires n’ont pas été accordées.")
                 RawStatus(outcome: result)
             }
             PillButton("Fermer", variant: .secondary) { dismiss() }.frame(maxWidth: .infinity, alignment: .trailing).padding(.top, 18)
@@ -54,8 +54,8 @@ private struct ViaSheet: View {
 
     private func review(_ station: Station) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            (Text("Demander 15 minutes supplémentaires pour rendre votre vélo à une autre station ? La station ")
-             + Text(verbatim: "\(station.name) (n° \(station.number))").fontWeight(.semibold) + Text(" est pleine."))
+            (Text("La station ") + Text(verbatim: "\(station.name) (n° \(station.number))").fontWeight(.semibold)
+             + Text(" est pleine. Demander 15 minutes de plus pour rejoindre une autre station ?"))
                 .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Spacer()
@@ -68,15 +68,13 @@ private struct ViaSheet: View {
 
     private var pick: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Choisissez la station pleine où vous souhaitez rendre votre vélo. Sa disponibilité sera revérifiée avant l’envoi.")
+            Text("Choisissez la station pleine où vous vouliez rendre votre vélo.")
                 .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 6) {
                 Text("Rechercher une station pleine").typo(.label(11)).foregroundStyle(Palette.inkSoft)
-                TextField("", text: $query, prompt: Text("Nom, adresse ou numéro").foregroundStyle(Palette.inkFaint))
+                TextField("", text: $query, prompt: Text("Nom, adresse ou numéro").foregroundStyle(Palette.inkSoft))
                     .typo(.body(16)).foregroundStyle(Palette.ink).autocorrectionDisabled()
-                    .padding(.horizontal, 11.25).frame(minHeight: 42)
-                    .background(RoundedRectangle(cornerRadius: 5.625).fill(Palette.fieldFill))
-                    .overlay(RoundedRectangle(cornerRadius: 5.625).strokeBorder(Palette.fieldLine, lineWidth: 1))
+                    .fieldPill()
             }
             PillButton("Les plus proches", variant: .ghost, pending: locating) { locate() }
             if !locationError.isEmpty { SoonNote(text: locationError) }
@@ -86,13 +84,11 @@ private struct ViaSheet: View {
                 VStack(spacing: 0) {
                     ForEach(choices.prefix(8)) { item in
                         Button { selected = item.number } label: {
-                            HStack(spacing: 10) {
-                                Text(verbatim: "\(item.name) · N° \(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
-                                    .typo(.body(14)).foregroundStyle(Palette.ink).multilineTextAlignment(.leading)
-                                Spacer(minLength: 0)
-                                if selected == item.number { Icon(.check, .bold, size: 15).foregroundStyle(Palette.red) }
-                            }
-                            .padding(.vertical, 12).contentShape(Rectangle())
+                            // The chosen station in red, without a check, like the select it stands for.
+                            Text(verbatim: "\(item.name) · N° \(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
+                                .typo(.body(14)).foregroundStyle(selected == item.number ? Palette.red : Palette.ink).multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 12).contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityAddTraits(selected == item.number ? .isSelected : [])

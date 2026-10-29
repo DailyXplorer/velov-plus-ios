@@ -20,7 +20,7 @@ public struct Tokens: Codable, Equatable, Sendable {
         guard let value, let access = value["access_token"]?.string, !access.isEmpty, let refresh = value["refresh_token"]?.string, !refresh.isEmpty,
               let identity = value["id_token"]?.string, !identity.isEmpty, let expires = value["expires_in"]?.number, expires > 0,
               let refreshExpires = value["refresh_expires_in"]?.number, refreshExpires >= 0 else {
-            throw VelovError(.unavailable, "La session n’a pas pu être ouverte. Réessayez.")
+            throw VelovError(.unavailable, "Connexion impossible. Réessayez.")
         }
         return Tokens(accessToken: access, refreshToken: refresh, idToken: identity, expiresIn: expires, refreshExpiresIn: refreshExpires)
     }
@@ -65,7 +65,7 @@ public func readCallback(_ value: String, state: String) throws -> String {
     guard let url = URL(string: value), isCallback(url), let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
           items.first(where: { $0.name == "state" })?.value == state, !items.contains(where: { $0.name == "error" }),
           let code = items.first(where: { $0.name == "code" })?.value, !code.isEmpty else {
-        throw VelovError(.protocol, "Le retour de connexion n’a pas pu être vérifié.")
+        throw VelovError(.protocol, "Connexion impossible. Réessayez dans un instant.")
     }
     return code
 }
@@ -93,7 +93,7 @@ final class LoginTransport {
             }
             if [301, 302, 303].contains(response.status) {
                 guard let location = response.header("Location"), let next = URL(string: location, relativeTo: url)?.absoluteURL else {
-                    throw VelovError(.protocol, "Le serveur de connexion n’a pas répondu comme prévu.")
+                    throw VelovError(.protocol, "Connexion impossible. Réessayez dans un instant.")
                 }
                 if isCallback(next) { return .callback(next.absoluteString) }
                 url = try safeIAMURL(next.absoluteString)
@@ -107,7 +107,7 @@ final class LoginTransport {
             }
             return .page(html)
         }
-        throw VelovError(.protocol, "La connexion n’a pas pu se terminer.")
+        throw VelovError(.protocol, "La connexion n’a pas abouti. Réessayez.")
     }
 }
 
@@ -117,7 +117,7 @@ public func login(email: String, code: String, deviceId: String, http: HTTPTrans
     let authorization = makeAuthorization()
     let transport = LoginTransport(http)
     guard case .page(let first) = try await transport.request(authorization.url) else {
-        throw VelovError(.protocol, "Un nouveau formulaire de connexion est nécessaire.")
+        throw VelovError(.protocol, "Connexion interrompue. Réessayez.")
     }
     var form = try readForm(first, id: "kc-form-login")
     form.set("username", email)
@@ -129,13 +129,13 @@ public func login(email: String, code: String, deviceId: String, http: HTTPTrans
         device.set("device_id", deviceId)
         response = try await transport.request(device.url, fields: device.fields)
     }
-    guard case .callback(let callback) = response else { throw VelovError(.protocol, "La connexion n’a pas pu se terminer.") }
+    guard case .callback(let callback) = response else { throw VelovError(.protocol, "La connexion n’a pas abouti. Réessayez.") }
     let authorizationCode = try readCallback(callback, state: authorization.state)
     let exchange = makeRequest(URL(string: "\(Cyclocity.oidc)/token")!, method: "POST", headers: ["Content-Type": "application/x-www-form-urlencoded"],
                                body: formBody([("grant_type", "authorization_code"), ("client_id", Cyclocity.clientId), ("redirect_uri", Cyclocity.callback),
                                                ("code", authorizationCode), ("code_verifier", authorization.verifier)]), timeout: 20)
     let answer = try await http.send(exchange, followRedirects: false)
-    guard answer.ok else { throw VelovError(.unavailable, "La session n’a pas pu être ouverte. Réessayez.") }
+    guard answer.ok else { throw VelovError(.unavailable, "Connexion impossible. Réessayez.") }
     let tokens = try Tokens.parse(answer.json)
     let certs = try await http.send(makeRequest(URL(string: "\(Cyclocity.oidc)/certs")!, timeout: 20), followRedirects: false)
     try verifyIdentity(tokens.idToken, jwks: certs.json, nonce: authorization.nonce, now: now)
@@ -144,7 +144,7 @@ public func login(email: String, code: String, deviceId: String, http: HTTPTrans
 
 /// The id token: signed by the realm, for this client, this login, still valid.
 func verifyIdentity(_ token: String, jwks: JSON?, nonce: String, now: Date) throws {
-    let failed = VelovError(.protocol, "La réponse de connexion n’a pas pu être vérifiée.")
+    let failed = VelovError(.protocol, "Connexion impossible. Réessayez dans un instant.")
     guard let jwt = JWT(token), let jwks, jwt.verifiesRS256(jwks: jwks) else { throw failed }
     let audience = jwt.payload["aud"]
     let audiences = audience?.array?.compactMap(\.string) ?? audience?.string.map { [$0] } ?? []
@@ -183,11 +183,11 @@ public func endSession(refreshToken: String?, idToken: String?, http: HTTPTransp
 
 /// The account e-mail an access token was issued for, to this client.
 public func accountEmail(accessToken: String) throws -> String {
-    guard let jwt = JWT(accessToken) else { throw VelovError(.expired, "Cette session doit être renouvelée.") }
-    guard jwt.payload["azp"]?.string == Cyclocity.clientId else { throw VelovError(.expired, "Cette session doit être renouvelée.") }
+    guard let jwt = JWT(accessToken) else { throw VelovError(.expired, "Votre session a expiré. Reconnectez-vous.") }
+    guard jwt.payload["azp"]?.string == Cyclocity.clientId else { throw VelovError(.expired, "Votre session a expiré. Reconnectez-vous.") }
     let email = jwt.payload["preferred_username"]?.string ?? jwt.payload["sub"]?.string ?? ""
     guard email.wholeMatch(of: /[^\s@]+@[^\s@]+\.[^\s@]+/) != nil else {
-        throw VelovError(.protocol, "Le compte associé à cette session n’a pas pu être vérifié.")
+        throw VelovError(.protocol, "Votre compte n’a pas pu être vérifié. Reconnectez-vous.")
     }
     return email
 }

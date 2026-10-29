@@ -4,7 +4,7 @@ import Foundation
 public enum Messages {
     /// Release refusals the official app translates, plus the booking clash it shows with its generic message.
     public static let releaseCodes: [String: String] = [
-        "trips.exception.bookings.already.reserved": "Vélo réservé par un autre usager. Vélo’v renvoie parfois ce refus pour un vélo que vous avez vous-même réservé : essayez un autre vélo.",
+        "trips.exception.bookings.already.reserved": "Vélo réservé par un autre usager. Choisissez-en un autre.",
         "trips.exception.invalid.customer.maxBikesRented": "Impossible de libérer le vélo, un autre trajet est en cours.",
         "kiwi.exception.customer.rent.time.limit": "Délai entre deux courses non écoulé.",
         "kiwi.exception.customer.insuffisant.right": "Abonnement hors validité.",
@@ -13,17 +13,17 @@ public enum Messages {
         "trips.exception.invalid.customer.credit": "Crédit du compte insuffisant pour libérer un vélo."
     ]
     public static let releaseStates: [String: String] = [
-        "ABORT": "La libération du vélo a été annulée.",
-        "NOK": "La libération du vélo a échoué.",
-        "TIME_OUT": "La borne n’a pas répondu à temps pour libérer le vélo.",
-        "NOT_CONNECTED": "Aucun vélo n’est connecté à la borne : borne non connectée."
+        "ABORT": "Le déverrouillage a été annulé.",
+        "NOK": "Le vélo n’a pas pu être déverrouillé.",
+        "TIME_OUT": "La borne n’a pas répondu à temps.",
+        "NOT_CONNECTED": "Aucun vélo n’est accroché à cette borne."
     ]
     public static let bookingCodes: [String: String] = [
         "booking.exception.bike.already.reserved": "Ce vélo est déjà réservé par un autre usager.",
-        "bookings.exception.not.authorized": "Réservation refusée : un compte n’a qu’une réservation à la fois, et il faut 10 points."
+        "bookings.exception.not.authorized": "Vous avez déjà une réservation en cours, ou moins de 10 points."
     ]
     public static let accountCodes: [String: String] = [
-        "accounts.exception.validation.failed": "Vélo’v a refusé ces coordonnées : vérifiez le numéro de téléphone et l’adresse.",
+        "accounts.exception.validation.failed": "Vélo’v a refusé ces coordonnées : vérifiez le numéro de téléphone et l’adresse.",
         "accounts.exception.notacceptable.account.phone.invalid": "Ce numéro de téléphone n’est pas valide."
     ]
     public static let rewardReasons: [String: String] = [
@@ -36,15 +36,15 @@ public enum Messages {
         "REJECTED": "Refusé", "TIMEOUT": "Expiré", "ERROR": "En erreur", "WARNING": "Avertissement", "REVERSED": "Annulé"
     ]
 
-    public static let releaseFailed = "La libération du vélo a échoué pour une raison inconnue."
+    public static let releaseFailed = "Le déverrouillage n’a pas abouti."
     public static let bookingFailed = "La réservation de votre vélo n’a pas fonctionné."
-    public static let sessionRefused = "Vélo’v n’a pas reconnu votre session. Reconnectez-vous puis réessayez."
-    public static let sessionToRenew = "Votre session doit être renouvelée. Reconnectez-vous pour continuer."
-    public static let sessionExpired = "Votre session a expiré. Reconnectez-vous pour continuer."
+    public static let sessionRefused = "Votre session n’est plus valide. Reconnectez-vous."
+    public static let sessionToRenew = "Votre session a expiré. Reconnectez-vous."
+    public static let sessionExpired = "Votre session a expiré. Reconnectez-vous."
     /// A login refusal whose page carries no readable message. Otherwise the server's own words are shown.
     public static let loginRefused = "Vélo’v a refusé la connexion."
-    public static let credentials = "L’email ou le code secret n’a pas été reconnu."
-    public static let remoteLogoutUnconfirmed = "Déconnecté ici, mais Vélo’v n’a pas confirmé la fin de session."
+    public static let credentials = "Adresse e-mail ou code secret incorrect."
+    public static let remoteLogoutUnconfirmed = "Déconnexion effectuée. Vélo’v ne l’a pas encore confirmée."
     public static let missing = "Indisponible pour le moment"
     public static let stationsUnavailable = "Les disponibilités des stations sont momentanément indisponibles."
     public static let stationBikesUnavailable = "Les vélos de cette station sont momentanément indisponibles."

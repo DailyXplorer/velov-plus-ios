@@ -44,7 +44,7 @@ enum Resource<T> {
 /// A screen the snapshot run opens straight away (`-VelovScreen tripSheet`).
 enum SnapshotScreen: String {
     case overview, overviewMap, trips, tripSheet, rateCard, points, stations, stationSheet, bikeList, bikeSheet, account, accountEnd, accountEdit
-    case bookingBanner, unlockConfirm, unlockSuccess, liveActivityLock, liveActivityIsland
+    case bookingBanner, unlockConfirm, bookConfirm, unlockSuccess, liveActivityLock, liveActivityIsland
 
     /// The screens drawn with a running booking.
     var withBooking: Bool { [.bookingBanner, .unlockConfirm, .unlockSuccess].contains(self) }
@@ -84,7 +84,7 @@ final class AppModel {
         switch snapshot {
         case .trips?, .tripSheet?, .rateCard?: page = .trips
         case .points?: page = .points
-        case .stations?, .stationSheet?, .bikeList?, .bikeSheet?: page = .stations
+        case .stations?, .stationSheet?, .bikeList?, .bikeSheet?, .bookConfirm?: page = .stations
         case .account?, .accountEnd?, .accountEdit?: page = .account
         default: break
         }
@@ -124,9 +124,9 @@ final class AppModel {
         do {
             phase = .ready(try await service.dashboard())
         } catch let error as VelovError where error.code == .expired {
-            phase = .guest(error.revoked ? error.message : "Session expirée. Reconnectez-vous.")
+            phase = .guest(error.revoked ? error.message : "Votre session a expiré. Reconnectez-vous.")
         } catch {
-            phase = .failed((error as? VelovError)?.message ?? "Compte indisponible.")
+            phase = .failed((error as? VelovError)?.message ?? "Votre compte est momentanément indisponible.")
         }
     }
 
@@ -135,7 +135,7 @@ final class AppModel {
         stationsPending = true
         defer { stationsPending = false }
         do { stations = .ready(try await service.stations()) }
-        catch { stations = .failed((error as? VelovError)?.message ?? "Stations indisponibles.") }
+        catch { stations = .failed((error as? VelovError)?.message ?? "Les stations sont momentanément indisponibles.") }
     }
 
     /// Best effort: without it the app only misses the booking banner. A running booking found here gets its Live Activity.

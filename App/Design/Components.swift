@@ -2,6 +2,18 @@ import SwiftUI
 
 // The shared pieces of components/ui.tsx and globals.css.
 
+extension View {
+    /// `--shadow-ring`: a white surface on a 1 pt ink-line ring. Nothing in the app casts a drop shadow.
+    func ringed<S: InsettableShape>(_ shape: S) -> some View {
+        background(shape.fill(Palette.white)).overlay(shape.strokeBorder(Palette.inkLine, lineWidth: 1))
+    }
+
+    /// `.search-field`, `.field input`, `.login-form input`: a white pill on the ring, as tall as the buttons.
+    func fieldPill() -> some View {
+        padding(.horizontal, 18).frame(minHeight: 42).ringed(Capsule())
+    }
+}
+
 enum ButtonVariant { case primary, secondary, ghost, onRed }
 
 /// `.button`: a 42 pt pill in Azeret Mono, primary red, secondary outline, ghost.
@@ -100,7 +112,7 @@ struct Eyebrow: View {
     var body: some View {
         HStack(spacing: 10) {
             Icon(icon, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
-            Text(text).typo(.label(12)).foregroundStyle(Palette.ink)
+            Text(text).typo(.label(12)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.8)
         }
         .padding(.leading, 4).padding(.trailing, 14).padding(.vertical, 4)
         .background(Capsule().fill(Palette.mist))
@@ -301,7 +313,8 @@ struct VelovSwitch: View {
         Button(action: action) {
             Capsule().fill(on ? Palette.red : Palette.ink.opacity(0.2)).frame(width: 52, height: 30)
                 .overlay(alignment: on ? .trailing : .leading) {
-                    Circle().fill(Palette.white).frame(width: 24, height: 24).shadow(color: Palette.ink.opacity(0.2), radius: 1.5, y: 1).padding(3)
+                    Circle().fill(Palette.white).frame(width: 24, height: 24)
+                        .overlay(Circle().strokeBorder(Palette.inkLine, lineWidth: 1)).padding(3)
                 }
                 .opacity(enabled ? 1 : 0.55)
         }

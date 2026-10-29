@@ -15,7 +15,7 @@ func matches(_ station: Station, _ filter: StationFilter, favorites: Set<Int>) -
     }
 }
 
-/// dashboard.tsx `StationsPage` on a phone: search, Autour de moi, the filter, the map filling the screen, a card floating above the tab bar on selection.
+/// dashboard.tsx `StationsPage` on a phone: search with the filter inside, Autour de moi, the map filling the screen, a card floating above the tab bar on selection.
 struct StationsPage: View {
     let onLogout: () -> Void
     @Environment(AppModel.self) private var model
@@ -57,13 +57,8 @@ struct StationsPage: View {
             Header(title: "Stations")
             VStack(alignment: .leading, spacing: 12) {
                 BookingBanners(bottom: 0)
-                toolbar
+                toolbar.zIndex(2)
                 if !locationError.isEmpty { Text(locationError).typo(.body(13)).foregroundStyle(Palette.notice) }
-                SelectField(label: "Afficher", value: $filter, options: [
-                    .init(value: .all, label: "Toutes les stations"), .init(value: .favorites, label: "Favorites"),
-                    .init(value: .available, label: "Vélos disponibles"), .init(value: .electrical, label: "Vélos électriques"), .init(value: .stands, label: "Places libres")
-                ])
-                .zIndex(2)
                 if case .failed(let message) = model.stations {
                     ErrorNotice(message: message, pending: model.stationsPending) { Task { await model.loadStations() } }
                 }
@@ -74,35 +69,47 @@ struct StationsPage: View {
             map
         }
         .task {
-            if model.snapshot == .stationSheet || model.snapshot == .bikeList || model.snapshot == .bikeSheet {
+            if model.snapshot == .stationSheet || model.snapshot == .bikeList || model.snapshot == .bikeSheet || model.snapshot == .bookConfirm {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 select("2002")
             }
         }
     }
 
+    /// One pill: the search, then the filter after a divider (its list under the pill's right edge); Autour de moi beside it.
     private var toolbar: some View {
         HStack(spacing: 8) {
-            HStack(spacing: 8) {
-                Icon(.magnifyingGlass, .light, size: 19).foregroundStyle(Palette.inkSoft)
-                TextField("", text: $query, prompt: Text("Rechercher une station").foregroundStyle(Palette.inkFaint))
-                    .typo(.body(16)).foregroundStyle(Palette.ink).focused($searching).submitLabel(.search)
-                    .autocorrectionDisabled().accessibilityLabel("Rechercher une station")
-                if !query.isEmpty {
-                    IconButton(icon: .x, size: 16, frame: 34, label: "Effacer la recherche") { query = "" }.padding(.trailing, -6)
+            HStack(spacing: 0) {
+                HStack(spacing: 10) {
+                    Icon(.magnifyingGlass, .light, size: 19).foregroundStyle(Palette.ink)
+                    TextField("", text: $query, prompt: Text("Rechercher").foregroundStyle(Palette.inkSoft))
+                        .typo(.body(16)).foregroundStyle(Palette.ink).focused($searching).submitLabel(.search)
+                        .autocorrectionDisabled().accessibilityLabel("Rechercher une station")
+                    if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Icon(.x, .light, size: 16).foregroundStyle(Palette.ink).frame(width: 28, height: 28).background(Circle().fill(Palette.mist))
+                        }
+                        .buttonStyle(.plain).accessibilityLabel("Effacer la recherche")
+                    }
                 }
+                .frame(maxWidth: .infinity, minHeight: 42)
+                .layoutPriority(1)
+                SelectField(label: "Afficher", hideLabel: true, value: $filter, options: [
+                    .init(value: .all, label: "Toutes les stations", short: "Toutes"), .init(value: .favorites, label: "Favorites"),
+                    .init(value: .available, label: "Vélos disponibles", short: "Vélos dispo"),
+                    .init(value: .electrical, label: "Vélos électriques", short: "Électriques"), .init(value: .stands, label: "Places libres", short: "Places")
+                ], layout: .inline)
+                .fixedSize()
             }
-            .padding(.horizontal, 11.25)
-            .frame(minHeight: 42)
-            .background(RoundedRectangle(cornerRadius: 5.625).fill(Palette.fieldFill))
-            .overlay(RoundedRectangle(cornerRadius: 5.625).strokeBorder(Palette.fieldLine, lineWidth: 1))
+            .padding(.leading, 14).padding(.trailing, 7)
+            .ringed(Capsule())
             Button { locate() } label: {
                 ZStack {
                     if locating { Spinner() } else { Icon(.navigationArrow, .light, size: 18) }
                 }
                 .foregroundStyle(Palette.ink)
                 .frame(width: 42, height: 42)
-                .overlay(Capsule().strokeBorder(Palette.secondaryRing, lineWidth: 1))
+                .ringed(Capsule())
             }
             .buttonStyle(.plain)
             .disabled(locating)
@@ -166,8 +173,7 @@ struct StationsPage: View {
         }
         .padding(6)
         .frame(maxWidth: 340)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.white))
-        .shadow(color: Palette.ink.opacity(0.1), radius: 18, y: 12)
+        .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -192,7 +198,7 @@ struct StationsPage: View {
             } catch let error as Locator.Failure {
                 locationError = error.message
             } catch {
-                locationError = "Position introuvable pour le moment."
+                locationError = "Impossible de vous localiser pour le moment."
             }
         }
     }
@@ -246,11 +252,11 @@ final class Locator: NSObject, CLLocationManagerDelegate {
         if let recent = manager.location, recent.timestamp.timeIntervalSinceNow > -30 { return recent }
         switch manager.authorizationStatus {
         case .denied, .restricted:
-            throw Failure(message: "Localisation refusée. Autorisez-la dans Réglages > Confidentialité et sécurité > Service de localisation > Vélo’v+.")
+            throw Failure(message: "Localisation refusée. Autorisez-la dans les réglages de votre téléphone.")
         default: break
         }
         return try await withCheckedThrowingContinuation { continuation in
-            waiting?.resume(throwing: Failure(message: "Position introuvable pour le moment."))
+            waiting?.resume(throwing: Failure(message: "Impossible de vous localiser pour le moment."))
             waiting = continuation
             if manager.authorizationStatus == .notDetermined { manager.requestWhenInUseAuthorization() } else { manager.requestLocation() }
             timeout?.cancel()
@@ -274,7 +280,7 @@ final class Locator: NSObject, CLLocationManagerDelegate {
             guard self.waiting != nil else { return }
             switch status {
             case .authorizedWhenInUse, .authorizedAlways: self.manager.requestLocation()
-            case .denied, .restricted: self.finish(.failure(Failure(message: "Localisation refusée. Autorisez-la dans Réglages > Confidentialité et sécurité > Service de localisation > Vélo’v+.")))
+            case .denied, .restricted: self.finish(.failure(Failure(message: "Localisation refusée. Autorisez-la dans les réglages de votre téléphone.")))
             default: break
             }
         }
@@ -286,6 +292,6 @@ final class Locator: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in self.finish(.failure(Failure(message: "Position introuvable pour le moment."))) }
+        Task { @MainActor in self.finish(.failure(Failure(message: "Impossible de vous localiser pour le moment."))) }
     }
 }

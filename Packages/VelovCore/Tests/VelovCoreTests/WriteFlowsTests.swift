@@ -76,7 +76,7 @@ final class WriteFlowsTests: XCTestCase {
     func testARefusedBookingIsNotRetried() async throws {
         let server = cyclocity(write: .json(["code": "bookings.exception.not.authorized"], status: 403))
         let (outcome, booking) = try await api(server).book(identity, stationNumber: 2002, bikeNumber: 20449)
-        XCTAssertEqual(outcome.message, "Réservation refusée : un compte n’a qu’une réservation à la fois, et il faut 10 points.")
+        XCTAssertEqual(outcome.message, "Vous avez déjà une réservation en cours, ou moins de 10 points.")
         XCTAssertNil(booking)
         XCTAssertEqual(writes(server).count, 1)
     }

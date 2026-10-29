@@ -27,14 +27,14 @@ struct RateBike: View {
             if model.ratedHere.contains(trip.id) {
                 HStack(spacing: 8) {
                     Icon(.check, .bold, size: 16).foregroundStyle(Palette.red)
-                    Text("Merci, +5 points").typo(.label(12)).foregroundStyle(Palette.ink)
+                    Text("Merci ! +5 points").typo(.label(12)).foregroundStyle(Palette.ink)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
                     (Text("Noter ce vélo · ") + Text("+5 points").foregroundColor(Palette.redDeep)).typo(.label(12)).foregroundStyle(Palette.ink)
                     if reasons {
-                        Text("Quel problème ?").typo(.body(14, medium: true)).foregroundStyle(Palette.ink).padding(.top, 12)
+                        Text("Quel problème ?").typo(.body(14, medium: true)).foregroundStyle(Palette.ink).padding(.top, 12)
                         VStack(spacing: 0) {
                             ForEach(Self.defects, id: \.rating) { defect in
                                 Button { vote = Vote(value: .warn(defect.rating)) } label: {
@@ -65,7 +65,7 @@ struct RateBike: View {
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
         .padding(.top, 14)
         .sheet(item: $vote) { vote in
-            WriteDialog(title: "Envoyer la note ?", success: "Merci, +5 points", showsRawLine: false) {
+            WriteDialog(title: "Envoyer la note ?", success: "Merci ! +5 points", showsRawLine: false) {
                 let outcome = await attempt {
                     try await model.service.rate(tripId: trip.id, bikeNumber: bikeNumber, vote: vote.value)
                     return Outcome(ok: true, httpStatus: 200)

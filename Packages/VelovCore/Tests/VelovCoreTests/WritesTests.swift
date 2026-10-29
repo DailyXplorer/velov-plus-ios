@@ -26,8 +26,8 @@ final class WritesTests: XCTestCase {
     }
 
     func testAReleaseSucceedsOnTransactionStateOKOnlyNotOnHTTP200() async throws {
-        for (state, message) in [("NOK", "La libération du vélo a échoué."), ("ABORT", "La libération du vélo a été annulée."),
-                                 ("TIME_OUT", "La borne n’a pas répondu à temps pour libérer le vélo."), ("NOT_CONNECTED", "Aucun vélo n’est connecté à la borne : borne non connectée."),
+        for (state, message) in [("NOK", "Le vélo n’a pas pu être déverrouillé."), ("ABORT", "Le déverrouillage a été annulé."),
+                                 ("TIME_OUT", "La borne n’a pas répondu à temps."), ("NOT_CONNECTED", "Aucun vélo n’est accroché à cette borne."),
                                  ("SOMETHING_NEW", Messages.releaseFailed), (nil, Messages.releaseFailed)] as [(String?, String)] {
             let (outcome, _) = try await release(.json(state.map { ["transactionState": $0] } ?? [:]))
             XCTAssertFalse(outcome.ok)
@@ -70,7 +70,7 @@ final class WritesTests: XCTestCase {
         let (lost, server) = try await release(.failure(.timedOut))
         XCTAssertEqual(server.calls.count, 1)
         XCTAssertEqual([lost.ok ? "ok" : "no", String(lost.httpStatus), lost.code, lost.detail], ["no", "0", "network", "TimeoutError"])
-        XCTAssert(lost.message!.contains("peut-être été libéré"))
+        XCTAssert(lost.message!.contains("peut-être déverrouillé"))
         let expired = MockServer { _, _ in .status(401) }
         do { _ = try await Writes.release(auth, subscriptionId: "sub-1", stationNumber: 2002, standNumber: 1, bikeNumber: 20449, http: expired.transport); XCTFail("no error") }
         catch { XCTAssertEqual((error as? VelovError)?.code, .expired) }
@@ -98,7 +98,7 @@ final class WritesTests: XCTestCase {
 
     func testBookingRefusalsMapToFrenchMessagesAndAreNeverRetried() async throws {
         for (code, message) in [("booking.exception.bike.already.reserved", "Ce vélo est déjà réservé par un autre usager."),
-                                ("bookings.exception.not.authorized", "Réservation refusée : un compte n’a qu’une réservation à la fois, et il faut 10 points."),
+                                ("bookings.exception.not.authorized", "Vous avez déjà une réservation en cours, ou moins de 10 points."),
                                 ("rewards.exception.something", Messages.bookingFailed)] {
             let (outcome, booking, server) = try await book(.json(["code": code, "message": "raw"], status: 400))
             XCTAssertEqual(outcome.message, message)

@@ -20,7 +20,7 @@ struct StationMapView: View {
                 Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon), anchor: .center) {
                     StationPin(total: station.bikes, selected: selected == station.id)
                         .onTapGesture { onSelect(station.id) }
-                        .accessibilityLabel("\(station.name), \(station.bikes) vélos")
+                        .accessibilityLabel("\(station.name), \(station.bikes) vélo\(station.bikes > 1 ? "s" : "")")
                         .accessibilityAddTraits(.isButton)
                 }
                 .annotationTitles(.hidden)
@@ -47,7 +47,6 @@ struct StationPin: View {
             .frame(width: size, height: size)
             .background(Circle().fill(total == 0 && !selected ? Palette.white : Palette.red))
             .overlay(Circle().strokeBorder(Palette.white, lineWidth: 2))
-            .shadow(color: Palette.ink.opacity(selected ? 0.28 : 0.16), radius: selected ? 6 : 2.5, y: 1)
             .frame(width: 44, height: 44)
             .contentShape(Circle())
             .animation(.easeOut(duration: 0.15), value: selected)
@@ -60,7 +59,6 @@ struct UserDot: View {
         Circle().fill(Palette.white).frame(width: 18, height: 18)
             .overlay(Circle().strokeBorder(Palette.red, lineWidth: 3))
             .background(Circle().fill(Palette.red.opacity(0.16)).frame(width: 32, height: 32))
-            .shadow(color: Palette.ink.opacity(0.2), radius: 2, y: 1)
     }
 }
 

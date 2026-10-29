@@ -45,14 +45,10 @@ struct StationCard: View {
             .padding(.top, 10)
         }
         .padding(.horizontal, padding).padding(.top, 14).padding(.bottom, padding)
-        .background {
-            RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Palette.white)
-                .shadow(color: Palette.ink.opacity(0.1), radius: 18, y: 12)
-                .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
-        }
+        .ringed(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .sheet(isPresented: $bikesOpen) { BikesSheet(station: station) }
         .sheet(isPresented: $favoriteOpen) {
-            WriteDialog(title: wasFavorite ? "Retirer des favoris ?" : "Ajouter aux favoris ?",
+            WriteDialog(title: wasFavorite ? "Retirer des favoris ?" : "Ajouter aux favoris ?",
                         success: wasFavorite ? "Station retirée des favoris." : "Station ajoutée aux favoris.") { [wasFavorite] in
                 let outcome = await attempt { try await model.service.setFavorite(station: station.number, on: !wasFavorite) }
                 if outcome.ok { model.setFavorite(station.number, !wasFavorite) }
@@ -62,7 +58,7 @@ struct StationCard: View {
             }
         }
         .task(id: station.id) {
-            if model.snapshot == .bikeList || model.snapshot == .bikeSheet {
+            if model.snapshot == .bikeList || model.snapshot == .bikeSheet || model.snapshot == .bookConfirm {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 bikesOpen = true
             }

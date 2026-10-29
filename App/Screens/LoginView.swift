@@ -19,13 +19,13 @@ struct LoginView: View {
                 (Text("Vélo’v").foregroundStyle(Palette.ink) + Text("+").foregroundStyle(Palette.red)).typo(.title(48))
                 VStack(spacing: 12) {
                     field {
-                        TextField("", text: $email, prompt: Text("Adresse email").foregroundStyle(Palette.inkFaint))
+                        TextField("", text: $email, prompt: Text("Adresse e-mail").foregroundStyle(Palette.inkSoft))
                             .textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
                             .submitLabel(.next).focused($focus, equals: .email).onSubmit { focus = .code }
-                            .accessibilityLabel("Adresse email")
+                            .accessibilityLabel("Adresse e-mail")
                     }
                     field {
-                        SecureField("", text: $code, prompt: Text("Code secret").foregroundStyle(Palette.inkFaint))
+                        SecureField("", text: $code, prompt: Text("Code secret").foregroundStyle(Palette.inkSoft))
                             .textContentType(.password).keyboardType(.numberPad).focused($focus, equals: .code)
                             .onChange(of: code) { _, value in
                                 let digits = String(value.filter(\.isNumber).prefix(6))
@@ -56,10 +56,7 @@ struct LoginView: View {
             .typo(.body(16))
             .foregroundStyle(Palette.ink)
             .disabled(pending)
-            .padding(.horizontal, 11.25)
-            .frame(height: 42)
-            .background(RoundedRectangle(cornerRadius: 5.625).fill(Palette.fieldFill))
-            .overlay(RoundedRectangle(cornerRadius: 5.625).strokeBorder(Palette.fieldLine, lineWidth: 1))
+            .fieldPill()
     }
 
     private func submit() {
@@ -75,7 +72,7 @@ struct LoginView: View {
             } catch let failure as VelovError {
                 error = failure.message
             } catch {
-                self.error = "Connexion impossible. Vérifiez votre accès à Internet."
+                self.error = "Connexion impossible. Vérifiez votre connexion Internet."
             }
         }
     }

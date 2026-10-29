@@ -17,18 +17,18 @@ struct TripsPage: View {
             let trips = sorted(all.filter { filter == .all || $0.bikeType.rawValue == filter.rawValue })
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 10) {
-                    SelectField(label: "Type de vélo", value: $filter, options: [
-                        .init(value: .all, label: "Tous"), .init(value: .mechanical, label: "Mécaniques"), .init(value: .electrical, label: "Électriques")
-                    ])
-                    .zIndex(2)
                     HStack {
-                        SelectField(label: "Trier par", value: $sort, options: [
-                            .init(value: .recent, label: "Plus récents"), .init(value: .oldest, label: "Plus anciens"),
-                            .init(value: .longest, label: "Plus longs"), .init(value: .priciest, label: "Plus chers")
+                        SelectField(label: "Type de vélo", hideLabel: true, value: $filter, options: [
+                            .init(value: .all, label: "Tous les vélos"), .init(value: .mechanical, label: "Vélos mécaniques"), .init(value: .electrical, label: "Vélos électriques")
                         ])
                         Spacer(minLength: 8)
                         Text(verbatim: "\(trips.count) trajet\(trips.count > 1 ? "s" : "")").typo(.label(11)).foregroundStyle(Palette.inkMuted)
                     }
+                    .zIndex(2)
+                    SelectField(label: "Trier par", value: $sort, options: [
+                        .init(value: .recent, label: "Plus récents"), .init(value: .oldest, label: "Plus anciens"),
+                        .init(value: .longest, label: "Plus longs"), .init(value: .priciest, label: "Plus chers")
+                    ])
                     .zIndex(1)
                 }
                 .zIndex(1)

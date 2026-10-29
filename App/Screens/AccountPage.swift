@@ -62,7 +62,7 @@ struct AccountPage: View {
             }
             if let receipts = data.receipts, !receipts.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Télécharger le reçu").typo(.label(12)).foregroundStyle(Palette.inkSoft).padding(.bottom, 8)
+                    Text("Reçus").typo(.label(12)).foregroundStyle(Palette.inkSoft).padding(.bottom, 8)
                     ForEach(receipts) { ReceiptRow(receipt: $0) }
                 }
                 .padding(.top, 24)

@@ -71,7 +71,7 @@ public enum Writes {
                 "Authorization": "Taknv1 \(auth.token)", "Identity": auth.identity, "Content-Type": "application/vnd.trip.v6+json",
                 "Accept": "application/vnd.trip.v6+json", "Accept-Language": "fr"], body: body, timeout: 30))
         } catch {
-            var outcome = Outcome.refusal("network", "Vélo’v n’a pas répondu. Le vélo a peut-être été libéré : regardez la borne avant de réessayer.")
+            var outcome = Outcome.refusal("network", "Vélo’v ne répond pas. Le vélo est peut-être déverrouillé : regardez la borne avant de réessayer.")
             outcome.detail = networkFailure(error)
             return outcome
         }
@@ -90,7 +90,7 @@ public enum Writes {
             response = try await http.send(makeRequest(url, method: "POST", headers: [
                 "Authorization": "Taknv1 \(auth.token)", "Identity": auth.identity, "Content-Type": "application/json; charset=UTF-8"], body: body, timeout: 30))
         } catch {
-            var outcome = Outcome.refusal("network", "Vélo’v n’a pas répondu. La réservation est peut-être passée : actualisez avant de réessayer.")
+            var outcome = Outcome.refusal("network", "Vélo’v ne répond pas. Le vélo est peut-être réservé : actualisez avant de réessayer.")
             outcome.detail = networkFailure(error)
             return (outcome, nil)
         }
@@ -111,7 +111,7 @@ public enum Writes {
             all["Identity"] = auth.identity
             response = try await http.send(makeRequest(url, method: method, headers: all, body: body, timeout: 15))
         } catch {
-            var outcome = Outcome.refusal("network", "Vélo’v n’a pas répondu. La modification est peut-être passée : actualisez avant de réessayer.")
+            var outcome = Outcome.refusal("network", "Vélo’v ne répond pas. La modification a peut-être été prise en compte : actualisez avant de réessayer.")
             outcome.detail = networkFailure(error)
             return (outcome, nil)
         }
@@ -138,12 +138,12 @@ public enum Writes {
     /// The receipt of one subscription period: a POST without body that only reads, answered as base64 under Accept: application/json.
     public static func receipt(_ auth: WriteAuth, subscriptionId: String, periodId: String, http: HTTPTransport) async throws -> (outcome: Outcome, filename: String?, pdf: Data?) {
         let url = URL(string: "\(accountURL(auth.accountId))/subscriptions/\(pathSegment(subscriptionId))/periods/\(pathSegment(periodId))/reports")!
-        var (outcome, value) = try await accountCall(url, method: "POST", headers: ["Accept": "application/json"], body: nil, auth: auth, failed: "Vélo’v n’a pas fourni ce reçu.", http: http)
+        var (outcome, value) = try await accountCall(url, method: "POST", headers: ["Accept": "application/json"], body: nil, auth: auth, failed: "Ce reçu n’est pas disponible.", http: http)
         guard outcome.ok else { return (outcome, nil, nil) }
         guard let content = value?["translations"]?["content"]?.string, let bytes = Data(base64Encoded: content), bytes.starts(with: Data("%PDF-".utf8)) else {
             outcome.ok = false
             outcome.code = "local.receipt.unreadable"
-            outcome.message = "Le reçu renvoyé par Vélo’v est illisible."
+            outcome.message = "Ce reçu ne peut pas être ouvert."
             return (outcome, nil, nil)
         }
         let name = (value?["filename"]?.string ?? "").filter { $0.isASCII && ($0.isLetter || $0.isNumber || "_.-".contains($0)) }

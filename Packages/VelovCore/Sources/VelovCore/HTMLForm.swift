@@ -93,7 +93,7 @@ func serverRefusal(_ html: String) -> String? {
 public func safeIAMURL(_ value: String, relativeTo base: URL? = nil) throws -> URL {
     guard let url = URL(string: value, relativeTo: base ?? URL(string: Cyclocity.iam))?.absoluteURL,
           url.scheme == "https", url.host == "iam.cyclocity.fr", url.port == nil, url.path.hasPrefix("/realms/vls-default/") else {
-        throw VelovError(.protocol, "Une étape de connexion n’a pas pu être vérifiée.")
+        throw VelovError(.protocol, "Connexion impossible. Réessayez dans un instant.")
     }
     return url
 }
@@ -106,7 +106,7 @@ public func readForm(_ html: String, id: String) throws -> LoginForm {
             throw VelovError(.credentials, Messages.credentials)
         }
         if let message = serverRefusal(html) { throw VelovError(.refused, message) }
-        throw VelovError(.protocol, "La connexion demande une étape supplémentaire. Réessayez depuis le service officiel.")
+        throw VelovError(.protocol, "Une étape supplémentaire est demandée. Connectez-vous d’abord sur l’app ou le site Vélo’v.")
     }
     let start = forms[0].range.upperBound
     let end = page[start...].range(of: "</form", options: .caseInsensitive)?.lowerBound ?? page.endIndex

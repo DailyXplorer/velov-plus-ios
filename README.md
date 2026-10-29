@@ -11,6 +11,7 @@ Il s’agit d’un projet personnel et non officiel. Il n’est affilié ni à V
   <img src="docs/screenshots/activite-en-direct.png" width="15%" alt="Activité en direct sur l’écran verrouillé">
   <img src="docs/screenshots/dynamic-island.png" width="15%" alt="Trajet en cours dans la Dynamic Island">
   <img src="docs/screenshots/statistiques.png" width="15%" alt="Statistiques">
+  <img src="docs/screenshots/trajet-termine.png" width="15%" alt="Trajet terminé et notation">
 </p>
 
 ## Ce que fait l’application

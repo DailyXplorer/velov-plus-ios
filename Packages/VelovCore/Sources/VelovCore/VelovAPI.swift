@@ -107,7 +107,7 @@ public final class VelovAPI: Sendable {
             async let history = try? trips("trips?status=FINISHED")
             async let stations = stationsByNumber()
             let (finished, byNumber) = await (history, stations)
-            return TripCheck(ongoing: [], latest: latestFinished((finished ?? []).map { normalizeTrip($0, stations: byNumber) }))
+            return TripCheck(ongoing: [], latest: latestFinished((finished ?? []).map { normalizeTrip($0, stations: byNumber) }), historyRead: finished != nil)
         }
         let byNumber = ongoing == nil ? [:] : await stationsByNumber()
         return TripCheck(ongoing: ongoing?.map { normalizeTrip($0, stations: byNumber) }, latest: nil)

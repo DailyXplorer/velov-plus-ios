@@ -187,7 +187,8 @@ struct BikeActionSheet: View {
                 case .unlock:
                     let answer = try await model.service.tripCheck()
                     trip = answer.ongoing?.first { $0.bikeNumber == place.bikeNumber }
-                    return unlockCheck(answer, bike: place.bikeNumber, since: held.at, now: Date())
+                    let bookings = bookingId == nil ? nil : try? await model.service.bookings()
+                    return unlockCheck(answer, bike: place.bikeNumber, since: held.at, now: Date(), booking: bookingId, bookings: bookings)
                 }
             }
             switch settled {

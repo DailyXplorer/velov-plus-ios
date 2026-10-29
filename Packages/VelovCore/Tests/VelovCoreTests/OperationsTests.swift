@@ -237,6 +237,13 @@ final class OperationsTests: XCTestCase {
         XCTAssertEqual(unlockCheck(older, bike: 7, since: since, now: since.addingTimeInterval(60)), .unknown)
         XCTAssertEqual(unlockCheck(older, bike: 7, since: since, now: since.addingTimeInterval(Reconcile.dockWindow)), .unchanged)
         XCTAssertEqual(unlockCheck(TripCheck(ongoing: nil, latest: nil), bike: 7, since: since, now: since.addingTimeInterval(3600)), .unknown)
+        let unread = TripCheck(ongoing: [], latest: nil, historyRead: false)
+        XCTAssertEqual(unlockCheck(unread, bike: 7, since: since, now: since.addingTimeInterval(180)), .unknown, "no history read is no proof")
+        let held = Booking(id: "bk-7", stationNumber: 2002, stationName: "Bellecour", standNumber: 4, bikeNumber: 7, endsAt: nil, lat: nil, lon: nil)
+        let late = since.addingTimeInterval(180)
+        XCTAssertEqual(unlockCheck(older, bike: 7, since: since, now: late, booking: "bk-7", bookings: [held]), .unchanged)
+        XCTAssertEqual(unlockCheck(older, bike: 7, since: since, now: late, booking: "bk-7", bookings: []), .unknown, "a consumed booking is no proof")
+        XCTAssertEqual(unlockCheck(older, bike: 7, since: since, now: late, booking: "bk-7", bookings: nil), .unknown)
 
         let booking = Booking(id: "bk", stationNumber: 2002, stationName: "Bellecour", standNumber: 4, bikeNumber: 7, endsAt: nil, lat: nil, lon: nil)
         XCTAssertEqual(bookingCheck([booking], bike: 7), .applied)
@@ -321,6 +328,7 @@ final class OperationsTests: XCTestCase {
     }
 
     final class Counter { var value = 0 }
+    final class Log { var items: [String] = [] }
 
     func testBookingReadsShareTheOneInFlightAndWaitFiveSecondsUnlessForced() async {
         let clock = Clock()
@@ -342,6 +350,17 @@ final class OperationsTests: XCTestCase {
         XCTAssertEqual(runs.value, 2)
         await flight.run(force: true) { runs.value += 1 }
         XCTAssertEqual(runs.value, 3, "a read after a write is not throttled")
+        let (slowStarted, didSlowStart) = AsyncStream<Void>.makeStream()
+        let (slowRelease, doSlowRelease) = AsyncStream<Void>.makeStream()
+        let order = Log()
+        let stale = Task { await flight.run(force: true) { order.items.append("stale"); didSlowStart.yield(); for await _ in slowRelease { break } } }
+        for await _ in slowStarted { break }
+        let fresh = Task { await flight.run(force: true) { order.items.append("fresh") } }
+        await Task.yield()
+        doSlowRelease.yield()
+        await stale.value
+        await fresh.value
+        XCTAssertEqual(order.items, ["stale", "fresh"], "a forced read does not reuse a read started before the write")
         flight.reset()
         await flight.run { runs.value += 1 }
         XCTAssertEqual(runs.value, 4)

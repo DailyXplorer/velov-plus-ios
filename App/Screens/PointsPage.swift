@@ -179,7 +179,7 @@ struct AutoSpendSetting: View {
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
         .sheet(isPresented: $asking) {
             let next = model.operations.get(OperationKey.autoSpend).flatMap { Intent.wanted($0.meta) } ?? self.next
-            WriteDialog(title: next ?"Activer l’utilisation automatique ?" : "Désactiver l’utilisation automatique ?", key: OperationKey.autoSpend, intent: Intent.wanted(next), run: {
+            WriteDialog(title: next ? "Activer l’utilisation automatique ?" : "Désactiver l’utilisation automatique ?", key: OperationKey.autoSpend, intent: Intent.wanted(next), run: {
                 var answered: Bool?
                 let outcome = await attempt {
                     let result = try await model.service.setAutoSpend(next)

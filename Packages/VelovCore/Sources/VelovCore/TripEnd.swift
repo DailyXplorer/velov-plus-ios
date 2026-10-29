@@ -42,7 +42,8 @@ public func tripToGreet(_ trips: [Trip], store: TripEndStore, now: Date = Date()
 public struct TripCheck: Equatable, Sendable {
     public var ongoing: [Trip]?
     public var latest: Trip?
-    public init(ongoing: [Trip]?, latest: Trip?) { self.ongoing = ongoing; self.latest = latest }
+    public var historyRead: Bool
+    public init(ongoing: [Trip]?, latest: Trip?, historyRead: Bool = true) { self.ongoing = ongoing; self.latest = latest; self.historyRead = historyRead }
 }
 
 @MainActor

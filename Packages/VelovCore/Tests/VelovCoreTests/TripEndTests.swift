@@ -313,6 +313,19 @@ final class TripEndTests: XCTestCase {
         }
         do { _ = try await VelovAPI(transport: down.transport, pause: noPause).tripCheck(identity); XCTFail("no error") }
         catch { XCTAssertEqual((error as? VelovError)?.code, .expired) }
+
+        let noHistory = MockServer { call, _ in
+            if call.url.hasSuffix("/client_tokens") { return .json(["accessToken": "app"]) }
+            if call.url.hasSuffix("/id") { return .json(accountId) }
+            if call.url.hasSuffix("/trips/ongoing") { return .json([]) }
+            return call.url.contains("status=FINISHED") ? .status(500) : .status(404)
+        }
+        let unread = try await VelovAPI(transport: noHistory.transport, pause: noPause).tripCheck(identity)
+        XCTAssertEqual(unread.ongoing, [])
+        XCTAssertFalse(unread.historyRead)
+        let since = Date()
+        XCTAssertEqual(unlockCheck(unread, bike: 7, since: since, now: since.addingTimeInterval(180)), .unknown)
+        XCTAssertTrue(docked.historyRead)
     }
 }
 

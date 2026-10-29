@@ -32,11 +32,13 @@ public enum Intent {
     public static func wanted(_ meta: [String: String]) -> Bool? { meta["wanted"].flatMap(Bool.init) }
 }
 
-public func unlockCheck(_ check: TripCheck, bike: Int, since: Date, now: Date) -> Check {
+public func unlockCheck(_ check: TripCheck, bike: Int, since: Date, now: Date, booking: String? = nil, bookings: [Booking]? = nil) -> Check {
     guard let ongoing = check.ongoing else { return .unknown }
     if ongoing.contains(where: { $0.bikeNumber == bike }) { return .applied }
     if let latest = check.latest, latest.bikeNumber == bike, let start = latest.startedAt, start >= since.addingTimeInterval(-Reconcile.dockWindow) { return .applied }
-    return now.timeIntervalSince(since) >= Reconcile.dockWindow ? .unchanged : .unknown
+    guard check.historyRead, now.timeIntervalSince(since) >= Reconcile.dockWindow else { return .unknown }
+    if let booking, !(bookings ?? []).contains(where: { $0.id == booking }) { return .unknown }
+    return .unchanged
 }
 
 public func bookingCheck(_ bookings: [Booking], bike: Int) -> Check {
@@ -153,7 +155,11 @@ public final class SingleFlight {
     }
 
     public func run(force: Bool = false, _ work: @escaping @MainActor () async -> Void) async {
-        if let running { return await running.value }
+        while let running {
+            await running.value
+            if self.running == running { self.running = nil }
+            if !force { return }
+        }
         if !force, let last, now().timeIntervalSince(last) < interval { return }
         last = now()
         let task = Task { await work() }

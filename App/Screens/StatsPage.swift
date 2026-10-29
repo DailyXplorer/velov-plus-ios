@@ -97,8 +97,6 @@ private func axisText(_ text: String) -> some View {
 
 private let gap: CGFloat = 10
 
-@MainActor private var cachedStats: (account: String, stats: Stats)?
-
 struct StatsPage: View {
     private static let unavailable = "Vos statistiques sont momentanément indisponibles."
 
@@ -142,7 +140,7 @@ struct StatsPage: View {
             .background(Palette.white)
             .toolbar(.hidden, for: .navigationBar)
             .task {
-                if let cachedStats, cachedStats.account == account { state = .ready(cachedStats.stats) } else { await load() }
+                if let cached = model.statsCache.get(account) { state = .ready(cached) } else { await load() }
                 let anchors: [SnapshotScreen: String] = [.statsCharts: "panel-charts", .statsHeatmap: "panel-heatmap", .statsRecords: "panel-records", .statsBike: "panel-records"]
                 guard let snapshot = model.snapshot, snapshot != .stats, snapshot.showsStats else { return }
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
@@ -187,7 +185,7 @@ struct StatsPage: View {
         state = .loading
         do {
             let stats = try await model.service.stats()
-            cachedStats = stats.complete ? (account, stats) : nil
+            model.statsCache.put(stats, account: account)
             state = .ready(stats)
         } catch {
             state = .failed((error as? VelovError)?.message ?? Self.unavailable)

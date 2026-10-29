@@ -68,6 +68,12 @@ public struct RewardMovement: Equatable, Sendable, Identifiable {
     }
 }
 
+public struct RewardLedger: Equatable, Sendable {
+    public var movements: [RewardMovement]
+    public var complete: Bool
+    public init(movements: [RewardMovement], complete: Bool) { self.movements = movements; self.complete = complete }
+}
+
 public struct RewardRule: Equatable, Sendable {
     public enum Kind: String, Sendable { case earn, spend }
     public var name: String

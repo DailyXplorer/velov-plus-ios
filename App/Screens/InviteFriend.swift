@@ -41,7 +41,7 @@ struct InviteFriend: View {
                     if cost == nil {
                         SoonNote(text: "L’offre est momentanément indisponible.")
                     } else if let cost, let balance, balance < cost {
-                        SoonNote(text: "Il vous manque \(cost - balance) points.")
+                        SoonNote(text: "Il vous manque \(formatNumber(cost - balance)) points.")
                     }
                 }
                 Spacer(minLength: 0)
@@ -76,8 +76,8 @@ struct InviteFriend: View {
 
     private var sheet: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: "Échanger \(cost ?? 0) points ?", closeDisabled: blocked) { close() }
-            Text("Les \(cost ?? 0) points sont débités dès la création du code, même s’il n’est jamais utilisé.")
+            SheetHeading(title: "Échanger \(formatNumber(cost ?? 0)) points ?", closeDisabled: blocked) { close() }
+            Text("Les \(formatNumber(cost ?? 0)) points sont débités dès la création du code, même s’il n’est jamais utilisé.")
                 .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
             if verification == .debited {
                 FormError("Vos points ont été débités, mais aucun code n’a été reçu. Contactez Vélo’v pour le récupérer.").padding(.top, 14)
@@ -96,9 +96,9 @@ struct InviteFriend: View {
             }
             Group {
                 switch verification {
-                case .notDebited?: SoonNote(text: "Aucun débit de \(cost ?? 0) points n’apparaît sur votre compte.")
-                case .unknown?: SoonNote(text: "Votre solde ne permet pas encore de savoir si vos points ont été débités. Vérifiez de nouveau dans un instant.")
-                case .failed?: FormError("Votre solde n’a pas pu être lu. Réessayez dans un instant.")
+                case .notDebited?: SoonNote(text: "Aucun débit de \(formatNumber(operationCost)) points n’apparaît dans l’historique complet de vos points.")
+                case .unknown?: SoonNote(text: "L’historique de vos points ne permet pas encore d’exclure un débit. Vérifiez de nouveau dans quelques minutes ou écrivez au service client.")
+                case .failed?: FormError("L’historique de vos points n’a pas pu être lu. Réessayez dans un instant.")
                 default: EmptyView()
                 }
             }
@@ -108,8 +108,10 @@ struct InviteFriend: View {
                 PillButton(settled ? "Fermer" : "Annuler", variant: .ghost, fullWidth: true) { close() }.disabled(blocked)
                 if uncertain != nil, verification == .notDebited {
                     PillButton("Je n’ai pas été débité, réessayer", fullWidth: true) { retry() }
+                } else if verification == .unknown || verification == .debited {
+                    PillButton("Écrire au service client", variant: .secondary, fullWidth: true) { contact() }
                 } else if uncertain != nil {
-                    PillButton("Vérifier mon solde", variant: .secondary, pending: verification == .checking, fullWidth: true) { verify() }
+                    PillButton("Vérifier", variant: .secondary, pending: verification == .checking, fullWidth: true) { verify() }
                 } else if !settled {
                     PillButton("Confirmer", pending: pending, fullWidth: true) { confirm() }.disabled(!canObtain)
                 }
@@ -153,7 +155,7 @@ struct InviteFriend: View {
         warning = nil
         verification = nil
         let model = model
-        let meta = ["cost": String(cost), "balance": String(balance ?? -1)]
+        let meta = ["cost": String(cost)]
         Task {
             let result = await model.operations.runOnce(operationKey, keep: true, meta: meta) {
                 let answer: PromoResult
@@ -178,21 +180,23 @@ struct InviteFriend: View {
             case .finished(let answer):
                 Haptics.result(answer.ok)
                 outcome = answer
+                if answer.ok || answer.isUncertain { model.statsChanged() }
             }
         }
     }
 
+    private var operationCost: Int { operation.flatMap { Int($0.meta["cost"] ?? "") } ?? cost ?? 0 }
+
     private func verify() {
         guard let operation, operation.status == .uncertain, let operationKey, verification != .checking else { return }
-        let balance = Double(operation.meta["balance"] ?? "").flatMap { $0 >= 0 ? $0 : nil }
-        let before = DebitBefore(at: operation.at, balance: balance, cost: Int(operation.meta["cost"] ?? "") ?? cost ?? 0)
+        let before = DebitBefore(at: operation.at, cost: operationCost)
         verification = .checking
         let model = model
         Task {
             do {
-                let data = try await model.service.dashboard()
-                let check = inviteDebit(before, after: data.rewards)
-                if check == .debited { model.operations.clear(operationKey) }
+                let ledger = try await model.service.rewardLedger()
+                let check = inviteDebit(before, ledger: ledger, now: Date())
+                if check == .debited { model.operations.clear(operationKey, held: operation) }
                 verification = switch check {
                 case .debited: .debited
                 case .notDebited: .notDebited
@@ -205,9 +209,15 @@ struct InviteFriend: View {
     }
 
     private func retry() {
-        guard let operationKey, verification == .notDebited else { return }
-        model.operations.clear(operationKey)
+        guard let operation, let operationKey, verification == .notDebited else { return }
+        model.operations.clear(operationKey, held: operation)
         confirm()
+    }
+
+    private func contact() {
+        asking = false
+        model.contactRequested = true
+        model.page = .account
     }
 
     private func closed() {

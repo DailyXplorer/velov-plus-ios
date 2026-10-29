@@ -7,7 +7,7 @@ struct OverviewPage: View {
     @Environment(AppModel.self) private var model
     @State private var camera = StationMapView.lyon
 
-    private var minutes: Int { Int(data.trips?.reduce(0) { $0 + ($1.duration ?? 0) } ?? 0) }
+    private var minutes: Int { Int((data.trips?.reduce(0) { $0 + ($1.duration ?? 0) } ?? 0).rounded()) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

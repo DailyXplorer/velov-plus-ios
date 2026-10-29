@@ -53,14 +53,16 @@ public enum Writes {
             response = try await http.send(makeRequest(url, method: "POST", headers: [
                 "Authorization": "Taknv1 \(auth.token)", "Identity": auth.identity, "Content-Type": "application/vnd.trip.v6+json"], body: body, timeout: 25))
         } catch {
-            var outcome = Outcome.refusal("network", "La note n’a pas pu être envoyée.")
+            var outcome = Outcome.refusal("network", Messages.ratingUnconfirmed)
             outcome.detail = networkFailure(error)
             return outcome
         }
         if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
         if response.ok { return Outcome(ok: true, httpStatus: response.status) }
         let reply = ErrorReply(response)
-        return Outcome(ok: false, httpStatus: response.status, code: reply.code, message: "Vélo’v n’a pas enregistré la note. Réessayez dans un instant.", detail: reply.detail)
+        var outcome = Outcome(ok: false, httpStatus: response.status, code: reply.code, detail: reply.detail)
+        outcome.message = outcome.isUncertain ? Messages.ratingUnconfirmed : "Vélo’v n’a pas enregistré la note."
+        return outcome
     }
 
     public static func release(_ auth: WriteAuth, subscriptionId: String, stationNumber: Int, standNumber: Int, bikeNumber: Int, http: HTTPTransport) async throws -> Outcome {
@@ -95,8 +97,15 @@ public enum Writes {
         }
         if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
         let reply = ErrorReply(response)
-        let outcome = bookingOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail)
-        return (outcome, outcome.ok ? reply.value.flatMap(RawBooking.init) : nil)
+        var outcome = bookingOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail)
+        guard outcome.ok else { return (outcome, nil) }
+        if let booking = reply.value.flatMap(RawBooking.init), booking.stationNumber == stationNumber, booking.bikeId == nil || booking.bikeId == bikeId {
+            return (outcome, booking)
+        }
+        outcome.ok = false
+        outcome.message = "Vélo’v a répondu sans confirmer la réservation. Vérifiez vos réservations avant de réessayer."
+        outcome.detail = reply.detail ?? (response.body.isEmpty ? "Réponse vide" : String(response.text.prefix(160)))
+        return (outcome, nil)
     }
 
     static func accountCall(_ url: URL, method: String, headers: [String: String], body: Data?, auth: WriteAuth, failed: String, http: HTTPTransport,

@@ -233,10 +233,10 @@ struct DataNotice: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(warnings, id: \.self) { Text(verbatim: "• \($0)").typo(.body(13)) }
                 }
-                .foregroundStyle(Palette.dataNotice)
+                .foregroundStyle(Palette.inkSoft)
                 .padding(.leading, 8)
             }
-            .foregroundStyle(Palette.dataNotice)
+            .foregroundStyle(Palette.inkSoft)
             .padding(.bottom, 24)
         }
     }

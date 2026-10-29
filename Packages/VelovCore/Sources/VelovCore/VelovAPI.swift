@@ -8,7 +8,7 @@ public final class VelovAPI: Sendable {
     private let accountIds = Memo<String>(ttl: 10 * 60)
     private let offers = Memo<[JSON]>(ttl: 10 * 60)
     private let rules = Memo<[JSON]>(ttl: 10 * 60)
-    let statsMemo = Memo<Stats>(ttl: { $0.complete ? 10 * 60 : 60 })
+    let statsMemo = Memo<Stats>(ttl: { statsTTL($0) })
 
     public init(transport: HTTPTransport, pause: @escaping @Sendable (Double) async -> Void = { try? await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }) {
         let client = ReadClient(transport: transport, pause: pause)
@@ -192,6 +192,14 @@ func receiptsOf(_ subscriptions: [JSON], offers: [JSON]) -> [Receipt] {
     return receipts.enumerated().sorted { $0.element.start != $1.element.start ? $0.element.start > $1.element.start : $0.offset < $1.offset }.prefix(12).map(\.element.receipt)
 }
 
+func rewardMovement(_ movement: JSON) -> RewardMovement? {
+    guard let id = movement["id"]?.string, let amount = movement["amount"]?.number else { return nil }
+    return RewardMovement(id: id, date: cyclocityDate(movement["createdAt"]?.string),
+                          label: Messages.rewardReasons[movement["reason"]?.string ?? ""] ?? "Mouvement de points",
+                          amount: amount * (movement["direction"]?.string == "DEBIT" ? -1 : 1),
+                          dateOnly: movement["createdAt"]?.string?.count == 10)
+}
+
 public func assembleDashboard(_ parts: DashboardParts, warnings: [String], now: Date) throws -> Dashboard {
     let raw = parts.profile
     guard let email = raw["email"]?.string else { throw VelovError(.unavailable, Messages.accountUnavailable) }
@@ -209,13 +217,7 @@ public func assembleDashboard(_ parts: DashboardParts, warnings: [String], now: 
                           zipCode: text("zipCode"), city: text("city"), country: text("country"), favorites: favorites)
 
     let rewardsValue = parts.rewards.flatMap { $0["balance"]?.number != nil ? $0 : nil }
-    let movements = (parts.movements?["content"]?.array ?? []).compactMap { movement -> RewardMovement? in
-        guard let id = movement["id"]?.string, let amount = movement["amount"]?.number else { return nil }
-        return RewardMovement(id: id, date: cyclocityDate(movement["createdAt"]?.string),
-                              label: Messages.rewardReasons[movement["reason"]?.string ?? ""] ?? "Mouvement de points",
-                              amount: amount * (movement["direction"]?.string == "DEBIT" ? -1 : 1),
-                              dateOnly: movement["createdAt"]?.string?.count == 10)
-    }
+    let movements = (parts.movements?["content"]?.array ?? []).compactMap(rewardMovement)
     let rules = (parts.rules ?? []).compactMap { rule -> RewardRule? in
         guard rule["enable"]?.bool == true, let name = rule["name"]?.string, let label = Messages.rewardReasons[name], let points = rule["reward"]?.number else { return nil }
         return RewardRule(name: name, label: label, points: points, kind: rule["type"]?.string == "RULE" ? .earn : .spend)

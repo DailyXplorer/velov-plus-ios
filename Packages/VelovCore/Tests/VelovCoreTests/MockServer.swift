@@ -5,6 +5,7 @@ enum Reply {
     case status(Int, body: String = "", headers: [String: String] = [:])
     case json(Any, status: Int = 200, headers: [String: String] = [:])
     case failure(URLError.Code)
+    case redirect(String)
 }
 
 struct Call {
@@ -79,6 +80,14 @@ final class MockProtocol: URLProtocol, @unchecked Sendable {
             switch reply {
             case .failure(let code):
                 self.client?.urlProtocol(self, didFailWithError: URLError(code))
+                return
+            case .redirect(let location):
+                let moved = HTTPURLResponse(url: request.url!, statusCode: 307, httpVersion: "HTTP/1.1", headerFields: ["Location": location])!
+                var next = request
+                next.url = URL(string: location)
+                self.client?.urlProtocol(self, wasRedirectedTo: next, redirectResponse: moved)
+                self.client?.urlProtocol(self, didReceive: moved, cacheStoragePolicy: .notAllowed)
+                self.client?.urlProtocolDidFinishLoading(self)
                 return
             case .status(let code, let text, let extra):
                 (status, data, headers) = (code, Data(text.utf8), extra)

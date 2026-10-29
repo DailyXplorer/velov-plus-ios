@@ -77,7 +77,7 @@ struct TripSheet: View {
         VStack(spacing: 0) {
             Hairline()
             HStack(alignment: .top, spacing: 10) {
-                fact("Durée", trip.duration.map { "\(Int($0)) min" } ?? "—")
+                fact("Durée", trip.duration.map(formatMinutes) ?? "—")
                 fact("Distance", trip.distance.flatMap { sameStation ? nil : "≈ \(formatDistance(Double($0)))" } ?? "—")
                 VStack(alignment: .leading, spacing: 0) {
                     fact("Payé", trip.price.map(formatPrice) ?? "—")

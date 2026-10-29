@@ -95,6 +95,46 @@ final class WritesTests: XCTestCase {
         XCTAssertEqual(booking?.endTime, "2026-03-02T09:47:14")
     }
 
+    func testABookingAnswerThatIsNotTheBookingStaysUncertain() async throws {
+        let replies: [Reply] = [.status(200, body: "<html>Maintenance</html>"), .status(204), .json(["id": "bk-1", "stationNumber": 9999]),
+                                .json(["id": "bk-1", "stationNumber": 2002, "bikeId": "other-bike"]), .json(["stationNumber": 2002])]
+        for reply in replies {
+            let (outcome, booking, server) = try await book(reply)
+            XCTAssertFalse(outcome.ok)
+            XCTAssertTrue(outcome.isUncertain)
+            XCTAssertNil(booking)
+            XCTAssertEqual(server.calls.count, 1)
+            XCTAssert(outcome.message!.contains("Vérifiez vos réservations"))
+        }
+    }
+
+    func testAWriteNeverFollowsARedirectAndAnUnexpected3xxStaysUncertain() async throws {
+        let server = MockServer { call, _ in call.url.hasSuffix("/moved") ? .json(["transactionState": "OK", "id": "bk-1", "stationNumber": 2002]) : .redirect("https://api.cyclocity.fr/moved") }
+        let release = try await Writes.release(auth, subscriptionId: "sub-1", stationNumber: 2002, standNumber: 1, bikeNumber: 20449, http: server.transport)
+        let (booked, _) = try await Writes.book(auth, stationId: "st-uuid", stationNumber: 2002, standNumber: 12, subscriptionId: "sub-1", bikeId: "bike-uuid", http: server.transport)
+        let rated = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .recommend, http: server.transport)
+        let (spent, _) = try await Writes.setAutoSpend(auth, true, http: server.transport)
+        for outcome in [release, booked, rated, spent] {
+            XCTAssertEqual(outcome.httpStatus, 307)
+            XCTAssertTrue(outcome.isUncertain)
+        }
+        XCTAssertEqual(server.calls.map(\.method), ["POST", "POST", "POST", "PATCH"])
+        let read = try await server.transport.send(makeRequest(URL(string: "https://api.cyclocity.fr/contracts/lyon/read")!, timeout: 8))
+        XCTAssertEqual(read.status, 200, "a read still follows redirects")
+    }
+
+    func testAnUnansweredRatingSaysTheNoteMayHaveBeenRecorded() async throws {
+        for reply in [Reply.failure(.timedOut), .status(502, body: "Bad Gateway"), .status(400)] {
+            let outcome = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .recommend, http: MockServer { _, _ in reply }.transport)
+            XCTAssertTrue(outcome.isUncertain)
+            XCTAssertEqual(outcome.message, "Note non confirmée\u{a0}: vérifiez avant de réessayer.")
+        }
+        let refused = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .recommend,
+                                            http: MockServer { _, _ in .json(["code": "trips.exception.already.rated"], status: 400) }.transport)
+        XCTAssertFalse(refused.isUncertain)
+        XCTAssertEqual(refused.message, "Vélo’v n’a pas enregistré la note.")
+    }
+
     func testBookingRefusalsMapToFrenchMessagesAndAreNeverRetried() async throws {
         for (code, message) in [("booking.exception.bike.already.reserved", "Ce vélo est déjà réservé par un autre usager."),
                                 ("bookings.exception.not.authorized", "Vous avez déjà une réservation en cours, ou moins de 10 points."),

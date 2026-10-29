@@ -120,7 +120,7 @@ struct TripRow: View {
         TripRowLayout(start: trip.startStation ?? "Trajet Vélo’v",
                       end: trip.endStation ?? (trip.bikeType == .electrical ? "Électrique" : trip.bikeType == .mechanical ? "Mécanique" : "Stations non renseignées"),
                       date: formatDate(trip.startedAt), time: formatDate(trip.startedAt, .time),
-                      duration: trip.duration.map { "\(Int($0)) min" } ?? "—", price: trip.price.map(formatPrice) ?? "—",
+                      duration: trip.duration.map(formatMinutes) ?? "—", price: trip.price.map(formatPrice) ?? "—",
                       electrical: trip.bikeType == .electrical, ghost: false)
     }
 }

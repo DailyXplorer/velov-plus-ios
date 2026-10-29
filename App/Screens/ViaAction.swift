@@ -71,7 +71,6 @@ private struct ViaSheet: View {
             PairedActions {
                 if failure?.isUncertain == true {
                     PillButton("Fermer", variant: .ghost, fullWidth: true) { close() }
-                    PillButton("Nouvelle demande", variant: .secondary, fullWidth: true) { startOver() }
                 } else {
                     PillButton("Retour", variant: .ghost, fullWidth: true) { refused = nil; notice = nil; reviewing = false }.disabled(pending)
                     PillButton("Confirmer", pending: pending, fullWidth: true) { confirm(station) }.disabled(operationKey == nil)
@@ -102,7 +101,7 @@ private struct ViaSheet: View {
                 Text("Aucune station pleine ne correspond à votre recherche.").typo(.body(14)).foregroundStyle(Palette.inkSoft)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(choices.prefix(8)) { item in
+                    ForEach(choices) { item in
                         Button { selected = item.number } label: {
                             Text(verbatim: "\(item.name) · N° \(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
                                 .typo(.body(14)).foregroundStyle(selected == item.number ? Palette.red : Palette.ink).multilineTextAlignment(.leading)
@@ -126,16 +125,6 @@ private struct ViaSheet: View {
     private func close() {
         guard !model.operations.sending else { return }
         dismiss()
-    }
-
-    private func startOver() {
-        guard let operationKey else { return }
-        model.operations.clear(operationKey)
-        refused = nil
-        notice = nil
-        reviewing = false
-        selected = nil
-        query = ""
     }
 
     private func locate() {

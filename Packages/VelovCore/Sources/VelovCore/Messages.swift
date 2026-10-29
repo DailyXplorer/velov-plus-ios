@@ -41,6 +41,7 @@ public enum Messages {
     public static let lost = "L’app a été fermée avant la réponse. L’action a peut-être abouti."
     public static let notApplied = "Vélo’v n’a rien enregistré. Vous pouvez réessayer."
     public static let unverified = "Le résultat est incertain et n’a pas pu être vérifié. Vérifiez de nouveau avant de réessayer."
+    public static let ratingUnconfirmed = "Note non confirmée\u{a0}: vérifiez avant de réessayer."
     public static let releaseFailed = "Le déverrouillage n’a pas abouti."
     public static let bookingFailed = "La réservation de votre vélo n’a pas fonctionné."
     public static let sessionRefused = "Votre session n’est plus valide. Reconnectez-vous."

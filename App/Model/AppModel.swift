@@ -74,18 +74,25 @@ final class AppModel {
     var ratedHere: Set<String> = []
     var ended: Trip?
     var logoutOpen = false
+    var contactRequested = false
     var foreground = true
     private var docked: Set<String> = []
     private var greeted = false
+    @ObservationIgnored private let session = SessionGeneration()
+    @ObservationIgnored private let bookingsFlight = SingleFlight()
+    @ObservationIgnored let statsCache = StatsScreenCache()
     @ObservationIgnored private lazy var dockWatch: DockWatch = DockWatch(
         check: { [unowned self] in
-            do {
-                let answer = try await service.tripCheck()
+            guard let result = await session.load({ try await service.tripCheck() }) else { throw CancellationError() }
+            switch result {
+            case .success(let answer):
                 rides.observed(answer.ongoing, latest: answer.latest)
                 return answer
-            } catch let error as VelovError where error.code == .expired {
+            case .failure(let error as VelovError) where error.code == .expired:
                 phase = .guest("Session expirée. Reconnectez-vous.")
                 dockWatch.stop()
+                throw error
+            case .failure(let error):
                 throw error
             }
         },
@@ -149,16 +156,18 @@ final class AppModel {
     func loadDashboard() async {
         guard !refreshing else { return }
         refreshing = true
-        defer { refreshing = false }
-        do {
-            let data = try await service.dashboard()
+        guard let result = await session.load({ try await service.dashboard() }) else { return }
+        refreshing = false
+        switch result {
+        case .success(let data):
+            if let previous = dashboard?.profile.email, previous != data.profile.email { statsChanged() }
             operations.use(account: data.profile.email)
             phase = .ready(data)
             watchTrips(data)
-        } catch let error as VelovError where error.code == .expired {
+        case .failure(let error as VelovError) where error.code == .expired:
             dockWatch.stop()
             phase = .guest(error.revoked ? error.message : "Votre session a expiré. Reconnectez-vous.")
-        } catch {
+        case .failure(let error):
             phase = .failed((error as? VelovError)?.message ?? "Votre compte est momentanément indisponible.")
         }
     }
@@ -171,11 +180,18 @@ final class AppModel {
         catch { stations = .failed((error as? VelovError)?.message ?? "Les stations sont momentanément indisponibles.") }
     }
 
-    func loadBookings() async {
-        guard let value = try? await service.bookings() else { return }
-        bookings = value
-        if snapshot == nil { activities.sync(value) }
-        if snapshot == .unlockConfirm || snapshot == .unlockUncertain { unlocking = value.first }
+    func loadBookings(force: Bool = false) async {
+        await bookingsFlight.run(force: force) { [self] in
+            guard case .success(let value)? = await session.load({ try await service.bookings() }) else { return }
+            bookings = value
+            if snapshot == nil { activities.sync(value) }
+            if snapshot == .unlockConfirm || snapshot == .unlockUncertain { unlocking = value.first }
+        }
+    }
+
+    func statsChanged() {
+        statsCache.clear()
+        Task { await service.forgetStats() }
     }
 
     func becameActive() {
@@ -205,10 +221,13 @@ final class AppModel {
 
     private func tripDocked(_ tripId: String, latest: Trip?) {
         docked.insert(tripId)
+        statsChanged()
+        let started = session.current
         Task {
             await loadDashboard()
+            guard started == session.current else { return }
             if let trip = dashboard?.trips?.first(where: { $0.id == tripId }) ?? (latest?.id == tripId ? latest : nil) { showEnded(trip) }
-            await loadBookings()
+            await loadBookings(force: true)
         }
     }
 
@@ -228,7 +247,8 @@ final class AppModel {
             bookings.append(booking)
             if snapshot == nil { activities.start(booking) }
         }
-        Task { await loadBookings() }
+        statsChanged()
+        Task { await loadBookings(force: true) }
     }
 
     func unlocked(bookingId: String?, ride: Ride) {
@@ -240,8 +260,9 @@ final class AppModel {
             rides.unlocked(ride)
             dockWatch.follow(ride.tripId)
         }
+        statsChanged()
         Task {
-            await loadBookings()
+            await loadBookings(force: true)
             await loadDashboard()
         }
     }
@@ -264,14 +285,24 @@ final class AppModel {
     }
 
     func signIn(email: String, code: String) async throws {
+        endSession()
         try await service.signIn(email: email, code: code)
         phase = .loading
         refreshAll()
     }
 
+    private func endSession() {
+        session.invalidate()
+        refreshing = false
+        bookingsFlight.reset()
+        statsChanged()
+    }
+
     func logout() async {
-        let confirmed = await service.logout()
+        endSession()
         dockWatch.stop()
+        let confirmed = await service.logout()
+        endSession()
         bookings = []
         unlocking = nil
         ended = nil

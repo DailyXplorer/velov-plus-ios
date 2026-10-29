@@ -76,6 +76,21 @@ public struct Identity: Sendable {
     public let email: String
 }
 
+@MainActor
+public final class SessionGeneration {
+    public private(set) var current = 0
+    public init() {}
+
+    public func invalidate() { current += 1 }
+
+    public func load<T>(_ fetch: () async throws -> T) async -> Result<T, Error>? {
+        let started = current
+        let result: Result<T, Error>
+        do { result = .success(try await fetch()) } catch { result = .failure(error) }
+        return started == current ? result : nil
+    }
+}
+
 public actor SessionManager {
     static let tokensKey = "tokens"
     private let store: SecureStore
@@ -83,6 +98,7 @@ public actor SessionManager {
     private let now: @Sendable () -> Date
     private var session: StoredSession?
     private var refreshing: Task<StoredSession, Error>?
+    private var generation = 0
 
     public init(store: SecureStore, http: HTTPTransport, now: @escaping @Sendable () -> Date = { Date() }) {
         self.store = store
@@ -95,7 +111,9 @@ public actor SessionManager {
     public var deviceId: String { DeviceIdentity.stable(in: store) }
 
     public func signIn(email: String, code: String) async throws {
+        let started = invalidate()
         let tokens = try await login(email: email, code: code, deviceId: DeviceIdentity.stable(in: store), http: http, now: now())
+        guard started == generation else { throw VelovError.sessionRevoked }
         save(StoredSession(tokens: tokens, obtainedAt: now()))
     }
 
@@ -107,30 +125,39 @@ public actor SessionManager {
 
     private func renew(_ expired: StoredSession) async throws -> StoredSession {
         if let refreshing { return try await refreshing.value }
+        let started = generation
         let http = http, now = now
         let task = Task { StoredSession(tokens: try await refreshTokens(expired.tokens.refreshToken, http: http), obtainedAt: now()) }
         refreshing = task
-        defer { refreshing = nil }
+        defer { if refreshing == task { refreshing = nil } }
         do {
             let renewed = try await task.value
+            guard started == generation else { throw VelovError.sessionRevoked }
             save(renewed)
             return renewed
         } catch let error as VelovError where error.revoked {
-            forget()
+            if started == generation { forget() }
             throw error
         }
     }
 
     public func logout() async -> Bool {
         let tokens = session?.tokens
-        let confirmed = tokens == nil ? true : await endSession(refreshToken: tokens?.refreshToken, idToken: tokens?.idToken, http: http)
         forget()
-        return confirmed
+        return tokens == nil ? true : await endSession(refreshToken: tokens?.refreshToken, idToken: tokens?.idToken, http: http)
     }
 
     public func forget() {
+        invalidate()
         session = nil
         store.delete(Self.tokensKey)
+    }
+
+    @discardableResult
+    private func invalidate() -> Int {
+        generation += 1
+        refreshing = nil
+        return generation
     }
 
     private func save(_ value: StoredSession) {

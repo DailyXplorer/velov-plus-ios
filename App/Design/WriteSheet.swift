@@ -81,14 +81,17 @@ struct Restart {
     let action: () -> Void
 }
 
+typealias IntentCheck = ([String: String]) async throws -> Check
+
 struct WriteDialog<Question: View>: View {
     let title: String
     let key: String?
     let keep: Bool
     let ready: Bool
+    let intent: [String: String]
     let run: () async -> Outcome
-    let check: (() async throws -> Check)?
-    let verified: () -> Void
+    let check: IntentCheck?
+    let verified: ([String: String]) -> Void
     let restart: Restart?
     let question: () -> Question
     @Environment(AppModel.self) private var model
@@ -97,9 +100,10 @@ struct WriteDialog<Question: View>: View {
     @State private var notice: String?
     @State private var checking = false
 
-    init(title: String, key: String?, keep: Bool = false, ready: Bool = true, run: @escaping () async -> Outcome, check: (() async throws -> Check)? = nil,
-         verified: @escaping () -> Void = {}, restart: Restart? = nil, @ViewBuilder question: @escaping () -> Question) {
-        self.title = title; self.key = key; self.keep = keep; self.ready = ready; self.run = run
+    init(title: String, key: String?, keep: Bool = false, ready: Bool = true, intent: [String: String] = [:], run: @escaping () async -> Outcome,
+         check: IntentCheck? = nil, verified: @escaping ([String: String]) -> Void = { _ in }, restart: Restart? = nil,
+         @ViewBuilder question: @escaping () -> Question) {
+        self.title = title; self.key = key; self.keep = keep; self.ready = ready; self.intent = intent; self.run = run
         self.check = check; self.verified = verified; self.restart = restart; self.question = question
     }
 
@@ -128,7 +132,7 @@ struct WriteDialog<Question: View>: View {
                 if uncertain {
                     PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }.disabled(busy)
                     if check != nil {
-                        PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { if let failure { verify(failure) } }
+                        PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify() }
                     } else if let restart {
                         PillButton(restart.title, variant: .secondary, fullWidth: true) { restart.action() }
                     }
@@ -151,7 +155,7 @@ struct WriteDialog<Question: View>: View {
         notice = nil
         let operations = model.operations
         Task {
-            switch await operations.runOnce(key, keep: keep, run) {
+            switch await operations.runOnce(key, keep: keep, meta: intent, run) {
             case .unsaved:
                 notice = Messages.unsaved
             case .busy:
@@ -163,28 +167,26 @@ struct WriteDialog<Question: View>: View {
                 } else if !outcome.isUncertain {
                     refused = outcome
                 } else if check != nil {
-                    verify(outcome)
+                    verify()
                 }
             }
         }
     }
 
-    private func verify(_ outcome: Outcome) {
-        guard let key, let check, !checking else { return }
+    private func verify() {
+        guard let key, let check, !checking, let held = model.operations.get(key) else { return }
         checking = true
         let operations = model.operations
         Task {
-            let settled = await settle(outcome, check: check)
+            let settled = await operations.settleHeld(key, check: check)
             checking = false
             switch settled {
-            case .done:
-                operations.clear(key)
-                verified()
+            case .done?:
+                verified(held.meta)
                 dismiss()
-            case .refused(let answer):
-                operations.clear(key)
+            case .refused(let answer)?:
                 refused = answer
-            case .uncertain:
+            case .uncertain?, nil:
                 break
             }
         }
@@ -192,9 +194,9 @@ struct WriteDialog<Question: View>: View {
 }
 
 extension WriteDialog where Question == EmptyView {
-    init(title: String, key: String?, keep: Bool = false, ready: Bool = true, run: @escaping () async -> Outcome, check: (() async throws -> Check)? = nil,
-         verified: @escaping () -> Void = {}, restart: Restart? = nil) {
-        self.init(title: title, key: key, keep: keep, ready: ready, run: run, check: check, verified: verified, restart: restart) { EmptyView() }
+    init(title: String, key: String?, keep: Bool = false, ready: Bool = true, intent: [String: String] = [:], run: @escaping () async -> Outcome,
+         check: IntentCheck? = nil, verified: @escaping ([String: String]) -> Void = { _ in }, restart: Restart? = nil) {
+        self.init(title: title, key: key, keep: keep, ready: ready, intent: intent, run: run, check: check, verified: verified, restart: restart) { EmptyView() }
     }
 }
 

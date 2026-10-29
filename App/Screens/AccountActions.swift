@@ -27,13 +27,13 @@ struct ProfileCoordinates: View {
         }
         .task { if model.snapshot == .accountEdit, draft == nil { draft = ProfileDraft(profile) } }
         .sheet(item: $review) { review in
-            WriteDialog(title: "Enregistrer les modifications ?", key: OperationKey.profile, run: {
+            WriteDialog(title: "Enregistrer les modifications ?", key: OperationKey.profile, intent: profileIntent(before: profile, body: review.body), run: {
                 let outcome = await attempt { try await model.service.updateProfile(review.body) }
                 if outcome.ok { saved() }
                 return outcome
-            }, check: { [profile] in
-                profileCheck(before: profile, after: try await model.service.dashboard().profile, body: review.body)
-            }, verified: saved)
+            }, check: { intent in
+                profileCheck(intent, after: try await model.service.dashboard().profile)
+            }, verified: { _ in saved() })
         }
     }
 
@@ -110,7 +110,7 @@ struct AutoRenewalSetting: View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Renouvellement automatique").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
-                Text(actual == nil ? "Indisponible pour le moment" : actual! ? "Activé" : "Désactivé").typo(.body(15, medium: true)).foregroundStyle(Palette.ink)
+                Text(actual == nil ? "Indisponible pour le moment" : actual! ? "Activé" : "Désactivé").typo(.title(22)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
             if canChange, subscription.id != nil, let actual {
@@ -126,8 +126,8 @@ struct AutoRenewalSetting: View {
     @ViewBuilder
     private var dialog: some View {
         if let id = subscription.id {
-            let next = next
-            WriteDialog(title: next ? "Activer le renouvellement automatique ?" : "Désactiver le renouvellement automatique ?", key: OperationKey.autoRenewal(id), run: {
+            let next = model.operations.get(OperationKey.autoRenewal(id)).flatMap { Intent.wanted($0.meta) } ?? self.next
+            WriteDialog(title: next ?"Activer le renouvellement automatique ?" : "Désactiver le renouvellement automatique ?", key: OperationKey.autoRenewal(id), intent: Intent.wanted(next), run: {
                 let value: AutoRenewalResult
                 do {
                     value = try await model.service.setAutoRenewal(subscriptionId: id, autoRenewal: next)
@@ -140,9 +140,9 @@ struct AutoRenewalSetting: View {
                     Task { await model.loadDashboard() }
                 }
                 return value.outcome
-            }, check: {
-                renewalCheck(try await model.service.dashboard(), subscriptionId: id, wanted: next)
-            }, verified: {
+            }, check: { intent in
+                renewalCheck(try await model.service.dashboard(), subscriptionId: id, wanted: Intent.wanted(intent) ?? next)
+            }, verified: { _ in
                 Task { await model.loadDashboard() }
             }) {
                 if next { Text("Votre abonnement sera renouvelé et facturé à son échéance.").fixedSize(horizontal: false, vertical: true) }
@@ -247,6 +247,11 @@ struct ContactSupport: View {
             } else {
                 form
             }
+        }
+        .onChange(of: model.contactRequested, initial: true) { _, requested in
+            guard requested else { return }
+            model.contactRequested = false
+            start()
         }
         .sheet(isPresented: $asking, onDismiss: { draft = nil }) {
             WriteDialog(title: "Envoyer au service client ?", key: operationKey, keep: true, ready: draft != nil, run: { [draft] in

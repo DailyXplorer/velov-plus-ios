@@ -66,7 +66,8 @@ public final class URLSessionTransport: HTTPTransport {
     }
 
     public func send(_ request: URLRequest, followRedirects: Bool) async throws -> HTTPResponse {
-        let (data, response) = try await session.data(for: request, delegate: followRedirects ? nil : NoRedirects.shared)
+        let follow = followRedirects && ["GET", "HEAD"].contains((request.httpMethod ?? "GET").uppercased())
+        let (data, response) = try await session.data(for: request, delegate: follow ? nil : NoRedirects.shared)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         var headers: [String: String] = [:]
         for (key, value) in http.allHeaderFields { headers[String(describing: key)] = String(describing: value) }

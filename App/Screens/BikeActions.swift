@@ -139,7 +139,8 @@ struct BikeActionSheet: View {
         Task {
             var booking: Booking?
             var ongoing: [Trip]?
-            let result = await model.operations.runOnce(key) {
+            let intent = ["station": String(place.stationNumber), "stand": String(place.standNumber), "bike": String(place.bikeNumber)]
+            let result = await model.operations.runOnce(key, meta: intent) {
                 await attempt {
                     switch action {
                     case .book:
@@ -170,21 +171,34 @@ struct BikeActionSheet: View {
     }
 
     private func verify(_ action: BikeAction) {
-        guard !checking else { return }
+        let key = key(action)
+        guard !checking, let held = model.operations.get(key) else { return }
         checking = true
         let model = model
-        let key = key(action)
+        let place = place
         let bookingId = bookingId
         Task {
             defer { checking = false }
-            switch action {
-            case .book:
-                await model.loadBookings()
-            case .unlock:
-                guard let trip = try? await model.service.tripCheck().ongoing?.first else { return }
-                model.operations.clear(key)
-                model.unlocked(bookingId: bookingId, ride: place.ride(trip))
+            var trip: Trip?
+            let settled = await model.operations.settleHeld(key) { _ in
+                switch action {
+                case .book:
+                    return bookingCheck(try await model.service.bookings(), bike: place.bikeNumber)
+                case .unlock:
+                    let answer = try await model.service.tripCheck()
+                    trip = answer.ongoing?.first { $0.bikeNumber == place.bikeNumber }
+                    return unlockCheck(answer, bike: place.bikeNumber, since: held.at, now: Date())
+                }
+            }
+            switch settled {
+            case .done?:
+                if action == .unlock, let trip { model.unlocked(bookingId: bookingId, ride: place.ride(trip)) } else { await model.loadBookings(force: true) }
                 dismiss()
+            case .refused(let answer)?:
+                refused = answer
+                await model.loadBookings(force: true)
+            case .uncertain?, nil:
+                break
             }
         }
     }

@@ -91,8 +91,10 @@ public struct StatsInput: Sendable {
     public var balance: Double?
     public var now: Date
     public var complete: Bool
-    public init(trips: [Trip], coords: [Int: GeoPoint], movements: [StatsMovement]?, balance: Double?, now: Date, complete: Bool = true) {
-        self.trips = trips; self.coords = coords; self.movements = movements; self.balance = balance; self.now = now; self.complete = complete
+    public var pointsComplete: Bool
+    public init(trips: [Trip], coords: [Int: GeoPoint], movements: [StatsMovement]?, balance: Double?, now: Date, complete: Bool = true, pointsComplete: Bool = true) {
+        self.trips = trips; self.coords = coords; self.movements = movements; self.balance = balance; self.now = now
+        self.complete = complete; self.pointsComplete = pointsComplete
     }
 }
 
@@ -105,8 +107,9 @@ public func collectPages<T>(maxPages: Int = StatsRules.maxPages, id: (T) -> Stri
             if page == 0 { throw error }
             return (items, false)
         }
+        if batch.isEmpty { return (items, true) }
         let fresh = batch.filter { !seen.contains(id($0)) }
-        if fresh.isEmpty { return (items, true) }
+        if fresh.isEmpty { return (items, false) }
         for item in fresh where seen.insert(id(item)).inserted { items.append(item) }
     }
     return (items, false)
@@ -275,7 +278,27 @@ public func periodStats(_ period: StatsPeriod, _ input: StatsInput) -> PeriodSta
         stations: favouriteStations(trips), records: records)
 }
 
+public func statsTTL(_ stats: Stats) -> TimeInterval { stats.complete ? 10 * 60 : 60 }
+
+@MainActor
+public final class StatsScreenCache {
+    private let now: () -> Date
+    private var entry: (account: String, stats: Stats, until: Date)?
+
+    public init(now: @escaping () -> Date = Date.init) { self.now = now }
+
+    public func get(_ account: String) -> Stats? {
+        guard let entry, entry.account == account, entry.until > now() else { return nil }
+        return entry.stats
+    }
+
+    public func put(_ stats: Stats, account: String) { entry = (account, stats, now().addingTimeInterval(statsTTL(stats))) }
+
+    public func clear() { entry = nil }
+}
+
 public func buildStats(_ input: StatsInput) -> Stats {
     Stats(days30: periodStats(.days30, input), months12: periodStats(.months12, input), all: periodStats(.all, input),
-          balance: input.balance ?? input.movements?.reduce(0) { $0 + $1.amount }, complete: input.complete)
+          balance: input.balance ?? (input.pointsComplete ? input.movements?.reduce(0) { $0 + $1.amount } : nil),
+          complete: input.complete && input.pointsComplete)
 }

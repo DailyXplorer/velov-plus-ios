@@ -45,6 +45,10 @@ public func formatNumber(_ value: Int) -> String {
     formatNumber(Double(value))
 }
 
+public func formatMinutes(_ minutes: Double) -> String {
+    "\(formatNumber(Int(minutes.rounded())))\u{00A0}min"
+}
+
 public func capitalize(_ text: String) -> String {
     guard let first = text.first else { return text }
     return String(first).uppercased(with: french) + text.dropFirst()

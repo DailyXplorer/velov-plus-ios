@@ -378,7 +378,7 @@ struct Disclosure<Content: View>: View {
                         Icon(.caretDown, .bold, size: 14).rotationEffect(.degrees(open ? 180 : 0))
                     }
                 }
-                .foregroundStyle(icon == nil ? Palette.inkSoft : Palette.dataNotice)
+                .foregroundStyle(Palette.inkSoft)
                 .padding(.top, icon == nil ? 18 : 8).padding(.bottom, icon == nil ? 4 : 8)
             }
             .buttonStyle(.plain)

@@ -11,6 +11,8 @@ protocol VelovService: Sendable {
     func bike(_ number: Int) async throws -> Bike?
     func bookings() async throws -> [Booking]
     func stats() async throws -> Stats
+    func forgetStats() async
+    func rewardLedger() async throws -> RewardLedger
 
     func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?)
     func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?)
@@ -47,6 +49,8 @@ final class LiveService: VelovService {
     func bike(_ number: Int) async throws -> Bike? { try await api.bike(number) }
     func bookings() async throws -> [Booking] { try await api.bookings(try await identity()) }
     func stats() async throws -> Stats { try await api.stats(try await identity()) }
+    func forgetStats() async { await api.forgetStats() }
+    func rewardLedger() async throws -> RewardLedger { try await api.rewardLedger(try await identity()) }
 
     func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?) {
         try await api.book(try await identity(), stationNumber: stationNumber, bikeNumber: bikeNumber)

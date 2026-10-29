@@ -90,6 +90,8 @@ struct SampleService: VelovService {
     func stationBikes(_ station: Int) async throws -> [Bike] { SampleData.bikes }
     func bike(_ number: Int) async throws -> Bike? { SampleData.bikes.first { $0.number == number } ?? SampleData.bikes[0] }
     func bookings() async throws -> [Booking] { booking.map { [$0] } ?? [] }
+    func forgetStats() async {}
+    func rewardLedger() async throws -> RewardLedger { RewardLedger(movements: SampleData.dashboard.rewards.movements, complete: true) }
 
     func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?) {
         (Outcome(ok: true, httpStatus: 200), SampleData.booking(bike: bikeNumber, minutesLeft: 15))

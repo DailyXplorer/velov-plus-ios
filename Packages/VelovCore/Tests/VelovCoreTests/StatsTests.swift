@@ -122,11 +122,28 @@ final class StatsTests: XCTestCase {
         XCTAssertFalse(buildStats(partial).complete)
     }
 
+    func testABalanceIsNeverSummedFromAPartialLedgerAndPartialPointsMakeTheStatsPartial() {
+        var points = input([], movements: [StatsMovement(date: date("2026-10-28T10:00:00Z"), amount: 5)])
+        points.pointsComplete = false
+        let stats = buildStats(points)
+        XCTAssertNil(stats.balance)
+        XCTAssertFalse(stats.complete)
+        points.balance = 42
+        XCTAssertEqual(buildStats(points).balance, 42)
+    }
+
     func testThousandsUseANoBreakSpace() {
         XCTAssertEqual(formatNumber(1240), "1\u{00A0}240")
         XCTAssertEqual(formatNumber(123456.0), "123\u{00A0}456")
         XCTAssertEqual(formatPrice(123456), "1\u{00A0}234,56\u{00A0}€")
         XCTAssertEqual(formatNumber(999), "999")
+    }
+
+    func testDurationsAreRoundedToWholeMinutesInFrench() {
+        XCTAssertEqual(formatMinutes(12.5), "13\u{00A0}min")
+        XCTAssertEqual(formatMinutes(12.4), "12\u{00A0}min")
+        XCTAssertEqual(formatMinutes(0.2), "0\u{00A0}min")
+        XCTAssertEqual(formatMinutes(1380), "1\u{00A0}380\u{00A0}min")
     }
 
     func testPartialStatsAreKeptOneMinuteAndCompleteOnesTenMinutes() async throws {
@@ -159,7 +176,7 @@ final class StatsTests: XCTestCase {
         var asked: [Int] = []
         let repeated = try await collectPages(id: { $0 }) { page in asked.append(page); return ["same", "other"] }
         XCTAssertEqual(repeated.items, ["same", "other"])
-        XCTAssertTrue(repeated.complete)
+        XCTAssertFalse(repeated.complete, "a repeated page stops the loop but proves nothing")
         XCTAssertEqual(asked, [0, 1])
 
         let capped = try await collectPages(maxPages: 3, id: { $0 }) { page in ["p\(page)"] }
@@ -209,6 +226,7 @@ final class StatsTests: XCTestCase {
         XCTAssertGreaterThan(stats.all.distance.metres, 0)
         XCTAssertTrue(stats.all.stations.map(\.name).contains("Bellecour / Saint-Exupéry"))
         XCTAssertEqual(stats.balance, 42)
+        XCTAssertFalse(stats.complete, "the second page of points failed")
 
         let paths = server.calls.map(\.url).filter { $0.contains("/trips?") || $0.contains("/rewards") }.map { $0.components(separatedBy: accountId).last! }
         XCTAssertEqual(paths, [
@@ -223,6 +241,53 @@ final class StatsTests: XCTestCase {
         let count = server.calls.count
         _ = try await api.stats(identity, now: { clock })
         XCTAssertEqual(server.calls.count, count)
+    }
+
+    func testPartialPointsWithAnUnreadableBalanceShowNoBalanceAndAPartialHistory() async throws {
+        let accountId = "0b6e1f6c-1d2e-4f3a-9b8c-7d6e5f4a3b2c"
+        let account = "/accounts/\(accountId)"
+        let server = MockServer { call, _ in
+            let url = call.url
+            if url.hasSuffix("/client_tokens") { return .json(["accessToken": "app"]) }
+            if url.hasSuffix("/accounts/person%40example.com/id") { return .json(accountId) }
+            if url.contains("\(account)/trips?") { return .json([]) }
+            if url.contains("\(account)/rewards/history?page=0") {
+                return .json(["content": [["id": "m-1", "createdAt": "2026-10-28T10:00:00", "direction": "CREDIT", "amount": 5]]])
+            }
+            return .status(500)
+        }
+        let api = VelovAPI(transport: server.transport, pause: noPause)
+        let stats = try await api.stats(Identity(accessToken: "a", email: "person@example.com"))
+        XCTAssertNil(stats.balance, "five points read on one page are not a balance")
+        XCTAssertFalse(stats.complete)
+    }
+
+    func testTheRewardLedgerIsCompleteOnlyWhenReadToAnEmptyPageAndRefusesAnUnreadableMovement() async throws {
+        let accountId = "0b6e1f6c-1d2e-4f3a-9b8c-7d6e5f4a3b2c"
+        let movement = { (id: String) -> [String: Any] in ["id": id, "createdAt": "2026-10-28T10:00:00", "direction": "DEBIT", "amount": 50, "reason": "PROMOCODE"] }
+        let pages: [Int: Reply] = [0: .json(["content": [movement("m-1")]]), 1: .json(["content": [movement("m-2")]]), 2: .json(["content": []])]
+        let server = MockServer { call, _ in
+            if call.url.hasSuffix("/client_tokens") { return .json(["accessToken": "app"]) }
+            if call.url.hasSuffix("/id") { return .json(accountId) }
+            if let page = call.url.components(separatedBy: "history?page=").last.flatMap(Int.init) { return pages[page] ?? .status(500) }
+            return .status(404)
+        }
+        let identity = Identity(accessToken: "a", email: "person@example.com")
+        let ledger = try await VelovAPI(transport: server.transport, pause: noPause).rewardLedger(identity)
+        XCTAssertEqual(ledger.movements.map(\.id), ["m-1", "m-2"])
+        XCTAssertEqual(ledger.movements.first?.amount, -50)
+        XCTAssertTrue(ledger.complete)
+
+        let broken = MockServer { call, _ in
+            if call.url.hasSuffix("/client_tokens") { return .json(["accessToken": "app"]) }
+            if call.url.hasSuffix("/id") { return .json(accountId) }
+            if call.url.hasSuffix("history?page=0") { return .json(["content": [movement("m-1")]]) }
+            if call.url.hasSuffix("history?page=1") { return .json(["content": [["id": "m-2", "direction": "DEBIT"]]]) }
+            return .json(["content": []])
+        }
+        let partial = try await VelovAPI(transport: broken.transport, pause: noPause).rewardLedger(identity)
+        XCTAssertEqual(partial.movements.map(\.id), ["m-1"])
+        XCTAssertFalse(partial.complete, "a movement without an amount may be the debit")
     }
 
     func testTheFirstHistoryPageFailingFailsTheStats() async {

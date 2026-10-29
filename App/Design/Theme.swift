@@ -17,7 +17,6 @@ enum Palette {
     static let onDark = Color.white.opacity(0.7)
     static let formError = Color(hex: 0xb62938)
     static let notice = Color(hex: 0x9e5b50)
-    static let dataNotice = Color(hex: 0x9c7856)
     static let radius: CGFloat = 16
 }
 

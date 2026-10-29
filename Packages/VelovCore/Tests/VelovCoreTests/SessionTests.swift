@@ -85,6 +85,32 @@ final class SessionTests: XCTestCase {
         XCTAssertNil(store.read("tokens"))
     }
 
+    func testARefreshAnsweredAfterLogoutNeverSavesItsTokens() async {
+        let store = InMemoryStore()
+        signedIn(store, expires: Date().addingTimeInterval(-10))
+        let renewed = renewed
+        let (started, didStart) = AsyncStream<Void>.makeStream()
+        let (release, doRelease) = AsyncStream<Void>.makeStream()
+        let server = MockServer { call, _ in
+            guard parseForm(call.body)["grant_type"] == "refresh_token" else { return .status(204) }
+            didStart.yield()
+            for await _ in release { break }
+            return .json(renewed)
+        }
+        let session = SessionManager(store: store, http: server.transport)
+        let refresh = Task { try await session.identity() }
+        for await _ in started { break }
+        let confirmed = await session.logout()
+        XCTAssertTrue(confirmed)
+        doRelease.yield()
+        do { _ = try await refresh.value; XCTFail("the late refresh must not revive the session") } catch {
+            XCTAssertEqual((error as? VelovError)?.revoked, true)
+        }
+        XCTAssertNil(store.read("tokens"))
+        let signedIn = await session.isSignedIn
+        XCTAssertFalse(signedIn)
+    }
+
     func testASignInUsesTheStoredDeviceIdAndSavesTheTokens() async throws {
         let store = InMemoryStore()
         let device = DeviceIdentity.stable(in: store)

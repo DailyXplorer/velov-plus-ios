@@ -46,14 +46,16 @@ struct StationCard: View {
         .floatingGlass(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .sheet(isPresented: $bikesOpen) { BikesSheet(station: station) }
         .sheet(isPresented: $favoriteOpen) {
-            WriteDialog(title: wasFavorite ? "Retirer des favoris ?" : "Ajouter aux favoris ?", key: OperationKey.favorite(station.number), run: { [wasFavorite] in
-                let outcome = await attempt { try await model.service.setFavorite(station: station.number, on: !wasFavorite) }
-                if outcome.ok { model.setFavorite(station.number, !wasFavorite) }
+            let key = OperationKey.favorite(station.number)
+            let wanted = model.operations.get(key).flatMap { Intent.wanted($0.meta) } ?? !wasFavorite
+            WriteDialog(title: !wanted ?"Retirer des favoris ?" : "Ajouter aux favoris ?", key: key, intent: Intent.wanted(wanted), run: {
+                let outcome = await attempt { try await model.service.setFavorite(station: station.number, on: wanted) }
+                if outcome.ok { model.setFavorite(station.number, wanted) }
                 return outcome
-            }, check: { [wasFavorite] in
-                favoriteCheck(try await model.service.dashboard(), station: station.number, wanted: !wasFavorite)
-            }, verified: { [wasFavorite] in
-                model.setFavorite(station.number, !wasFavorite)
+            }, check: { intent in
+                favoriteCheck(try await model.service.dashboard(), station: station.number, wanted: Intent.wanted(intent) ?? wanted)
+            }, verified: { intent in
+                model.setFavorite(station.number, Intent.wanted(intent) ?? wanted)
             })
         }
         .task(id: station.id) {

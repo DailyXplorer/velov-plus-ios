@@ -56,7 +56,6 @@ public enum OperationKey {
 public final class Operations {
     public static let storageKey = "velov:operations:v1"
     public static let sendingLimit: TimeInterval = 2 * 60
-    public static let uncertainHold: TimeInterval = 2 * 60
 
     public struct Entry: Codable, Equatable, Sendable {
         public enum Status: String, Codable, Sendable { case sending, uncertain }
@@ -103,14 +102,10 @@ public final class Operations {
 
     private func live(_ entry: Entry?) -> Entry? {
         guard var entry else { return nil }
-        let age = now().timeIntervalSince(entry.at)
-        if entry.status == .sending && age > Self.sendingLimit {
-            guard entry.keep else { return nil }
+        if entry.status == .sending && now().timeIntervalSince(entry.at) > Self.sendingLimit {
             entry.status = .uncertain
             entry.outcome = entry.outcome ?? noAnswer(Messages.lost)
-            return entry
         }
-        if entry.status == .uncertain && !entry.keep && age > Self.uncertainHold { return nil }
         return entry
     }
 
@@ -171,6 +166,19 @@ public final class Operations {
         guard !running.contains(key) else { return }
         try? write(key, nil, required: false)
         changed()
+    }
+
+    public func clear(_ key: String, held: Entry) {
+        guard get(key)?.at == held.at else { return }
+        clear(key)
+    }
+
+    public func settleHeld(_ key: String, check: ([String: String]) async throws -> Check) async -> Settled? {
+        guard let held = get(key), held.status == .uncertain else { return nil }
+        let settled = await settle(held.outcome ?? noAnswer(Messages.lost), at: held.at, now: now) { try await check(held.meta) }
+        if case .uncertain = settled { return settled }
+        clear(key, held: held)
+        return settled
     }
 
     public func runOnce(_ key: String, keep: Bool = false, meta: [String: String] = [:], _ send: () async throws -> Outcome) async -> Run {

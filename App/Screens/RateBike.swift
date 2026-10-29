@@ -59,7 +59,7 @@ struct RateBike: View {
                 .frame(minHeight: 22).padding(.top, 2)
             if let failure {
                 VStack(alignment: .leading, spacing: 4) {
-                    FormError(failure.message ?? "La note n’a pas pu être envoyée.")
+                    FormError(failure.message ?? Messages.ratingUnconfirmed)
                     RawStatus(line: ratingLine(failure))
                     if uncertain != nil { UncertainNote().padding(.top, 4) }
                 }
@@ -68,11 +68,11 @@ struct RateBike: View {
             }
             if let notice { FormError(notice).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8) }
             VStack(spacing: 2) {
-                if let uncertain {
-                    PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify(uncertain) }
+                if uncertain != nil {
+                    PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify() }
                     TextButton(title: "Plus tard", action: onLater)
                 } else {
-                    PillButton("Envoyer · +5 points", pending: sending, fullWidth: true) { send() }.disabled(stars == nil)
+                    PillButton("Envoyer", pending: sending, fullWidth: true) { send() }.disabled(stars == nil)
                     if !sending { TextButton(title: "Plus tard", action: onLater) }
                 }
             }
@@ -102,27 +102,25 @@ struct RateBike: View {
                 return
             }
             Haptics.result(outcome.ok)
-            if outcome.ok { rated() } else if outcome.isUncertain { verify(outcome) } else { refused = outcome }
+            if outcome.ok { rated() } else if outcome.isUncertain { verify() } else { refused = outcome }
         }
     }
 
-    private func verify(_ failure: Outcome) {
+    private func verify() {
         guard !checking else { return }
         checking = true
         let model = model
         let trip = trip
         let key = key
         Task {
-            let settled = await settle(failure) { ratingCheck(try await model.service.dashboard(), tripId: trip.id) }
+            let settled = await model.operations.settleHeld(key) { _ in ratingCheck(try await model.service.dashboard(), tripId: trip.id) }
             checking = false
             switch settled {
-            case .done:
-                model.operations.clear(key)
+            case .done?:
                 rated()
-            case .refused(let answer):
-                model.operations.clear(key)
+            case .refused(let answer)?:
                 refused = answer
-            case .uncertain:
+            case .uncertain?, nil:
                 break
             }
         }
@@ -130,6 +128,7 @@ struct RateBike: View {
 
     private func rated() {
         model.ratedHere.insert(trip.id)
+        model.statsChanged()
         onRated()
     }
 }
@@ -161,7 +160,7 @@ struct TripEndedSheet: View {
             VStack(spacing: 0) {
                 Hairline()
                 HStack(alignment: .top, spacing: 10) {
-                    fact("Durée", trip.duration.map { "\(Int($0)) min" } ?? "—")
+                    fact("Durée", trip.duration.map(formatMinutes) ?? "—")
                     fact("Prix", trip.price.map(formatPrice) ?? "—")
                 }
                 .padding(.vertical, 16)

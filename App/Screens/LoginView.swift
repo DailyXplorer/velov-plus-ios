@@ -16,7 +16,7 @@ struct LoginView: View {
     var body: some View {
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
-                Text("Vélo’v").typo(.title(48)).foregroundStyle(Palette.ink)
+                (Text("Vélo’v").foregroundStyle(Palette.ink) + Text("+").foregroundStyle(Palette.red)).typo(.title(48))
                 VStack(spacing: 12) {
                     field {
                         TextField("", text: $email, prompt: Text("Adresse email").foregroundStyle(Palette.inkFaint))

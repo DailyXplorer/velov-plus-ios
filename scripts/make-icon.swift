@@ -20,8 +20,8 @@ for x in stride(from: 16, to: size, by: 32) {
         context.fillEllipse(in: CGRect(x: x - 4, y: y - 4, width: 8, height: 8))
     }
 }
-let font = CTFontCreateWithName("FacultyGlyphic-Regular" as CFString, 250, nil)
-let text = NSAttributedString(string: "Vélo’v", attributes: [.font: font, .foregroundColor: CGColor(gray: 1, alpha: 1), .kern: -7.5])
+let font = CTFontCreateWithName("FacultyGlyphic-Regular" as CFString, 220, nil)
+let text = NSAttributedString(string: "Vélo’v+", attributes: [.font: font, .foregroundColor: CGColor(gray: 1, alpha: 1), .kern: -7.5])
 let line = CTLineCreateWithAttributedString(text)
 let bounds = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
 context.textPosition = CGPoint(x: (CGFloat(size) - bounds.width) / 2 - bounds.minX, y: (CGFloat(size) - bounds.height) / 2 - bounds.minY)

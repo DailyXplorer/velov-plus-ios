@@ -22,7 +22,7 @@ project: assets
 ## Device build, signed with the personal team (needs the login keychain unlocked: run it from the GUI session).
 build: project
 	mkdir -p $(LOG)
-	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -destination 'generic/platform=iOS' \
+	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -destination 'id=$(DEVICE)' \
 	  -derivedDataPath $(DERIVED) -allowProvisioningUpdates build 2>&1 | tee $(LOG)/build.log | grep -E "error:|warning:|BUILD" ; \
 	  exit $${pipestatus[1]}
 

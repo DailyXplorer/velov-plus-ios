@@ -14,7 +14,7 @@ struct AccountPage: View {
             section("Service client") {
                 ContactSupport(trips: data.trips).padding(.top, 16)
             }
-            PillButton(variant: .outlineRed, height: 48, fullWidth: true, action: onLogout) {
+            PillButton(height: 48, fullWidth: true, action: onLogout) {
                 Icon(.signOut, .light, size: 19)
                 Text("Se déconnecter").typo(.label(13))
             }

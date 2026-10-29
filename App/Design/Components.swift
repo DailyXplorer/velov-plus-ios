@@ -2,7 +2,7 @@ import SwiftUI
 
 // The shared pieces of components/ui.tsx and globals.css.
 
-enum ButtonVariant { case primary, secondary, ghost, onRed, outlineRed }
+enum ButtonVariant { case primary, secondary, ghost, onRed }
 
 /// `.button`: a 42 pt pill in Azeret Mono, primary red, secondary outline, ghost.
 struct PillButton<Label: View>: View {
@@ -42,7 +42,6 @@ struct PillButton<Label: View>: View {
         case .secondary: Palette.ink
         case .ghost: Palette.inkSoft
         case .onRed: Palette.red
-        case .outlineRed: Palette.redDeep
         }
     }
 
@@ -57,7 +56,6 @@ struct PillButton<Label: View>: View {
     private var ring: Color {
         switch variant {
         case .secondary: Palette.secondaryRing
-        case .outlineRed: Palette.red
         default: .clear
         }
     }

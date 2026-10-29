@@ -49,7 +49,7 @@ struct OverviewPage: View {
         .padding(.top, padding)
     }
 
-    /// Phones: no preselected station; the map invites to the Stations tab.
+    /// Phones: no preselected station; the whole map opens the Stations tab.
     private var mapCard: some View {
         ZStack {
             StationMapView(stations: model.stations.value?.stations ?? [], camera: $camera, interactive: false)
@@ -62,15 +62,9 @@ struct OverviewPage: View {
                     Spacer()
                 }
             } else {
-                Button { model.page = .stations } label: {
-                    Text("Toucher pour explorer").typo(.label(12)).foregroundStyle(Palette.redDeep)
-                        .padding(.horizontal, 18).frame(minHeight: 40)
-                        .background(Capsule().fill(Palette.white))
-                        .shadow(color: Palette.ink.opacity(0.1), radius: 18, y: 12)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+                Button { model.page = .stations } label: { Color.clear.contentShape(Rectangle()) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Explorer les stations")
             }
         }
         .frame(height: 310)

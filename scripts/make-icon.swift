@@ -2,7 +2,7 @@ import AppKit
 import CoreText
 
 let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-let fontURL = root.appendingPathComponent("App/Resources/Fonts/FacultyGlyphic-Regular.ttf")
+let fontURL = root.appendingPathComponent("App/Resources/Fonts/VelovGlyphic-Regular.ttf")
 let set = root.appendingPathComponent("App/Resources/Assets.xcassets/AppIcon.appiconset")
 try FileManager.default.createDirectory(at: set, withIntermediateDirectories: true)
 
@@ -17,7 +17,7 @@ for x in stride(from: 16, to: size, by: 32) {
         context.fillEllipse(in: CGRect(x: x - 4, y: y - 4, width: 8, height: 8))
     }
 }
-let font = CTFontCreateWithName("FacultyGlyphic-Regular" as CFString, 220, nil)
+let font = CTFontCreateWithName("VelovGlyphic-Regular" as CFString, 220, nil)
 let text = NSAttributedString(string: "Vélo’v+", attributes: [.font: font, .foregroundColor: CGColor(gray: 1, alpha: 1), .kern: -7.5])
 let line = CTLineCreateWithAttributedString(text)
 let bounds = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)

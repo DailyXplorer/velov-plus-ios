@@ -20,10 +20,10 @@ enum ActivityStyle {
     static let proportionalFigures = [[kCTFontOpenTypeFeatureTag: "pnum", kCTFontOpenTypeFeatureValue: 1]] as CFArray
 
     static func title(_ size: CGFloat) -> Font {
-        let attributes = [kCTFontNameAttribute: "FacultyGlyphic-Regular", kCTFontFeatureSettingsAttribute: proportionalFigures] as CFDictionary
+        let attributes = [kCTFontNameAttribute: "VelovGlyphic-Regular", kCTFontFeatureSettingsAttribute: proportionalFigures] as CFDictionary
         return Font(CTFontCreateWithFontDescriptor(CTFontDescriptorCreateWithAttributes(attributes), size, nil))
     }
-    static func timer(_ size: CGFloat) -> Font { .custom("FacultyGlyphicTimer-Regular", fixedSize: size) }
+    static func timer(_ size: CGFloat) -> Font { .custom("VelovGlyphicTimer-Regular", fixedSize: size) }
     static func label(_ size: CGFloat) -> Font { .custom("DM Sans", fixedSize: size).weight(.medium) }
 }
 

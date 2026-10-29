@@ -108,4 +108,4 @@ L’app utilise l’API non documentée de Cyclocity, l’opérateur de Vélo’
 
 Projet personnel, tous droits réservés.
 
-Les polices Faculty Glyphic et DM Sans sont distribuées sous licence SIL Open Font License, et les icônes proviennent du jeu gratuit Hugeicons, sous licence MIT. Leurs licences se trouvent dans `App/Resources/Licenses`.
+Les polices Velov Glyphic, version modifiée de Faculty Glyphic produite par `scripts/make-number-font.py`, et DM Sans sont distribuées sous licence SIL Open Font License, et les icônes proviennent du jeu gratuit Hugeicons, sous licence MIT. Leurs licences se trouvent dans `App/Resources/Licenses`.

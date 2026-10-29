@@ -16,8 +16,8 @@ LOG := $(DERIVED)/logs
 
 assets:
 	python3 scripts/fetch-assets.py
+	test -f App/Resources/Fonts/VelovGlyphic-Regular.ttf -a -f App/Resources/Fonts/VelovGlyphicTimer-Regular.ttf || python3 scripts/make-number-font.py
 	test -f App/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png || swift scripts/make-icon.swift
-	test -f App/Resources/Fonts/FacultyGlyphicTimer-Regular.ttf || python3 scripts/make-timer-font.py
 
 project: assets
 	/opt/homebrew/bin/xcodegen generate --quiet

@@ -61,7 +61,7 @@ targets:
       path: Widgets/Info.plist
       properties:
         CFBundleDisplayName: "Vélo’v+"
-        UIAppFonts: [FacultyGlyphic-Regular.ttf, FacultyGlyphicTimer-Regular.ttf, DMSans.ttf]
+        UIAppFonts: [VelovGlyphic-Regular.ttf, VelovGlyphicTimer-Regular.ttf, DMSans.ttf]
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:

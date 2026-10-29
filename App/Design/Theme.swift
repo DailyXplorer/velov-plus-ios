@@ -75,7 +75,7 @@ enum Typo {
 
     var font: Font {
         switch self {
-        case .title(let size), .countdown(let size): FontBook.font("FacultyGlyphic-Regular", size: size, proportional: true)
+        case .title(let size), .countdown(let size): FontBook.font("VelovGlyphic-Regular", size: size, proportional: true)
         case .body(let size, let medium): FontBook.font("DMSans", size: size, weight: medium ? 500 : 400, optical: true)
         case .label(let size), .caps(let size): FontBook.font("DMSans", size: size, weight: 500, optical: true)
         }

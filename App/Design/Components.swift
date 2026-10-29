@@ -55,7 +55,7 @@ struct PillButton<Label: View>: View {
 
     private var background: Color {
         switch variant {
-        case .primary: muted ? Palette.mist : Palette.red
+        case .primary: muted ? Palette.line : Palette.red
         default: .clear
         }
     }
@@ -89,11 +89,12 @@ struct CircleArrow: View {
     enum Style { case filled, outline, onPrimary, onCard }
     var external = false
     var style: Style = .filled
+    var size: CGFloat = 28
 
     var body: some View {
         Icon(external ? .arrowUpRight : .arrowRight, .bold, size: 13)
             .foregroundStyle(style == .filled || style == .onCard ? Palette.white : Palette.red)
-            .frame(width: 28, height: 28)
+            .frame(width: size, height: size)
             .background(Circle().fill(style == .filled ? Palette.red : style == .onPrimary ? Palette.white : .clear))
             .overlay(Circle().strokeBorder(style == .outline ? Palette.red : style == .onCard ? Palette.white : .clear, lineWidth: 1))
     }
@@ -167,10 +168,10 @@ struct SummaryCard<Value: View>: View {
                 CardTag(icon: tag.0, text: tag.1)
                 value().foregroundStyle(Palette.white).padding(.top, 20)
                 Spacer(minLength: 18)
-                HStack(spacing: 12) {
+                HStack(spacing: 4) {
                     Text(detail).typo(.body(11)).lineLimit(2).multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
-                    CircleArrow(style: .onCard)
+                    CircleArrow(style: .onCard, size: 24)
                 }
                 .foregroundStyle(Palette.white)
             }

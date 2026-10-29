@@ -67,7 +67,7 @@ struct BikesSheet: View {
             .scrollIndicators(.hidden)
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: BikeRoute.self) { route in
-                BikeDetail(route: route, preloaded: assessed?.first { $0.bike.number == route.number })
+                BikeDetail(route: route, preloaded: assessed?.first { $0.bike.number == route.number }, close: { dismiss() })
             }
         }
         .presentationDetents([.large])
@@ -106,7 +106,7 @@ struct BikeRow: View {
                       reserved: bike.isReserved || mine, recommended: item.verdict == .recommended, electrical: bike.type == .electrical, ghost: false) {
             VStack(alignment: .trailing, spacing: 4) {
                 if let rating = bike.rating {
-                    HStack(spacing: 5) { Icon(.star, .fill, size: 15).foregroundStyle(Palette.red); Text(outOfFive(rating.value)) }
+                    HStack(spacing: 5) { Icon(.star, .fill, size: 15).foregroundStyle(item.verdict == .avoid ? Palette.inkSoft : Palette.red); Text(outOfFive(rating.value)) }
                 }
                 if let battery = bike.batteryPercent { BatteryLevel(percent: battery) }
             }
@@ -220,6 +220,7 @@ struct VerdictMark: View {
 struct BikeDetail: View {
     let route: BikeRoute
     var preloaded: AssessedBike?
+    var close: (() -> Void)?
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var loaded: Resource<AssessedBike> = .loading
@@ -238,6 +239,7 @@ struct BikeDetail: View {
                         if let item, !own.contains(route.number) { VerdictMark(verdict: item.verdict) }
                     }
                     Spacer()
+                    if let close, route.station != nil { IconButton(icon: .x, label: "Fermer", action: close).disabled(model.operations.sending) }
                 }
                 .padding(.top, 14).padding(.bottom, 12)
                 if let item {

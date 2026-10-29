@@ -57,6 +57,10 @@ struct StationsPage: View {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 select("2002")
             }
+            if model.snapshot == .stationSheetLong {
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                select("3003")
+            }
         }
     }
 

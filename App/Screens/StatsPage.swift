@@ -20,7 +20,7 @@ struct TripsStack: View {
 }
 
 extension SnapshotScreen {
-    var showsStats: Bool { [.stats, .statsCharts, .statsHeatmap, .statsRecords, .statsBike, .statsEnd].contains(self) }
+    var showsStats: Bool { [.stats, .statsCharts, .statsTipFirst, .statsTipLast, .statsHeatmap, .statsHeatTip, .statsDonut, .statsRecords, .statsBike, .statsEnd].contains(self) }
 }
 
 struct StatsLink: View {
@@ -141,7 +141,7 @@ struct StatsPage: View {
             .toolbar(.hidden, for: .navigationBar)
             .task {
                 if let cached = model.statsCache.get(account) { state = .ready(cached) } else { await load() }
-                let anchors: [SnapshotScreen: String] = [.statsCharts: "panel-charts", .statsHeatmap: "panel-heatmap", .statsRecords: "panel-records", .statsBike: "panel-records"]
+                let anchors: [SnapshotScreen: String] = [.statsCharts: "panel-charts", .statsTipFirst: "panel-charts", .statsTipLast: "panel-charts", .statsHeatTip: "panel-heatmap", .statsDonut: "panel-donut", .statsHeatmap: "panel-heatmap", .statsRecords: "panel-records", .statsBike: "panel-records"]
                 guard let snapshot = model.snapshot, snapshot != .stats, snapshot.showsStats else { return }
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
                 if let anchor = anchors[snapshot] { proxy.scrollTo(anchor, anchor: .top) } else { position.scrollTo(edge: .bottom) }
@@ -157,9 +157,9 @@ struct StatsPage: View {
                     StatCard(icon: card.icon, label: card.label, value: card.value, unit: card.unit, detail: "—").skeleton()
                 }
             }
-            Panel(title: "Temps à vélo par mois") { Skeleton(height: 220) }
-            Panel(title: "Horaires de départ") { HeatmapSkeleton() }
-            Panel(title: "Répartition par type de vélo") {
+            Panel(title: "Temps à vélo par mois", chart: true) { Skeleton(height: 220) }
+            Panel(title: "Horaires de départ", chart: true) { HeatmapSkeleton() }
+            Panel(title: "Répartition par type de vélo", chart: true) {
                 VStack(spacing: 20) {
                     Shimmer(radius: 76).frame(width: 152, height: 152).mask(Circle().strokeBorder(.black, lineWidth: 22)).accessibilityHidden(true)
                     VStack(spacing: 8) {
@@ -209,7 +209,9 @@ private struct HeatmapSkeleton: View {
 
 struct StatsView: View {
     let stats: Stats
+    @Environment(AppModel.self) private var model
     @State private var period = StatsPeriod.months12
+    @State private var focus: ChartFocus?
 
     static let periods: [SelectOption<StatsPeriod>] = [
         .init(value: .days30, label: "30 derniers jours"),
@@ -228,11 +230,26 @@ struct StatsView: View {
             if data.trips == 0 {
                 EmptyState(stats.all.trips > 0 ? "Aucun trajet sur cette période." : "Vos statistiques apparaîtront après votre premier trajet.")
             } else {
-                Panel(title: data.unit == .day ? "Temps à vélo par jour" : "Temps à vélo par mois") { MinutesChart(data: data) }.id("panel-charts")
-                Panel(title: "Horaires de départ") { Heatmap(data: data) }.id("panel-heatmap")
-                Panel(title: "Répartition par type de vélo") { BikeTypes(data: data) }
+                Panel(title: data.unit == .day ? "Temps à vélo par jour" : "Temps à vélo par mois", chart: true, titleHidden: focus.isBucket) { MinutesChart(data: data, focus: $focus) }.id("panel-charts")
+                Panel(title: "Horaires de départ", chart: true, titleHidden: focus.isCell) { Heatmap(data: data, focus: $focus) }.id("panel-heatmap")
+                Panel(title: "Répartition par type de vélo", chart: true) { BikeTypes(data: data, focus: $focus) }.id("panel-donut")
                 Panel(title: "Records") { Records(records: data.records) }.id("panel-records")
                 if !data.stations.isEmpty { Panel(title: "Stations les plus utilisées") { Ranking(items: data.stations) } }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { focus = nil }
+        .onChange(of: period) { focus = nil }
+        .task {
+            let keys = stats[period].buckets.map(\.key)
+            switch model.snapshot {
+            case .statsTipFirst: focus = keys.first.map(ChartFocus.bucket)
+            case .statsTipLast: focus = keys.last.map(ChartFocus.bucket)
+            case .statsDonut: focus = .part("electrical")
+            case .statsHeatTip:
+                let rows = stats[period].heatmap
+                focus = (0..<24).reversed().lazy.compactMap { hour in rows.indices.first { rows[$0][hour] > 0 }.map { ChartFocus.cell(day: $0, hour: hour) } }.first
+            default: break
             }
         }
     }
@@ -281,20 +298,43 @@ private struct StatCard: View {
     }
 }
 
+extension EnvironmentValues {
+    @Entry var chartTipCeiling: CGFloat = 0
+}
+
 private struct Panel<Content: View>: View {
     let title: String
+    var chart = false
+    var titleHidden = false
     @ViewBuilder let content: () -> Content
+    @State private var titleHeight: CGFloat = 0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        let spacing: CGFloat = chart ? 34 : 18
+        VStack(alignment: .leading, spacing: spacing) {
             Text(title).typo(.title(19)).foregroundStyle(Palette.ink)
-            content()
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { titleHeight = $0 }
+                .opacity(titleHidden ? 0 : 1)
+                .animation(.easeOut(duration: 0.15), value: titleHidden)
+            content().environment(\.chartTipCeiling, titleHeight + spacing)
         }
         .padding(.horizontal, 16).padding(.top, 18).padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
     }
 }
+
+private enum ChartFocus: Equatable {
+    case bucket(String)
+    case cell(day: Int, hour: Int)
+    case part(String)
+}
+
+extension Optional where Wrapped == ChartFocus {
+    fileprivate var isBucket: Bool { if case .bucket = self { true } else { false } }
+    fileprivate var isCell: Bool { if case .cell = self { true } else { false } }
+}
+
 
 private struct ChartTip: View {
     let title: String
@@ -306,7 +346,32 @@ private struct ChartTip: View {
         }
         .padding(.horizontal, 11).padding(.vertical, 8)
         .ringed(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .fixedSize()
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+private struct PlacedTip: View {
+    let proxy: ChartProxy
+    let x: CGFloat?
+    let tip: ChartTip
+    @Environment(\.chartTipCeiling) private var ceiling
+    @State private var size = CGSize.zero
+
+    var body: some View {
+        GeometryReader { geometry in
+            if let frame = proxy.plotFrame, let x {
+                let plot = geometry[frame]
+                let width = geometry.size.width
+                let left = min(max(0, plot.minX + x - size.width / 2), max(0, width - size.width))
+                tip
+                    .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
+                    .frame(maxWidth: width, alignment: .leading)
+                    .offset(x: left, y: max(plot.minY - 6 - size.height, -ceiling))
+                    .opacity(size == .zero ? 0 : 1)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
@@ -326,11 +391,12 @@ private struct TapLayer: View {
 
 private struct MinutesChart: View {
     let data: PeriodStats
-    @State private var selected: String?
+    @Binding var focus: ChartFocus?
     @State private var width: CGFloat = 320
 
     var body: some View {
         let buckets = data.buckets
+        let selected: String? = if case .bucket(let key) = focus { key } else { nil }
         let top = niceMax(Double(buckets.map(\.minutes).max() ?? 0))
         let every = max(1, Int(ceil(Double(buckets.count) * (data.unit == .day ? 38 : 16) / max(1, width - 34))))
         let shown = Set(buckets.enumerated().filter { (buckets.count - 1 - $0.offset) % every == 0 }.map { $0.element.key })
@@ -338,11 +404,6 @@ private struct MinutesChart: View {
             BarMark(x: .value("Période", bucket.key), y: .value("Minutes", bucket.minutes), width: .ratio(0.68))
                 .foregroundStyle(selected == bucket.key ? Palette.redDeep : Palette.red)
                 .cornerRadius(3)
-                .annotation(position: .top, spacing: 6, overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))) {
-                    if selected == bucket.key {
-                        ChartTip(title: capitalize(bucketLabel(data.unit, bucket.key)), detail: "\(hours(bucket.minutes)) en \(plural(bucket.trips, "trajet"))")
-                    }
-                }
         }
         .chartYScale(domain: 0...top)
         .chartYAxis {
@@ -359,9 +420,15 @@ private struct MinutesChart: View {
             }
         }
         .chartOverlay { proxy in
-            TapLayer(proxy: proxy) { point in
-                let key: String? = proxy.value(atX: point.x, as: String.self)
-                selected = key == selected ? nil : key
+            ZStack {
+                TapLayer(proxy: proxy) { point in
+                    let key: String? = proxy.value(atX: point.x, as: String.self)
+                    focus = key == nil || key == selected ? nil : key.map(ChartFocus.bucket)
+                }
+                if let selected, let bucket = buckets.first(where: { $0.key == selected }) {
+                    PlacedTip(proxy: proxy, x: proxy.position(forX: selected),
+                              tip: ChartTip(title: capitalize(bucketLabel(data.unit, bucket.key)), detail: "\(hours(bucket.minutes)) en \(plural(bucket.trips, "trajet"))"))
+                }
             }
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
@@ -372,7 +439,7 @@ private struct MinutesChart: View {
 
 private struct Heatmap: View {
     let data: PeriodStats
-    @State private var selected: (day: Int, hour: Int)?
+    @Binding var focus: ChartFocus?
     @State private var width: CGFloat = 320
 
     private struct Cell: Identifiable {
@@ -384,21 +451,26 @@ private struct Heatmap: View {
 
     var body: some View {
         let rows = data.heatmap
+        let selected: (day: Int, hour: Int)? = if case .cell(let day, let hour) = focus { (day, hour) } else { nil }
         let cells = rows.enumerated().flatMap { day, row in row.enumerated().map { Cell(day: day, hour: $0.offset, count: $0.element) } }
         let max = Swift.max(1, cells.map(\.count).max() ?? 0)
         let busiest = cells.max { $0.count < $1.count || ($0.count == $1.count && $0.id > $1.id) }!
         let cellHeight = min(26, Swift.max(12, (width - 20) / 24))
         let cellWidth = Swift.max(1, (width - 20) / 24)
         let insetX = 1 / cellWidth, insetY = 1 / cellHeight
+        let side = Swift.max(1, Swift.min(cellWidth, cellHeight) - 2)
         Chart(cells) { cell in
             let active = selected.map { $0.day == cell.day && $0.hour == cell.hour } ?? false
             RectangleMark(xStart: .value("Heure", Double(cell.hour) + insetX), xEnd: .value("Heure", Double(cell.hour + 1) - insetX),
                           yStart: .value("Jour", Double(6 - cell.day) + insetY), yEnd: .value("Jour", Double(7 - cell.day) - insetY))
-                .foregroundStyle(cell.count == 0 ? Palette.mist : active ? Palette.redDeep : Palette.red.opacity(0.18 + 0.82 * Double(cell.count) / Double(max)))
+                .foregroundStyle(active ? Palette.redDeep : Palette.mist)
                 .cornerRadius(3)
-                .annotation(position: .top, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))) {
-                    if active { ChartTip(title: "\(weekdays[cell.day]), de \(cell.hour) h à \(cell.hour + 1) h", detail: plural(cell.count, "départ")) }
-                }
+            if cell.count > 0, !active {
+                let inner = (side * (0.4 + 0.6 * Double(cell.count) / Double(max))).rounded()
+                RectangleMark(x: .value("Heure", Double(cell.hour) + 0.5), y: .value("Jour", Double(6 - cell.day) + 0.5), width: .fixed(inner), height: .fixed(inner))
+                    .foregroundStyle(Palette.red)
+                    .cornerRadius(3 * inner / side)
+            }
         }
         .chartXScale(domain: 0...24)
         .chartYScale(domain: 0...7)
@@ -414,11 +486,17 @@ private struct Heatmap: View {
             }
         }
         .chartOverlay { proxy in
-            TapLayer(proxy: proxy) { point in
-                guard let hour = proxy.value(atX: point.x, as: Double.self), let row = proxy.value(atY: point.y, as: Double.self), row >= 0, hour >= 0 else { return }
-                let cell = (day: 6 - Int(row), hour: Int(hour))
-                guard (0..<7).contains(cell.day), (0..<24).contains(cell.hour), rows[cell.day][cell.hour] > 0 else { selected = nil; return }
-                selected = selected.map { $0.day == cell.day && $0.hour == cell.hour } == true ? nil : cell
+            ZStack {
+                TapLayer(proxy: proxy) { point in
+                    guard let hour = proxy.value(atX: point.x, as: Double.self), let row = proxy.value(atY: point.y, as: Double.self), row >= 0, hour >= 0 else { focus = nil; return }
+                    let cell = (day: 6 - Int(row), hour: Int(hour))
+                    guard (0..<7).contains(cell.day), (0..<24).contains(cell.hour), rows[cell.day][cell.hour] > 0 else { focus = nil; return }
+                    focus = selected.map { $0.day == cell.day && $0.hour == cell.hour } == true ? nil : .cell(day: cell.day, hour: cell.hour)
+                }
+                if let selected {
+                    PlacedTip(proxy: proxy, x: proxy.position(forX: Double(selected.hour) + 0.5),
+                              tip: ChartTip(title: "\(weekdays[selected.day]), de \(selected.hour) h à \(selected.hour + 1) h", detail: plural(rows[selected.day][selected.hour], "départ")))
+                }
             }
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
@@ -429,7 +507,7 @@ private struct Heatmap: View {
 
 private struct BikeTypes: View {
     let data: PeriodStats
-    @State private var selected: String?
+    @Binding var focus: ChartFocus?
 
     private struct Part: Identifiable {
         let key: String
@@ -446,6 +524,7 @@ private struct BikeTypes: View {
             Part(key: "mechanical", label: "Mécanique", spoken: "en mécanique", count: data.bikeTypes.mechanical, color: Color(hex: 0xe9e4e4)),
             Part(key: "unknown", label: "Non renseigné", spoken: "sans type connu", count: data.bikeTypes.unknown, color: Palette.mist)
         ].filter { $0.count > 0 }
+        let selected: String? = if case .part(let key) = focus { key } else { nil }
         let total = max(1, data.trips)
         let share = { (count: Int) in "\(Int((Double(count) / Double(total) * 100).rounded()))\u{a0}%" }
         let size: CGFloat = 152
@@ -468,11 +547,11 @@ private struct BikeTypes: View {
             }
             .frame(width: size, height: size)
             .contentShape(Circle())
-            .onTapGesture { selected = selected == nil ? parts.first?.key : parts.firstIndex { $0.key == selected }.flatMap { $0 + 1 < parts.count ? parts[$0 + 1].key : nil } }
+            .onTapGesture { focus = (selected == nil ? parts.first?.key : parts.firstIndex { $0.key == selected }.flatMap { $0 + 1 < parts.count ? parts[$0 + 1].key : nil }).map(ChartFocus.part) }
             .accessibilityLabel("Trajets \(parts.map { "\($0.spoken) à \(share($0.count))" }.joined(separator: ", "))")
             VStack(spacing: 8) {
                 ForEach(parts) { part in
-                    Button { selected = selected == part.key ? nil : part.key } label: {
+                    Button { focus = selected == part.key ? nil : .part(part.key) } label: {
                         HStack(spacing: 10) {
                             Circle().fill(part.color).frame(width: 10, height: 10).overlay(Circle().strokeBorder(part.key == "unknown" ? Palette.inkLine : .clear, lineWidth: 1))
                             Text(part.label).typo(.body(13)).foregroundStyle(Palette.ink)

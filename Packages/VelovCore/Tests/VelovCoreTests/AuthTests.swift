@@ -98,10 +98,10 @@ final class AuthTests: XCTestCase {
         }
     }
 
-    func testARefusalPageShowsTheServersOwnMessageWithoutAssumingOneDevice() {
+    func testARefusalPageAboutAnotherDeviceShowsTheOneDeviceMessage() {
         XCTAssertThrowsError(try readForm("<p>Ce compte est déjà en cours d&#39;utilisation sur un <b>autre appareil</b></p>", id: "vls-form-device-id")) {
             XCTAssertEqual(($0 as? VelovError)?.code, .refused)
-            XCTAssertEqual(($0 as? VelovError)?.message, "Ce compte est déjà en cours d'utilisation sur un autre appareil")
+            XCTAssertEqual(($0 as? VelovError)?.message, Messages.otherDevice)
         }
         let keycloak = "<html><head><title>Vélo’v</title><script>var x = 1;</script></head><body>" + String(repeating: "<div class=\"layout\">menu</div>", count: 60)
             + "<div class=\"alert alert-error\"><span class=\"pf-icon\"></span><span class=\"kc-feedback-text\">Session  expirée,\n veuillez recommencer.</span></div></body></html>"
@@ -172,8 +172,9 @@ final class AuthTests: XCTestCase {
         catch { XCTAssertEqual((error as? VelovError)?.code, .protocol) }
     }
 
-    func testARefusedDeviceStepShowsTheServersMessageAndTheLoginIsNotRetried() async {
-        for (body, message) in [("<p>Ce compte est déjà en cours d’utilisation sur un autre appareil</p>", "Ce compte est déjà en cours d’utilisation sur un autre appareil"),
+    func testARefusedDeviceStepShowsTheOneDeviceMessageAndTheLoginIsNotRetried() async {
+        for (body, message) in [("<p>Ce compte est déjà en cours d’utilisation sur un autre appareil</p>", Messages.otherDevice),
+                                ("<p>This account is already used on another device.</p>", Messages.otherDevice),
                                 ("", Messages.loginRefused)] {
             let server = realm(TestSigner(), deviceReply: .status(400, body: body))
             do { _ = try await login(email: "person@example.com", code: "123456", deviceId: "device-0123456789abcdef", http: server.transport); XCTFail("no error") }

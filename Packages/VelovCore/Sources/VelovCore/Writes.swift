@@ -61,7 +61,7 @@ public enum Writes {
         if response.ok { return Outcome(ok: true, httpStatus: response.status) }
         let reply = ErrorReply(response)
         var outcome = Outcome(ok: false, httpStatus: response.status, code: reply.code, detail: reply.detail)
-        outcome.message = outcome.isUncertain ? Messages.ratingUnconfirmed : "Vélo’v n’a pas enregistré la note."
+        outcome.message = outcome.isUncertain ? Messages.ratingUncertain : "Vélo’v a refusé cette note."
         return outcome
     }
 
@@ -103,7 +103,7 @@ public enum Writes {
             return (outcome, booking)
         }
         outcome.ok = false
-        outcome.message = "Vélo’v a répondu sans confirmer la réservation. Vérifiez vos réservations avant de réessayer."
+        outcome.message = "Vélo’v n’a pas confirmé la réservation. Vérifiez-la avant de réessayer."
         outcome.detail = reply.detail ?? (response.body.isEmpty ? "Réponse vide" : String(response.text.prefix(160)))
         return (outcome, nil)
     }

@@ -100,19 +100,10 @@ private struct ViaSheet: View {
             if choices.isEmpty {
                 Text("Aucune station pleine ne correspond à votre recherche.").typo(.body(14)).foregroundStyle(Palette.inkSoft)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(choices) { item in
-                        Button { selected = item.number } label: {
-                            Text(verbatim: "\(item.name) · N° \(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
-                                .typo(.body(14)).foregroundStyle(selected == item.number ? Palette.red : Palette.ink).multilineTextAlignment(.leading)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, 12).contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityAddTraits(selected == item.number ? .isSelected : [])
-                        Hairline(color: Palette.inkLine)
-                    }
-                }
+                SelectField(label: "Station pleine", hideLabel: true, value: $selected, options: [.init(value: nil, label: "Choisir une station")] + choices.map { item in
+                    .init(value: item.number, label: "\(item.name) · N° \(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
+                }, layout: .stacked)
+                .zIndex(2)
             }
             PairedActions {
                 PillButton("Annuler", variant: .ghost, fullWidth: true) { close() }
@@ -140,7 +131,7 @@ private struct ViaSheet: View {
                 locationError = error.message
                 locationRaw = error.raw
             } catch {
-                locationError = "Position indisponible. Recherchez une station par son nom."
+                locationError = "Localisation indisponible. Recherchez une station par son nom."
             }
         }
     }

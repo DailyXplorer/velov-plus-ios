@@ -61,6 +61,8 @@ public struct LoginForm: Equatable, Sendable {
 func serverRefusal(_ html: String) -> String? {
     let collapse = { (text: String) in text.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
     let page = Substring(html)
+    let all = HTML.text(html)
+    if ["autre appareil", "another device"].contains(where: { all.range(of: $0, options: .caseInsensitive) != nil }) { return Messages.otherDevice }
     for tag in HTML.tags("[a-z]+[0-9]?", in: page) {
         let classes = (tag.attributes["class"] ?? "").split(separator: " ")
         guard classes.contains(where: { $0 == "kc-feedback-text" || $0 == "alert-error" }) || tag.attributes["id"] == "input-error" else { continue }
@@ -71,14 +73,6 @@ func serverRefusal(_ html: String) -> String? {
         if !text.isEmpty { return text }
     }
     let text = collapse(HTML.text(html))
-    for marker in ["autre appareil", "another device"] {
-        if let hit = text.range(of: marker, options: .caseInsensitive) {
-            let start = text[..<hit.lowerBound].lastIndex(where: { ".!?".contains($0) }).map { text.index(after: $0) } ?? text.startIndex
-            let end = text[hit.upperBound...].firstIndex(where: { ".!?".contains($0) }).map { text.index(after: $0) } ?? text.endIndex
-            let sentence = text[start..<end].trimmingCharacters(in: .whitespaces)
-            if !sentence.isEmpty && sentence.count <= 300 { return sentence }
-        }
-    }
     return text.isEmpty || text.count > 300 ? nil : text
 }
 

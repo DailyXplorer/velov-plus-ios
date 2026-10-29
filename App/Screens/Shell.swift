@@ -302,7 +302,7 @@ struct LogoutSheet: View {
                 IconButton(icon: .x, label: "Fermer") { dismiss() }.padding(.trailing, -10)
             }
             PairedActions {
-                PillButton("Annuler", variant: .secondary, fullWidth: true) { dismiss() }.disabled(pending)
+                PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(pending)
                 PillButton("Se déconnecter", pending: pending, fullWidth: true) {
                     pending = true
                     Task {

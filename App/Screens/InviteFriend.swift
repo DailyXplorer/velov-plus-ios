@@ -80,7 +80,7 @@ struct InviteFriend: View {
             Text("Les \(formatNumber(cost ?? 0)) points sont débités dès la création du code, même s’il n’est jamais utilisé.")
                 .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
             if verification == .debited {
-                FormError("Vos points ont été débités, mais aucun code n’a été reçu. Contactez Vélo’v pour le récupérer.").padding(.top, 14)
+                FormError("Vos points ont été débités, mais aucun code n’a été reçu. Contactez le service client pour le récupérer.").padding(.top, 14)
             } else if let shown {
                 VStack(alignment: .leading, spacing: 6) {
                     if shown.ok {
@@ -96,22 +96,21 @@ struct InviteFriend: View {
             }
             Group {
                 switch verification {
-                case .notDebited?: SoonNote(text: "Aucun débit de \(formatNumber(operationCost)) points n’apparaît dans l’historique complet de vos points.")
-                case .unknown?: SoonNote(text: "L’historique de vos points ne permet pas encore d’exclure un débit. Vérifiez de nouveau dans quelques minutes ou écrivez au service client.")
-                case .failed?: FormError("L’historique de vos points n’a pas pu être lu. Réessayez dans un instant.")
+                case .notDebited?: SoonNote(text: "Votre historique complet ne montre aucun débit de \(formatNumber(operationCost)) points depuis la demande.")
+                case .unknown?: SoonNote(text: "Votre historique de points ne permet pas encore d’exclure un débit. Vérifiez de nouveau dans quelques minutes ou écrivez au service client.")
+                case .failed?: FormError("Votre historique de points n’a pas pu être lu. Réessayez dans un instant.")
                 default: EmptyView()
                 }
             }
             .padding(.top, 12)
+            if uncertain != nil || verification == .debited { TextButton(title: "Écrire au service client", action: contact).padding(.top, 8) }
             if let warning { FormError(warning).padding(.top, 12) }
             PairedActions {
                 PillButton(settled ? "Fermer" : "Annuler", variant: .ghost, fullWidth: true) { close() }.disabled(blocked)
                 if uncertain != nil, verification == .notDebited {
                     PillButton("Je n’ai pas été débité, réessayer", fullWidth: true) { retry() }
-                } else if verification == .unknown || verification == .debited {
-                    PillButton("Écrire au service client", variant: .secondary, fullWidth: true) { contact() }
                 } else if uncertain != nil {
-                    PillButton("Vérifier", variant: .secondary, pending: verification == .checking, fullWidth: true) { verify() }
+                    PillButton("Vérifier mes points", variant: .secondary, pending: verification == .checking, fullWidth: true) { verify() }
                 } else if !settled {
                     PillButton("Confirmer", pending: pending, fullWidth: true) { confirm() }.disabled(!canObtain)
                 }

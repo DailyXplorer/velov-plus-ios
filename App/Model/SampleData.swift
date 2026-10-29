@@ -11,6 +11,7 @@ enum SampleData {
         Station(id: "1001", number: 1001, name: "Opéra", address: "", lat: 45.7676, lon: 4.8363, mechanical: 0, electrical: 0, stands: 20, open: true),
         Station(id: "1002", number: 1002, name: "Terreaux / Hôtel de Ville", address: "", lat: 45.7672, lon: 4.8336, mechanical: 8, electrical: 2, stands: 4, open: true),
         Station(id: "3001", number: 3001, name: "Part-Dieu", address: "", lat: 45.7606, lon: 4.8594, mechanical: 12, electrical: 5, stands: 9, open: true),
+        Station(id: "3003", number: 3003, name: "Part-Dieu Villette / Boulevard Vivier-Merle", address: "", lat: 45.7593, lon: 4.8617, mechanical: 4, electrical: 2, stands: 14, open: true),
         Station(id: "7002", number: 7002, name: "Jean Macé", address: "", lat: 45.7456, lon: 4.8420, mechanical: 4, electrical: 0, stands: 14, open: true),
         Station(id: "2004", number: 2004, name: "Ampère / Victor Hugo", address: "", lat: 45.7531, lon: 4.8290, mechanical: 1, electrical: 4, stands: 8, open: true),
         Station(id: "6003", number: 6003, name: "Brotteaux", address: "", lat: 45.7672, lon: 4.8590, mechanical: 3, electrical: 3, stands: 12, open: true),
@@ -41,7 +42,7 @@ enum SampleData {
 
     static let dashboard = Dashboard(
         profile: Profile(firstName: "camille", lastName: "martin", email: "camille@example.com", locked: false, complete: true,
-                         phoneNumber: "+33600000000", address: "1 place de l’Exemple", addressComplement: nil, zipCode: "69002", city: "Lyon", country: "FR", favorites: [2002, 3001]),
+                         phoneNumber: "+33600000000", address: "1 place de l’Exemple", addressComplement: nil, zipCode: "69002", city: "Lyon", country: "FR", favorites: [2002, 3001, 3003]),
         rewards: Rewards(balance: 85, total: 1240, autoSpend: true, movements: [
             RewardMovement(id: "m1", date: ago(1.2), label: "Vélo évalué", amount: 5),
             RewardMovement(id: "m2", date: ago(30), label: "Arrivée dans une station vide", amount: 10),

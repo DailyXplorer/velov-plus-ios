@@ -90,3 +90,15 @@ public func shortPlan(_ title: String?) -> String {
     let short = head.replacing(/^(?i)V[ée]lo[’']v\s+/, with: "")
     return short.isEmpty ? title : short
 }
+
+public func formatPhone(_ raw: String) -> String {
+    let compact = raw.filter { !" .-\u{00A0}\u{202F}".contains($0) }
+    let pairs = { (digits: Substring) in stride(from: 0, to: digits.count, by: 2).map { String(digits.dropFirst($0).prefix(2)) } }
+    if let match = compact.wholeMatch(of: /\+33([1-9])(\d{8})/) {
+        return (["+33", String(match.1)] + pairs(match.2)).joined(separator: "\u{00A0}")
+    }
+    if compact.wholeMatch(of: /0[1-9]\d{8}/) != nil {
+        return pairs(Substring(compact)).joined(separator: "\u{00A0}")
+    }
+    return raw.trimmingCharacters(in: .whitespaces)
+}

@@ -30,7 +30,7 @@ final class TripEndTests: XCTestCase {
         let refused = MockServer { _, _ in .json(["code": "trips.exception.rating", "message": "Already rated"], status: 409) }
         let outcome = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .recommend, http: refused.transport)
         XCTAssertEqual([String(outcome.httpStatus), outcome.code, outcome.detail], ["409", "trips.exception.rating", "Already rated"])
-        XCTAssertEqual(outcome.message, "Vélo’v n’a pas enregistré la note.")
+        XCTAssertEqual(outcome.message, "Vélo’v a refusé cette note.")
         let lost = MockServer { _, _ in .failure(.networkConnectionLost) }
         let silent = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .recommend, http: lost.transport)
         XCTAssertEqual([String(silent.httpStatus), silent.code, silent.message], ["0", "network", Messages.ratingUnconfirmed])

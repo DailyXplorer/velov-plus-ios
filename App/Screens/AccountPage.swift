@@ -123,9 +123,9 @@ struct AccountSkeleton: View {
                 Text(verbatim: "Vélo’v Plus 1 an Jeunes – paiement comptant").typo(.title(22)).padding(.top, 18)
                 Text(verbatim: "Jusqu’au 1 janvier 2027").typo(.body(14)).padding(.top, 10)
                 HStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text("Renouvellement automatique").typo(.caps(13))
-                        Text("Désactivé").typo(.body(15, medium: true))
+                        Text("Désactivé").typo(.title(20))
                     }
                     Spacer(minLength: 0)
                     VelovSwitch(on: false)

@@ -79,6 +79,16 @@ struct SelectField<Value: Hashable>: View {
     }
 
     private var list: some View {
+        Group {
+            if options.count > 8 { ScrollView { rows }.frame(maxHeight: 336) } else { rows }
+        }
+        .padding(6)
+        .frame(width: inline ? 220 : max(width, 200))
+        .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var rows: some View {
         VStack(spacing: 0) {
             ForEach(options) { option in
                 let chosen = option.value == value
@@ -97,9 +107,5 @@ struct SelectField<Value: Hashable>: View {
                 .accessibilityAddTraits(chosen ? .isSelected : [])
             }
         }
-        .padding(6)
-        .frame(width: inline ? 220 : max(width, 200))
-        .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
-        .fixedSize(horizontal: false, vertical: true)
     }
 }

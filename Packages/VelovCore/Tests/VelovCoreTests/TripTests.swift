@@ -144,6 +144,7 @@ final class TripTests: XCTestCase {
         XCTAssertEqual(formatDate(summer, .time), "10:05")
         XCTAssertEqual(formatDate(summer, .dayMonth), "14 juil.")
         XCTAssertEqual(formatDate(summer, .dayLongMonthYear), "14 juillet 2026")
+        XCTAssertEqual(formatDate(summer, .dayMonthYearTime), "14 juil. 2026, 10:05")
         XCTAssertEqual(formatDate(date("2026-03-01T23:30:00Z"), .dayMonth), "2 mars")
         XCTAssertEqual(clock(305), "05:05")
         let plain = { (text: String?) in text?.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ") }

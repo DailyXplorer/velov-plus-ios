@@ -104,7 +104,7 @@ final class WritesTests: XCTestCase {
             XCTAssertTrue(outcome.isUncertain)
             XCTAssertNil(booking)
             XCTAssertEqual(server.calls.count, 1)
-            XCTAssert(outcome.message!.contains("Vérifiez vos réservations"))
+            XCTAssertEqual(outcome.message, "Vélo’v n’a pas confirmé la réservation. Vérifiez-la avant de réessayer.")
         }
     }
 
@@ -124,15 +124,17 @@ final class WritesTests: XCTestCase {
     }
 
     func testAnUnansweredRatingSaysTheNoteMayHaveBeenRecorded() async throws {
-        for reply in [Reply.failure(.timedOut), .status(502, body: "Bad Gateway"), .status(400)] {
+        for (reply, message) in [(Reply.failure(.timedOut), "Vélo’v ne répond pas. La note a peut-être été enregistrée."),
+                                 (.status(502, body: "Bad Gateway"), "Vélo’v n’a pas confirmé la note. Elle a peut-être été enregistrée."),
+                                 (.status(400), "Vélo’v n’a pas confirmé la note. Elle a peut-être été enregistrée.")] {
             let outcome = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .recommend, http: MockServer { _, _ in reply }.transport)
             XCTAssertTrue(outcome.isUncertain)
-            XCTAssertEqual(outcome.message, "Note non confirmée\u{a0}: vérifiez avant de réessayer.")
+            XCTAssertEqual(outcome.message, message)
         }
         let refused = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .recommend,
                                             http: MockServer { _, _ in .json(["code": "trips.exception.already.rated"], status: 400) }.transport)
         XCTAssertFalse(refused.isUncertain)
-        XCTAssertEqual(refused.message, "Vélo’v n’a pas enregistré la note.")
+        XCTAssertEqual(refused.message, "Vélo’v a refusé cette note.")
     }
 
     func testBookingRefusalsMapToFrenchMessagesAndAreNeverRetried() async throws {

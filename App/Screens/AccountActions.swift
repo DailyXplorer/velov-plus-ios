@@ -48,7 +48,7 @@ struct ProfileCoordinates: View {
         let country = profile.country.map { "\(place.isEmpty ? "" : " · ")\(countryName($0) ?? $0)" } ?? ""
         return VStack(alignment: .leading, spacing: 0) {
             DetailRow(label: "Adresse") { StackedValue(value: address.isEmpty ? "Non renseignée" : address, small: place + country) }
-            DetailRow("Téléphone", profile.phoneNumber ?? "Non renseigné", last: true)
+            DetailRow("Téléphone", profile.phoneNumber.map(formatPhone) ?? "Non renseigné", last: true)
             PillButton("Modifier mes coordonnées", variant: .secondary) { error = nil; draft = ProfileDraft(profile) }.padding(.top, 16)
         }
     }
@@ -108,9 +108,9 @@ struct AutoRenewalSetting: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("Renouvellement automatique").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
-                Text(actual == nil ? "Indisponible pour le moment" : actual! ? "Activé" : "Désactivé").typo(.title(22)).foregroundStyle(Palette.ink)
+                Text(actual == nil ? "Indisponible pour le moment" : actual! ? "Activé" : "Désactivé").typo(.title(20)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
             if canChange, subscription.id != nil, let actual {

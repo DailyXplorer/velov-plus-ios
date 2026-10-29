@@ -93,6 +93,7 @@ private let formatterCache = FormatterCache()
 
 public func formatDate(_ date: Date?, _ style: DateStyle = .dayMonth) -> String {
     guard let date else { return "Date indisponible" }
+    if style == .dayMonthYearTime { return "\(formatDate(date, .dayMonthYear)), \(formatDate(date, .time))" }
     return formatterCache.string(date, template: style.rawValue)
 }
 

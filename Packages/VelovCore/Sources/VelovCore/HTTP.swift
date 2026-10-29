@@ -8,7 +8,7 @@ public enum Cyclocity {
     public static let oidc = "\(realm)/protocol/openid-connect"
     public static let callback = "https://velov.grandlyon.com/openid_connect_login"
     /// The iOS app's public Keycloak client.
-    public static let clientId = "vls-ios-lyon"
+    public static let clientId = "vls-web-lyon"
     /// The bikes endpoint sits behind a WAF that answers non-browser user agents with an HTML 403.
     public static let browserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36"
     /// The web client's public app-token credentials, already published by the official site.

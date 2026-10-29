@@ -44,7 +44,7 @@ struct TestSigner {
 /// An unsigned access token: the app only reads it, Cyclocity checks it.
 func accessToken(email: String = "person@example.com", expires: Date) -> String {
     let header = base64URL(Data(#"{"alg":"none"}"#.utf8))
-    let payload = base64URL(try! JSONSerialization.data(withJSONObject: ["azp": "vls-ios-lyon", "preferred_username": email, "exp": expires.timeIntervalSince1970]))
+    let payload = base64URL(try! JSONSerialization.data(withJSONObject: ["azp": "vls-web-lyon", "preferred_username": email, "exp": expires.timeIntervalSince1970]))
     return "\(header).\(payload).sig"
 }
 
@@ -53,7 +53,7 @@ func query(_ url: String, _ name: String) -> String? {
 }
 
 let loginPage = """
-<html><body><form id="kc-form-login" action="/realms/vls-default/login-actions/authenticate?session_code=abc&amp;execution=e1&amp;client_id=vls-ios-lyon" method="post">
+<html><body><form id="kc-form-login" action="/realms/vls-default/login-actions/authenticate?session_code=abc&amp;execution=e1&amp;client_id=vls-web-lyon" method="post">
 <input type="hidden" name="session" value="preserved"/><input name="username"/><input type="password" name="password"/></form></body></html>
 """
 let devicePage = """
@@ -69,7 +69,7 @@ final class AuthTests: XCTestCase {
         XCTAssertNotEqual(first.verifier, second.verifier)
         let url = first.url.absoluteString
         XCTAssert(url.hasPrefix("https://iam.cyclocity.fr/realms/vls-default/protocol/openid-connect/auth?"))
-        XCTAssertEqual(query(url, "client_id"), "vls-ios-lyon")
+        XCTAssertEqual(query(url, "client_id"), "vls-web-lyon")
         XCTAssertEqual(query(url, "scope"), "openid email")
         XCTAssertEqual(query(url, "redirect_uri"), Cyclocity.callback)
         XCTAssertEqual(query(url, "code_challenge_method"), "S256")
@@ -88,7 +88,7 @@ final class AuthTests: XCTestCase {
 
     func testTheProvidersHiddenFormFieldsSurviveTheLoginStep() throws {
         let form = try readForm(loginPage, id: "kc-form-login")
-        XCTAssertEqual(form.url.absoluteString, "https://iam.cyclocity.fr/realms/vls-default/login-actions/authenticate?session_code=abc&execution=e1&client_id=vls-ios-lyon")
+        XCTAssertEqual(form.url.absoluteString, "https://iam.cyclocity.fr/realms/vls-default/login-actions/authenticate?session_code=abc&execution=e1&client_id=vls-web-lyon")
         XCTAssertEqual(form.field("session"), "preserved")
         XCTAssertNil(form.field("username"))
         let device = try readForm(devicePage, id: "vls-form-device-id")
@@ -139,7 +139,7 @@ final class AuthTests: XCTestCase {
             }
             if url.hasSuffix("/openid-connect/token") {
                 let now = Date().timeIntervalSince1970
-                let id = signer.sign(["iss": Cyclocity.realm, "aud": "vls-ios-lyon", "nonce": nonce.value!, "exp": now + 300, "iat": now])
+                let id = signer.sign(["iss": Cyclocity.realm, "aud": "vls-web-lyon", "nonce": nonce.value!, "exp": now + 300, "iat": now])
                 return .json(["access_token": accessToken(expires: Date().addingTimeInterval(1800)), "refresh_token": "refresh-1", "id_token": id, "expires_in": 1800, "refresh_expires_in": 0])
             }
             if url.hasSuffix("/openid-connect/certs") { return .json(signer.jwks) }
@@ -160,7 +160,7 @@ final class AuthTests: XCTestCase {
         XCTAssertEqual(calls[2].header("Cookie"), "AUTH_SESSION_ID=s1; KC_RESTART=r2")
         let exchange = parseForm(calls[3].body)
         XCTAssertEqual(exchange["grant_type"], "authorization_code")
-        XCTAssertEqual(exchange["client_id"], "vls-ios-lyon")
+        XCTAssertEqual(exchange["client_id"], "vls-web-lyon")
         XCTAssertEqual(exchange["code"], "the-code")
         XCTAssertEqual(codeChallenge(exchange["code_verifier"]!), query(calls[0].url, "code_challenge"))
         for call in calls { XCTAssert(call.url.hasPrefix("https://iam.cyclocity.fr/realms/vls-default/"), call.url) }
@@ -200,7 +200,7 @@ final class AuthTests: XCTestCase {
         let call = server.calls[0]
         XCTAssertEqual(call.url, "\(Cyclocity.oidc)/token")
         XCTAssertEqual(call.method, "POST")
-        XCTAssertEqual(parseForm(call.body), ["grant_type": "refresh_token", "client_id": "vls-ios-lyon", "refresh_token": "existing-refresh"])
+        XCTAssertEqual(parseForm(call.body), ["grant_type": "refresh_token", "client_id": "vls-web-lyon", "refresh_token": "existing-refresh"])
     }
 
     func testARejectedRefreshRevokesTheSessionAnOutageOrARedirectDoesNot() async {
@@ -221,7 +221,7 @@ final class AuthTests: XCTestCase {
         XCTAssertEqual(confirmed.calls.count, 1)
         XCTAssertEqual(confirmed.calls[0].url, "\(Cyclocity.oidc)/logout")
         XCTAssertEqual(confirmed.calls[0].method, "POST")
-        XCTAssertEqual(parseForm(confirmed.calls[0].body), ["client_id": "vls-ios-lyon", "refresh_token": "rt"])
+        XCTAssertEqual(parseForm(confirmed.calls[0].body), ["client_id": "vls-web-lyon", "refresh_token": "rt"])
         let refused = await endSession(refreshToken: "rt", idToken: nil, http: MockServer { _, _ in .status(400) }.transport)
         XCTAssertFalse(refused)
         let offline = await endSession(refreshToken: "rt", idToken: nil, http: MockServer { _, _ in .failure(.notConnectedToInternet) }.transport)

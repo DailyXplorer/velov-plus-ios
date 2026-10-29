@@ -69,6 +69,18 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.dailyxplorer.velov.widgets
         PRODUCT_NAME: VelovWidgets
         TARGETED_DEVICE_FAMILY: "1"
+  VelovCompagnonUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - UITests
+    dependencies:
+      - target: VelovCompagnon
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.dailyxplorer.velov.uitests
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   VelovCompagnon:
     build:
@@ -76,3 +88,7 @@ schemes:
         VelovCompagnon: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - VelovCompagnonUITests

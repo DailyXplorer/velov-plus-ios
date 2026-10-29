@@ -56,6 +56,8 @@ struct UserDot: View {
         Circle().fill(Palette.white).frame(width: 18, height: 18)
             .overlay(Circle().strokeBorder(Palette.red, lineWidth: 3))
             .background(Circle().fill(Palette.red.opacity(0.16)).frame(width: 32, height: 32))
+            .accessibilityElement()
+            .accessibilityLabel("Votre position")
     }
 }
 

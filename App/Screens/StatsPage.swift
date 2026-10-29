@@ -5,18 +5,18 @@ import VelovCore
 enum TripsRoute: Hashable { case stats }
 
 struct TripsStack: View {
-    let onLogout: () -> Void
     @Environment(AppModel.self) private var model
     @State private var path = NavigationPath()
 
     var body: some View {
         NavigationStack(path: $path) {
-            PageScaffold(page: .trips, onLogout: onLogout)
+            PageScaffold(page: .trips)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: TripsRoute.self) { _ in StatsPage() }
                 .navigationDestination(for: BikeRoute.self) { route in BikeDetail(route: route) }
         }
         .task { if let snapshot = model.snapshot, snapshot.showsStats, path.isEmpty { path.append(TripsRoute.stats) } }
+        .onLeaving(.trips) { path = NavigationPath() }
     }
 }
 

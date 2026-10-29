@@ -3,20 +3,7 @@ import MapKit
 import SwiftUI
 import VelovCore
 
-enum StationFilter: String, Hashable { case all, favorites, available, electrical, stands }
-
-func matches(_ station: Station, _ filter: StationFilter, favorites: Set<Int>) -> Bool {
-    switch filter {
-    case .all: true
-    case .favorites: favorites.contains(station.number)
-    case .available: station.bikes > 0
-    case .electrical: station.electrical > 0
-    case .stands: station.stands > 0
-    }
-}
-
 struct StationsPage: View {
-    let onLogout: () -> Void
     @Environment(AppModel.self) private var model
     @State private var query = ""
     @State private var filter = StationFilter.all
@@ -30,23 +17,12 @@ struct StationsPage: View {
     @State private var barBand: CGFloat = 0
     @State private var cardHeight: CGFloat = 0
     @State private var toolbarBand: CGFloat = 0
+    @State private var filtered: [Station] = []
 
     private var stations: [Station] { model.stations.value?.stations ?? [] }
     private var favorites: Set<Int> { Set(model.dashboard?.profile.favorites ?? []) }
     private var here: GeoPoint? { position.map { GeoPoint(lat: $0.coordinate.latitude, lon: $0.coordinate.longitude) } }
-
-    private var filtered: [Station] {
-        let needle = fold(query)
-        let favorites = favorites
-        return stations.filter { (needle.isEmpty || fold("\($0.name) \($0.address) \($0.number)").contains(needle)) && matches($0, filter, favorites: favorites) }
-            .sorted { left, right in
-                let leftFavorite = favorites.contains(left.number), rightFavorite = favorites.contains(right.number)
-                if leftFavorite != rightFavorite { return leftFavorite }
-                if left.open != right.open { return left.open }
-                if let here { return haversine(here, left.point) < haversine(here, right.point) }
-                return left.name.compare(right.name, locale: Locale(identifier: "fr_FR")) == .orderedAscending
-            }
-    }
+    private var ranking: StationRanking { StationRanking(stations: stations, query: query, filter: filter, favorites: favorites, here: here) }
 
     private var selected: Station? { filtered.first { $0.id == selectedId } }
 
@@ -70,6 +46,12 @@ struct StationsPage: View {
             .padding(.horizontal, 22)
             map
         }
+        .task(id: ranking) {
+            let ranking = ranking
+            let ranked = await Task.detached(priority: .userInitiated) { ranking.ranked() }.value
+            if !Task.isCancelled { filtered = ranked }
+        }
+        .onLeaving(.stations) { searching = false }
         .task {
             if model.snapshot == .stationSheet || model.snapshot == .bikeList || model.snapshot == .bikeSheet || model.snapshot == .bookConfirm {
                 try? await Task.sleep(nanoseconds: 600_000_000)
@@ -212,7 +194,7 @@ struct StationsPage: View {
         position = location
         let here = GeoPoint(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
         let favorites = favorites
-        let open = stations.filter { $0.open && matches($0, filter, favorites: favorites) }.sorted { haversine(here, $0.point) < haversine(here, $1.point) }
+        let open = stations.filter { $0.open && $0.matches(filter, favorites: favorites) }.sorted { haversine(here, $0.point) < haversine(here, $1.point) }
         let supplied = open.filter { filter == .stands ? $0.stands > 0 : $0.bikes > 0 }.prefix(3)
         guard let nearest = open.first else {
             locationError = "Aucune station ouverte ne correspond à ce filtre."
@@ -229,8 +211,4 @@ struct StationsPage: View {
         rect = MKMapRect(x: rect.minX - padX, y: rect.minY - padY, width: rect.width + 2 * padX, height: rect.height + 2 * padY)
         withAnimation(.easeInOut(duration: 0.6)) { camera = .rect(rect) }
     }
-}
-
-func fold(_ value: String) -> String {
-    value.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "fr_FR")).trimmingCharacters(in: .whitespaces)
 }

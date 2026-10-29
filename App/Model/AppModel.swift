@@ -71,6 +71,7 @@ final class AppModel {
     var unlocking: Booking?
     var ratedHere: Set<String> = []
     var ended: Trip?
+    var logoutOpen = false
     var foreground = true
     private var docked: Set<String> = []
     private var greeted = false

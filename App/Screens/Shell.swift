@@ -3,20 +3,25 @@ import VelovCore
 
 struct Shell: View {
     @Environment(AppModel.self) private var model
-    @State private var logoutOpen = false
     @State private var homeIndicator: CGFloat = 0
     @State private var radius = Concentric.fallback
     @State private var tabBarBand: CGFloat = 0
+    @State private var visited: Set<Page> = []
 
     var body: some View {
         @Bindable var model = model
-        Group {
-            switch model.page {
-            case .stations: StationsPage(onLogout: { logoutOpen = true })
-            case .trips: TripsStack(onLogout: { logoutOpen = true })
-            default: PageScaffold(page: model.page, onLogout: { logoutOpen = true }).id(model.page)
+        ZStack {
+            ForEach(Page.allCases) { page in
+                if page == model.page || visited.contains(page) {
+                    let active = page == model.page
+                    screen(page)
+                        .opacity(active ? 1 : 0)
+                        .allowsHitTesting(active)
+                        .accessibilityHidden(!active)
+                }
             }
         }
+        .onChange(of: model.page, initial: true) { _, page in visited.insert(page) }
         .frame(maxHeight: .infinity)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             TabBar(radius: radius)
@@ -28,7 +33,7 @@ struct Shell: View {
         .background {
             Color.clear.ignoresSafeArea(.keyboard).onGeometryChange(for: CGFloat.self, of: { $0.safeAreaInsets.bottom }) { homeIndicator = $0 }
         }
-        .sheet(isPresented: $logoutOpen) { LogoutSheet() }
+        .sheet(isPresented: $model.logoutOpen) { LogoutSheet() }
         .sheet(item: $model.unlocking) { booking in
             if let place = Place(booking) { BikeActionSheet(place: place, bookingId: booking.id, action: .unlock) }
         }
@@ -36,19 +41,52 @@ struct Shell: View {
         .environment(\.floatingRadius, radius)
         .environment(\.tabBarBand, tabBarBand)
     }
+
+    @ViewBuilder
+    private func screen(_ page: Page) -> some View {
+        switch page {
+        case .stations: StationsPage()
+        case .trips: TripsStack()
+        default: PageScaffold(page: page)
+        }
+    }
+}
+
+struct LeavingPage: ViewModifier {
+    let page: Page
+    let action: () -> Void
+    @Environment(AppModel.self) private var model
+
+    func body(content: Content) -> some View {
+        content.onChange(of: model.page) { left, _ in
+            if left == page { action() }
+        }
+    }
+}
+
+extension View {
+    func onLeaving(_ page: Page, perform action: @escaping () -> Void) -> some View {
+        modifier(LeavingPage(page: page, action: action))
+    }
 }
 
 struct TabBar: View {
     let radius: CGFloat
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var selection
+    @State private var picks = 0
     private let padding: CGFloat = 10
 
     var body: some View {
         HStack(spacing: 0) {
             ForEach(Page.allCases) { page in
                 let active = model.page == page
-                Button { model.page = page } label: {
+                Button {
+                    guard !active else { return }
+                    model.page = page
+                    picks += 1
+                } label: {
                     VStack(spacing: 5) {
                         Icon(page.icon, .light, size: 22)
                         Text(page.tab).typo(.body(11))
@@ -59,7 +97,8 @@ struct TabBar: View {
                     .background {
                         if active {
                             RoundedRectangle(cornerRadius: radius - padding, style: .continuous).fill(Palette.red)
-                                .matchedGeometryEffect(id: "active", in: selection)
+                                .matchedGeometryEffect(id: reduceMotion ? page.id : "active", in: selection)
+                                .transition(reduceMotion ? .opacity : .identity)
                         }
                     }
                     .contentShape(Rectangle())
@@ -71,7 +110,8 @@ struct TabBar: View {
         }
         .padding(padding)
         .floatingGlass(RoundedRectangle(cornerRadius: radius, style: .continuous))
-        .animation(.snappy(duration: 0.3), value: model.page)
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(duration: 0.35, bounce: 0.22), value: model.page)
+        .sensoryFeedback(.selection, trigger: picks)
     }
 }
 
@@ -116,24 +156,25 @@ struct Header: View {
 
 struct PageScaffold: View {
     let page: Page
-    let onLogout: () -> Void
     @Environment(AppModel.self) private var model
 
     var body: some View {
         ScrollViewReader { proxy in
-            scroll.task {
-                if model.snapshot == .overviewMap || model.snapshot == .accountEnd {
-                    try? await Task.sleep(nanoseconds: 1_500_000_000)
-                    proxy.scrollTo(model.snapshot == .overviewMap ? "stations-map" : "page-end", anchor: .bottom)
+            scroll
+                .onLeaving(page) { proxy.scrollTo("page-top", anchor: .top) }
+                .task {
+                    if model.snapshot == .overviewMap || model.snapshot == .accountEnd {
+                        try? await Task.sleep(nanoseconds: 1_500_000_000)
+                        proxy.scrollTo(model.snapshot == .overviewMap ? "stations-map" : "page-end", anchor: .bottom)
+                    }
                 }
-            }
         }
     }
 
     private var scroll: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Header(title: page.title)
+                Header(title: page.title).id("page-top")
                 VStack(alignment: .leading, spacing: 0) {
                     BookingBanners()
                     switch model.phase {
@@ -165,7 +206,7 @@ struct PageScaffold: View {
         case .overview: OverviewPage(data: data)
         case .trips: TripsPage(data: data)
         case .points: PointsPage(data: data)
-        case .account: AccountPage(data: data, onLogout: onLogout)
+        case .account: AccountPage(data: data, onLogout: { model.logoutOpen = true })
         case .stations: EmptyView()
         }
     }

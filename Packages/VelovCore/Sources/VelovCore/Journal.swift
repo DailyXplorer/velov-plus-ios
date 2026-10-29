@@ -48,6 +48,14 @@ public func networkLine(_ error: Error) -> String {
     return "Erreur réseau · \(String(describing: type(of: error)))"
 }
 
+public func failureLine(_ error: Error) -> String {
+    switch error {
+    case let error as VelovError: "Code local.\(error.code.rawValue)"
+    case is ShapeError: "Réponse illisible"
+    default: networkLine(error)
+    }
+}
+
 public struct JournalEntry: Codable, Equatable, Sendable {
     public var at: Date
     public var method: String

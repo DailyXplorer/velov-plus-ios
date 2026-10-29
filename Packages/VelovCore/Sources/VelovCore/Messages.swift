@@ -83,6 +83,12 @@ public func accountOutcome(httpStatus: Int, code: String?, detail: String?, fail
     return Outcome(ok: ok, httpStatus: httpStatus, code: code, message: message, detail: detail)
 }
 
+public func ratingLine(_ outcome: Outcome) -> String {
+    let code = outcome.code.flatMap { $0.hasPrefix("local.") || $0 == "network" ? nil : "Code \($0)" }
+    let detail = outcome.detail.flatMap { $0.isEmpty ? nil : capitalize($0) }
+    return ["HTTP \(outcome.httpStatus == 0 ? "aucune réponse" : String(outcome.httpStatus))", code, detail].compactMap { $0 }.joined(separator: " · ")
+}
+
 public func ratingOutcome(_ outcome: Outcome) -> Outcome {
     guard !outcome.ok, outcome.code?.hasPrefix("local.") != true else { return outcome }
     var rated = outcome

@@ -2,11 +2,6 @@ import SwiftUI
 import UIKit
 import VelovCore
 
-private func ratingLine(_ outcome: Outcome) -> String {
-    let code = outcome.code.flatMap { $0.hasPrefix("local.") || $0 == "network" ? nil : "Code \($0)" }
-    return ["HTTP \(outcome.httpStatus == 0 ? "aucune réponse" : String(outcome.httpStatus))", code].compactMap { $0 }.joined(separator: " · ")
-}
-
 struct RateBike: View {
     let trip: Trip
     let bikeNumber: Int

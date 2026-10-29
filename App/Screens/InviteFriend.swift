@@ -17,6 +17,7 @@ struct InviteFriend: View {
     @State private var asking = false
     @State private var outcome: Outcome?
     @State private var verification: Verification?
+    @State private var verifyLine: String?
     @State private var copied: String?
 
     private var operationKey: String? { model.operations.digest.map(OperationKey.invite) }
@@ -98,7 +99,11 @@ struct InviteFriend: View {
                 switch verification {
                 case .notDebited?: SoonNote(text: "Votre historique complet ne montre aucun débit de \(formatNumber(operationCost)) points depuis la demande.")
                 case .unknown?: SoonNote(text: "Votre historique de points ne permet pas encore d’exclure un débit. Vérifiez de nouveau dans quelques minutes ou écrivez au service client.")
-                case .failed?: FormError("Votre historique de points n’a pas pu être lu. Réessayez dans un instant.")
+                case .failed?:
+                    VStack(alignment: .leading, spacing: 6) {
+                        FormError("Votre historique de points n’a pas pu être lu. Réessayez dans un instant.")
+                        if let verifyLine { RawStatus(line: verifyLine) }
+                    }
                 default: EmptyView()
                 }
             }
@@ -192,6 +197,7 @@ struct InviteFriend: View {
         guard let operation, operation.status == .uncertain, let operationKey, verification != .checking else { return }
         let before = DebitBefore(at: operation.at, cost: operationCost)
         verification = .checking
+        verifyLine = nil
         let model = model
         Task {
             do {
@@ -204,6 +210,7 @@ struct InviteFriend: View {
                 case .unknown: .unknown
                 }
             } catch {
+                verifyLine = failureLine(error)
                 verification = .failed
             }
         }
@@ -224,6 +231,7 @@ struct InviteFriend: View {
     private func closed() {
         if outcome != nil || verification != nil { Task { await model.loadDashboard() } }
         verification = nil
+        verifyLine = nil
     }
 
     private func copy(_ code: String) {

@@ -42,7 +42,7 @@ enum Resource<T> {
 
 enum SnapshotScreen: String {
     case overview, overviewMap, trips, tripSheet, rateCard, points, stations, stationSheet, bikeList, bikeSheet, account, accountEnd, accountEdit
-    case bookingBanner, unlockConfirm, bookConfirm, unlockUncertain, liveActivityLock, liveActivityIsland
+    case bookingBanner, unlockConfirm, bookConfirm, unlockUncertain, liveActivityLock, liveActivityIsland, tripActivityLock, tripActivityIsland
     case tripEnded, tripEndedStars
     case stats, statsCharts, statsHeatmap, statsRecords, statsEnd
 
@@ -77,7 +77,11 @@ final class AppModel {
     private var greeted = false
     @ObservationIgnored private lazy var dockWatch: DockWatch = DockWatch(
         check: { [unowned self] in
-            do { return try await service.tripCheck() } catch let error as VelovError where error.code == .expired {
+            do {
+                let answer = try await service.tripCheck()
+                rides.observed(answer.ongoing, latest: answer.latest)
+                return answer
+            } catch let error as VelovError where error.code == .expired {
                 phase = .guest("Session expirée. Reconnectez-vous.")
                 dockWatch.stop()
                 throw error
@@ -89,6 +93,7 @@ final class AppModel {
     let operations: Operations
     @ObservationIgnored private let refreshGate = RefreshGate()
     private let activities = BookingActivities()
+    @ObservationIgnored private lazy var rides = TripActivities(host: TripActivityKit(bookings: activities))
 
     init(service: VelovService, snapshot: SnapshotScreen? = nil, promoBacking: PromoBacking, operationBacking: OperationBacking) {
         self.service = service
@@ -116,6 +121,7 @@ final class AppModel {
 
     func start() async {
         guard case .launching = phase else { return }
+        if snapshot == nil { rides.launched() }
         if await service.hasSession() {
             phase = .loading
             refreshAll()
@@ -188,19 +194,25 @@ final class AppModel {
             return
         }
         guard snapshot == nil else { return }
+        if foreground { rides.observed(data.ongoing, latest: data.trips.flatMap(latestFinished)) }
         if let trip = data.ongoing?.first(where: { !docked.contains($0.id) }) { dockWatch.follow(trip.id) }
         guard !greeted else { return }
         greeted = true
-        if data.ongoing?.isEmpty != false, let trips = data.trips, let recent = tripToGreet(trips, store: UserDefaults.standard) { ended = recent }
+        if data.ongoing?.isEmpty != false, let trips = data.trips, let recent = tripToGreet(trips, store: UserDefaults.standard) { showEnded(recent) }
     }
 
     private func tripDocked(_ tripId: String, latest: Trip?) {
         docked.insert(tripId)
         Task {
             await loadDashboard()
-            if let trip = dashboard?.trips?.first(where: { $0.id == tripId }) ?? (latest?.id == tripId ? latest : nil) { ended = trip }
+            if let trip = dashboard?.trips?.first(where: { $0.id == tripId }) ?? (latest?.id == tripId ? latest : nil) { showEnded(trip) }
             await loadBookings()
         }
+    }
+
+    private func showEnded(_ trip: Trip) {
+        ended = trip
+        rides.finished(trip)
     }
 
     func closeEnded(_ trip: Trip) {
@@ -217,12 +229,15 @@ final class AppModel {
         Task { await loadBookings() }
     }
 
-    func unlocked(bookingId: String?, tripId: String?) {
+    func unlocked(bookingId: String?, ride: Ride) {
         if let bookingId {
             bookings.removeAll { $0.id == bookingId }
             activities.end(bookingId: bookingId)
         }
-        if snapshot == nil { dockWatch.follow(tripId) }
+        if snapshot == nil {
+            rides.unlocked(ride)
+            dockWatch.follow(ride.tripId)
+        }
         Task {
             await loadBookings()
             await loadDashboard()
@@ -259,6 +274,7 @@ final class AppModel {
         unlocking = nil
         ended = nil
         activities.endAll()
+        rides.endAll()
         operations.use(account: nil)
         page = .overview
         phase = .guest(confirmed ? nil : Messages.remoteLogoutUnconfirmed)

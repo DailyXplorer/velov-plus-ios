@@ -38,6 +38,8 @@ Quand le vélo est raccroché, l’app relit le compte pour le prix et les rése
 
 L’Activité en direct de la réservation est démarrée et arrêtée par l’app seule : aucun jeton push n’est demandé et il n’y a pas d’App Group. Si iOS la refuse, rien d’autre n’en dépend et le bandeau de l’app reste affiché. Le widget utilise les mêmes icônes et les deux mêmes polices que l’app. Les captures de l’écran verrouillé et de la Dynamic Island dessinent les vues du widget sur une maquette, car un script ne peut pas verrouiller le simulateur.
 
+L’Activité « trajet en cours » démarre après un déverrouillage réussi, ou quand l’app ouverte voit un trajet en cours sans activité affichée, et remplace alors celle de la réservation. Le temps écoulé avance seul grâce à Text(timerInterval:), sans mise à jour quand l’app est fermée. Elle se termine quand l’app voit le trajet fini et garde la durée finale 5 minutes ; une réponse vide dans les 2 minutes qui suivent le déverrouillage ne la termine pas. Elle devient périmée 4 heures après le départ et est retirée au lancement suivant. Les minutes gratuites de l’abonnement ne sont affichées nulle part : aucun champ chiffré lu par l’app ne les donne.
+
 ## Hypothèses sur l’API
 
 Certaines écritures reposent sur des formats que la documentation publique laisse ouverts. Ils sont regroupés dans `Guesses.swift`, identique à `lib/guesses.ts` côté web. Ce sont des constantes à corriger après vérification, jamais des variantes essayées l’une après l’autre.

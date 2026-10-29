@@ -6,6 +6,30 @@ import WidgetKit
 struct VelovWidgets: WidgetBundle {
     var body: some Widget {
         BookingLiveActivity()
+        TripLiveActivity()
+    }
+}
+
+struct TripLiveActivity: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: TripActivityAttributes.self) { context in
+            TripLockScreenView(state: context.state)
+                .activityBackgroundTint(ActivityStyle.red)
+                .activitySystemActionForegroundColor(.white)
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) { TripIslandLeading(state: context.state) }
+                DynamicIslandExpandedRegion(.trailing) { TripIslandTrailing(state: context.state) }
+                DynamicIslandExpandedRegion(.bottom) { TripIslandBottom(state: context.state) }
+            } compactLeading: {
+                Icon(.personSimpleBike, size: 18).foregroundStyle(ActivityStyle.red)
+            } compactTrailing: {
+                TripIslandCompact(state: context.state)
+            } minimal: {
+                Icon(.personSimpleBike, size: 18).foregroundStyle(ActivityStyle.red)
+            }
+            .keylineTint(ActivityStyle.red)
+        }
     }
 }
 

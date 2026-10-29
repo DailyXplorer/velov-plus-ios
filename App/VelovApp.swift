@@ -41,8 +41,8 @@ struct RootView: View {
         case .guest(let message):
             LoginView(notice: message)
         default:
-            if model.snapshot == .liveActivityLock || model.snapshot == .liveActivityIsland {
-                LiveActivityPreview(island: model.snapshot == .liveActivityIsland)
+            if let screen = model.snapshot, [.liveActivityLock, .liveActivityIsland, .tripActivityLock, .tripActivityIsland].contains(screen) {
+                LiveActivityPreview(trip: [.tripActivityLock, .tripActivityIsland].contains(screen), island: [.liveActivityIsland, .tripActivityIsland].contains(screen))
             } else {
                 Shell()
             }

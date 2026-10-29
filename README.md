@@ -18,7 +18,7 @@ La vue d’ensemble affiche le solde de points, le nombre de trajets, l’abonne
 
 La page Stations montre toutes les stations sur une carte, avec une recherche, des filtres et un bouton « Autour de moi ». En touchant une station, on voit les vélos présents borne par borne. Chaque vélo reçoit une note calculée à partir des avis, de la batterie et de son dernier trajet, ce qui permet de repérer d’un coup d’œil les vélos recommandés et ceux à éviter.
 
-Depuis la fiche d’un vélo, on peut le réserver (10 points pour le garder 15 minutes) ou le déverrouiller. Une réservation en cours apparaît dans un bandeau de l’app, et aussi sur l’écran verrouillé et dans la Dynamic Island grâce à une Activité en direct qui affiche le compte à rebours.
+Depuis la fiche d’un vélo, on peut le réserver (10 points pour le garder 15 minutes) ou le déverrouiller. Une réservation en cours apparaît dans un bandeau de l’app, et aussi sur l’écran verrouillé et dans la Dynamic Island grâce à une Activité en direct qui affiche le compte à rebours. Une fois le vélo déverrouillé, une autre Activité en direct affiche le temps écoulé, la station de départ, le numéro et le type du vélo.
 
 Pendant un trajet, l’app surveille le retour du vélo tant qu’elle est ouverte. Quand le vélo est raccroché, une fiche « Trajet terminé » résume le trajet et propose de noter le vélo. Si la station d’arrivée est pleine, « 15 minutes de plus » permet de demander du temps supplémentaire pour rejoindre une autre station.
 
@@ -40,7 +40,7 @@ Le fichier [DECISIONS.md](DECISIONS.md) détaille ces règles et les choix de co
 
 L’interface est écrite en SwiftUI pour iOS 18 et plus. Toute la logique métier vit dans le paquet Swift `Packages/VelovCore` : modèles, normalisation des réponses, dates, note des vélos, messages d’erreur, réseau, connexion (PKCE, trousseau iOS, identifiant d’appareil stable) et écritures. Ce paquet ne dépend pas de SwiftUI, ce qui permet de le tester sur le Mac.
 
-Le projet Xcode n’est pas versionné : XcodeGen le génère à partir de `project.yml`. L’extension `Widgets` contient l’Activité en direct de la réservation, démarrée et arrêtée par l’app elle-même, sans notification push. Le dossier `Shared` regroupe le code et les icônes communs à l’app et à l’extension.
+Le projet Xcode n’est pas versionné : XcodeGen le génère à partir de `project.yml`. L’extension `Widgets` contient les Activités en direct de la réservation et du trajet en cours, démarrées et arrêtées par l’app elle-même, sans notification push. Le dossier `Shared` regroupe le code et les icônes communs à l’app et à l’extension.
 
 | Dossier | Contenu |
 | --- | --- |

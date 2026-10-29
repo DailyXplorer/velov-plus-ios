@@ -18,6 +18,10 @@ struct Place: Equatable {
         self.stationNumber = stationNumber; self.stationName = stationName; self.standNumber = standNumber
         self.bikeNumber = bikeNumber; self.lat = lat; self.lon = lon
     }
+
+    func ride(_ trip: Trip?, now: Date = Date()) -> Ride {
+        trip.map { Ride($0, now: now) } ?? Ride(tripId: nil, startedAt: now, station: stationName, bikeNumber: bikeNumber, bikeType: .unknown)
+    }
 }
 
 enum BikeAction { case book, unlock }
@@ -155,7 +159,7 @@ struct BikeActionSheet: View {
             }
             Haptics.result(outcome.ok)
             if outcome.ok {
-                if action == .book { model.booked(booking) } else { model.unlocked(bookingId: bookingId, tripId: ongoing?.first?.id) }
+                if action == .book { model.booked(booking) } else { model.unlocked(bookingId: bookingId, ride: place.ride(ongoing?.first)) }
                 dismiss()
             } else if !outcome.isUncertain {
                 refused = outcome
@@ -179,7 +183,7 @@ struct BikeActionSheet: View {
             case .unlock:
                 guard let trip = try? await model.service.tripCheck().ongoing?.first else { return }
                 model.operations.clear(key)
-                model.unlocked(bookingId: bookingId, tripId: trip.id)
+                model.unlocked(bookingId: bookingId, ride: place.ride(trip))
                 dismiss()
             }
         }

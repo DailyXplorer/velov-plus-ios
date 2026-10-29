@@ -35,12 +35,15 @@ struct BookingCountdown: View {
     }
 }
 
-struct ReservedPill: View {
+struct ActivityPill: View {
+    let icon: IconName
+    let text: String
+
     var body: some View {
         HStack(spacing: 6) {
-            Icon(.clock, .bold, size: 11).foregroundStyle(.white)
+            Icon(icon, .bold, size: 11).foregroundStyle(.white)
                 .frame(width: 20, height: 20).background(Circle().fill(ActivityStyle.red))
-            Text("Réservé").font(ActivityStyle.label(13)).tracking(0.26).textCase(.uppercase).foregroundStyle(ActivityStyle.ink)
+            Text(text).font(ActivityStyle.label(13)).tracking(0.26).textCase(.uppercase).foregroundStyle(ActivityStyle.ink)
         }
         .padding(.leading, 3).padding(.trailing, 10).padding(.vertical, 3)
         .background(Capsule().fill(.white))
@@ -55,7 +58,7 @@ struct BookingLockScreenView: View {
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
-                ReservedPill()
+                ActivityPill(icon: .clock, text: "Réservé")
                 Text(attributes.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
                 Text(attributes.stationName).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
             }

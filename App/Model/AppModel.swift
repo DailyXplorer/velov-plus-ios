@@ -44,7 +44,7 @@ enum SnapshotScreen: String {
     case overview, overviewMap, trips, tripSheet, rateCard, points, stations, stationSheet, stationSheetLong, bikeList, bikeSheet, account, accountEnd, accountEdit
     case bookingBanner, unlockConfirm, bookConfirm, unlockUncertain, liveActivityLock, liveActivityIsland, tripActivityLock, tripActivityIsland
     case tripEnded, tripEndedStars
-    case stats, statsCharts, statsTipFirst, statsTipLast, statsHeatmap, statsHeatTip, statsDonut, statsRecords, statsBike, statsEnd
+    case stats, statsCharts, statsTipFirst, statsTipMiddle, statsTipLast, statsHeatmap, statsHeatTip, statsDonut, statsRecords, statsBike, statsEnd
 
     var isLiveActivity: Bool { [.liveActivityLock, .liveActivityIsland, .tripActivityLock, .tripActivityIsland].contains(self) }
 
@@ -111,7 +111,7 @@ final class AppModel {
         operations = Operations(backing: operationBacking)
         switch snapshot {
         case .trips?, .tripSheet?, .rateCard?: page = .trips
-        case .stats?, .statsCharts?, .statsTipFirst?, .statsTipLast?, .statsHeatmap?, .statsHeatTip?, .statsDonut?, .statsRecords?, .statsBike?, .statsEnd?: page = .trips
+        case .stats?, .statsCharts?, .statsTipFirst?, .statsTipMiddle?, .statsTipLast?, .statsHeatmap?, .statsHeatTip?, .statsDonut?, .statsRecords?, .statsBike?, .statsEnd?: page = .trips
         case .points?: page = .points
         case .stations?, .stationSheet?, .stationSheetLong?, .bikeList?, .bikeSheet?, .bookConfirm?: page = .stations
         case .account?, .accountEnd?, .accountEdit?: page = .account

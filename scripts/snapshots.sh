@@ -51,6 +51,7 @@ shot tripEndedStars 18-trip-ended-stars 6
 shot stats 16a-stats 8
 shot statsCharts 16b-stats-charts 9
 shot statsTipFirst 16g-stats-tooltip-first 9
+shot statsTipMiddle 16k-stats-tooltip-middle 9
 shot statsTipLast 16h-stats-tooltip-last 9
 shot statsHeatmap 16c-stats-heatmap 9
 shot statsHeatTip 16i-stats-heatmap-tooltip 9

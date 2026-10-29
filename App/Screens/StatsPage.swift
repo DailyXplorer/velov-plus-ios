@@ -20,7 +20,7 @@ struct TripsStack: View {
 }
 
 extension SnapshotScreen {
-    var showsStats: Bool { [.stats, .statsCharts, .statsTipFirst, .statsTipLast, .statsHeatmap, .statsHeatTip, .statsDonut, .statsRecords, .statsBike, .statsEnd].contains(self) }
+    var showsStats: Bool { [.stats, .statsCharts, .statsTipFirst, .statsTipMiddle, .statsTipLast, .statsHeatmap, .statsHeatTip, .statsDonut, .statsRecords, .statsBike, .statsEnd].contains(self) }
 }
 
 struct StatsLink: View {
@@ -141,7 +141,7 @@ struct StatsPage: View {
             .toolbar(.hidden, for: .navigationBar)
             .task {
                 if let cached = model.statsCache.get(account) { state = .ready(cached) } else { await load() }
-                let anchors: [SnapshotScreen: String] = [.statsCharts: "panel-charts", .statsTipFirst: "panel-charts", .statsTipLast: "panel-charts", .statsHeatTip: "panel-heatmap", .statsDonut: "panel-donut", .statsHeatmap: "panel-heatmap", .statsRecords: "panel-records", .statsBike: "panel-records"]
+                let anchors: [SnapshotScreen: String] = [.statsCharts: "panel-charts", .statsTipFirst: "panel-charts", .statsTipMiddle: "panel-charts", .statsTipLast: "panel-charts", .statsHeatTip: "panel-heatmap", .statsDonut: "panel-donut", .statsHeatmap: "panel-heatmap", .statsRecords: "panel-records", .statsBike: "panel-records"]
                 guard let snapshot = model.snapshot, snapshot != .stats, snapshot.showsStats else { return }
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
                 if let anchor = anchors[snapshot] { proxy.scrollTo(anchor, anchor: .top) } else { position.scrollTo(edge: .bottom) }
@@ -157,8 +157,8 @@ struct StatsPage: View {
                     StatCard(icon: card.icon, label: card.label, value: card.value, unit: card.unit, detail: "—").skeleton()
                 }
             }
-            Panel(title: "Temps à vélo par mois", chart: true) { Skeleton(height: 220) }
-            Panel(title: "Horaires de départ", chart: true) { HeatmapSkeleton() }
+            Panel(title: "Temps à vélo par mois", chart: true, tips: true) { Skeleton(height: 220) }
+            Panel(title: "Horaires de départ", chart: true, tips: true) { HeatmapSkeleton() }
             Panel(title: "Répartition par type de vélo", chart: true) {
                 VStack(spacing: 20) {
                     Shimmer(radius: 76).frame(width: 152, height: 152).mask(Circle().strokeBorder(.black, lineWidth: 22)).accessibilityHidden(true)
@@ -228,8 +228,8 @@ struct StatsView: View {
             if data.trips == 0 {
                 EmptyState(stats.all.trips > 0 ? "Aucun trajet sur cette période." : "Vos statistiques apparaîtront après votre premier trajet.")
             } else {
-                Panel(title: data.unit == .day ? "Temps à vélo par jour" : "Temps à vélo par mois", chart: true, titleHidden: focus.isBucket) { MinutesChart(data: data, focus: $focus) }.id("panel-charts")
-                Panel(title: "Horaires de départ", chart: true, titleHidden: focus.isCell) { Heatmap(data: data, focus: $focus) }.id("panel-heatmap")
+                Panel(title: data.unit == .day ? "Temps à vélo par jour" : "Temps à vélo par mois", chart: true, tips: true) { MinutesChart(data: data, focus: $focus) }.id("panel-charts")
+                Panel(title: "Horaires de départ", chart: true, tips: true) { Heatmap(data: data, focus: $focus) }.id("panel-heatmap")
                 Panel(title: "Répartition par type de vélo", chart: true) { BikeTypes(data: data, focus: $focus) }.id("panel-donut")
                 Panel(title: "Records") { Records(records: data.records) }.id("panel-records")
                 if !data.stations.isEmpty { Panel(title: "Stations les plus utilisées") { Ranking(items: data.stations) } }
@@ -242,6 +242,7 @@ struct StatsView: View {
             let keys = stats[period].buckets.map(\.key)
             switch model.snapshot {
             case .statsTipFirst: focus = keys.first.map(ChartFocus.bucket)
+            case .statsTipMiddle: focus = keys.isEmpty ? nil : .bucket(keys[keys.count / 2])
             case .statsTipLast: focus = keys.last.map(ChartFocus.bucket)
             case .statsDonut: focus = .part("electrical")
             case .statsHeatTip:
@@ -296,25 +297,16 @@ private struct StatCard: View {
     }
 }
 
-extension EnvironmentValues {
-    @Entry var chartTipCeiling: CGFloat = 0
-}
-
 private struct Panel<Content: View>: View {
     let title: String
     var chart = false
-    var titleHidden = false
+    var tips = false
     @ViewBuilder let content: () -> Content
-    @State private var titleHeight: CGFloat = 0
 
     var body: some View {
-        let spacing: CGFloat = chart ? 34 : 18
-        VStack(alignment: .leading, spacing: spacing) {
+        VStack(alignment: .leading, spacing: tips ? 34 + tipBand : chart ? 34 : 18) {
             Text(title).typo(.title(19)).foregroundStyle(Palette.ink)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { titleHeight = $0 }
-                .opacity(titleHidden ? 0 : 1)
-                .animation(.easeOut(duration: 0.15), value: titleHidden)
-            content().environment(\.chartTipCeiling, titleHeight + spacing)
+            content()
         }
         .padding(.horizontal, 16).padding(.top, 18).padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -328,11 +320,8 @@ private enum ChartFocus: Equatable {
     case part(String)
 }
 
-extension Optional where Wrapped == ChartFocus {
-    fileprivate var isBucket: Bool { if case .bucket = self { true } else { false } }
-    fileprivate var isCell: Bool { if case .cell = self { true } else { false } }
-}
-
+private let tipBand: CGFloat = 40
+private let tipGap: CGFloat = 10
 
 private struct ChartTip: View {
     let title: String
@@ -343,7 +332,7 @@ private struct ChartTip: View {
             Text(detail).typo(.body(12)).foregroundStyle(Palette.inkSoft)
         }
         .padding(.horizontal, 11).padding(.vertical, 8)
-        .ringed(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .ringed(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -351,20 +340,24 @@ private struct ChartTip: View {
 private struct PlacedTip: View {
     let proxy: ChartProxy
     let x: CGFloat?
+    let y: CGFloat?
     let tip: ChartTip
-    @Environment(\.chartTipCeiling) private var ceiling
     @State private var size = CGSize.zero
 
     var body: some View {
         GeometryReader { geometry in
-            if let frame = proxy.plotFrame, let x {
+            if let frame = proxy.plotFrame, let x, let y {
                 let plot = geometry[frame]
                 let width = geometry.size.width
                 let left = min(max(0, plot.minX + x - size.width / 2), max(0, width - size.width))
+                let bottom = plot.minY - tipGap
+                Rectangle().fill(Palette.inkLine)
+                    .frame(width: 1, height: max(0, plot.minY + y - bottom))
+                    .offset(x: plot.minX + x - 0.5, y: bottom)
                 tip
                     .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
                     .frame(maxWidth: width, alignment: .leading)
-                    .offset(x: left, y: max(plot.minY - 6 - size.height, -ceiling))
+                    .offset(x: left, y: bottom - size.height)
                     .opacity(size == .zero ? 0 : 1)
             }
         }
@@ -424,7 +417,7 @@ private struct MinutesChart: View {
                     focus = key == nil || key == selected ? nil : key.map(ChartFocus.bucket)
                 }
                 if let selected, let bucket = buckets.first(where: { $0.key == selected }) {
-                    PlacedTip(proxy: proxy, x: proxy.position(forX: selected),
+                    PlacedTip(proxy: proxy, x: proxy.position(forX: selected), y: proxy.position(forY: bucket.minutes),
                               tip: ChartTip(title: capitalize(bucketLabel(data.unit, bucket.key)), detail: "\(hours(bucket.minutes)) en \(plural(bucket.trips, "trajet"))"))
                 }
             }
@@ -492,7 +485,7 @@ private struct Heatmap: View {
                     focus = selected.map { $0.day == cell.day && $0.hour == cell.hour } == true ? nil : .cell(day: cell.day, hour: cell.hour)
                 }
                 if let selected {
-                    PlacedTip(proxy: proxy, x: proxy.position(forX: Double(selected.hour) + 0.5),
+                    PlacedTip(proxy: proxy, x: proxy.position(forX: Double(selected.hour) + 0.5), y: proxy.position(forY: 7.0),
                               tip: ChartTip(title: "\(weekdays[selected.day]), de \(selected.hour) h à \(selected.hour + 1) h", detail: plural(rows[selected.day][selected.hour], "départ")))
                 }
             }

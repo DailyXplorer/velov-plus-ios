@@ -222,9 +222,10 @@ public func assembleDashboard(_ parts: DashboardParts, warnings: [String], now: 
     if let list = parts.subscriptions?.array {
         if let current = currentSubscription(list) {
             let period = current["periods"]?.array?.last
+            let renewal = renewalState(of: current)
             subscription = .current(Subscription(id: current["id"]?.string, title: titleOf(current, period: period, offers: offers), type: current["type"]?.string ?? "",
                                                  validUntil: cyclocityDate(period?["validityEnd"]?.string), active: current["isLocked"]?.bool != true,
-                                                 autoRenewal: period?["renewalDetails"]?["autoRenewalValue"]?.bool))
+                                                 autoRenewal: renewal.autoRenewal, autoRenewalAllowed: renewal.allowed))
         } else {
             subscription = .none
         }

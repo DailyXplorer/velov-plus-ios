@@ -96,8 +96,11 @@ public struct Subscription: Equatable, Sendable {
     public var validUntil: Date?
     public var active: Bool
     public var autoRenewal: Bool?
-    public init(id: String?, title: String, type: String, validUntil: Date?, active: Bool, autoRenewal: Bool?) {
+    /// `renewalDetails.autoRenewalBtn` of an unlocked subscription: Vélo’v lets the app change the renewal. Absent means no.
+    public var autoRenewalAllowed: Bool
+    public init(id: String?, title: String, type: String, validUntil: Date?, active: Bool, autoRenewal: Bool?, autoRenewalAllowed: Bool = false) {
         self.id = id; self.title = title; self.type = type; self.validUntil = validUntil; self.active = active; self.autoRenewal = autoRenewal
+        self.autoRenewalAllowed = autoRenewalAllowed
     }
 }
 

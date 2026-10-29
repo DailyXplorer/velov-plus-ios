@@ -2,7 +2,7 @@ import Foundation
 
 // State-changing Cyclocity calls. Each one goes out EXACTLY ONCE per user confirmation: never through `ReadClient`,
 // never retried, whatever the answer (a lost answer may hide a booking or a release that went through).
-// The app does not call them in stage 1.
+// The experimental ones (renewal, extra time, mail, invitation code) are in `ExperimentalWrites.swift`.
 
 /// The tokens a write needs: the account, the app token and the user's access token.
 public struct WriteAuth: Sendable {
@@ -27,7 +27,7 @@ struct ErrorReply {
     }
 }
 
-private func accountURL(_ accountId: String) -> String { "\(Cyclocity.base)/accounts/\(pathSegment(accountId))" }
+func accountURL(_ accountId: String) -> String { "\(Cyclocity.base)/accounts/\(pathSegment(accountId))" }
 
 private func networkFailure(_ error: Error) -> String {
     (error as? URLError)?.code == .timedOut ? "TimeoutError" : String(describing: type(of: error))
@@ -100,8 +100,10 @@ public enum Writes {
         return (outcome, outcome.ok ? reply.value.flatMap(RawBooking.init) : nil)
     }
 
-    /// One call that changes the account, exactly once.
-    static func accountCall(_ url: URL, method: String, headers: [String: String], body: Data?, auth: WriteAuth, failed: String, http: HTTPTransport) async throws -> (outcome: Outcome, value: JSON?) {
+    /// One call that changes the account, exactly once: whatever happens, it is never sent again without a new confirmation.
+    /// With `preserveUnauthorized` a 401 comes back as an outcome (experimental writes keep their raw answer) instead of ending the session.
+    static func accountCall(_ url: URL, method: String, headers: [String: String], body: Data?, auth: WriteAuth, failed: String, http: HTTPTransport,
+                            preserveUnauthorized: Bool = false) async throws -> (outcome: Outcome, value: JSON?) {
         let response: HTTPResponse
         do {
             var all = headers
@@ -113,7 +115,7 @@ public enum Writes {
             outcome.detail = networkFailure(error)
             return (outcome, nil)
         }
-        if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
+        if response.status == 401 && !preserveUnauthorized { throw VelovError(.expired, Messages.sessionToRenew) }
         let reply = ErrorReply(response)
         return (accountOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail, failed: failed), response.ok ? reply.value : nil)
     }
@@ -146,5 +148,14 @@ public enum Writes {
         }
         let name = (value?["filename"]?.string ?? "").filter { $0.isASCII && ($0.isLetter || $0.isNumber || "_.-".contains($0)) }
         return (outcome, name.isEmpty ? "recu-\(periodId).pdf" : name, bytes)
+    }
+
+    /// PATCH /accounts/{id} with only the changed fields, in the order of the body the app sends.
+    public static func setProfile(_ auth: WriteAuth, _ body: ProfileBody, http: HTTPTransport) async throws -> Outcome {
+        let body = body.trimmedForSending
+        let address = body.address.map { orderedJSON([("name", $0.name), ("complement", $0.complement)]) }
+        let pairs: [(String, Any?)] = [("country", body.country), ("zipCode", body.zipCode), ("city", body.city), ("phoneNumber", body.phoneNumber), ("address", address)]
+        return try await accountCall(URL(string: accountURL(auth.accountId))!, method: "PATCH", headers: ["Content-Type": "application/vnd.account.v4+json"],
+                                     body: orderedJSON(pairs.filter { $0.1 != nil }), auth: auth, failed: "Vélo’v n’a pas enregistré ces coordonnées.", http: http).outcome
     }
 }

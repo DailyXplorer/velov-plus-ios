@@ -62,9 +62,22 @@ public struct LoginForm: Equatable, Sendable {
     }
 }
 
-func pageMentionsOtherDevice(_ html: String) -> Bool {
-    let text = HTML.text(html).lowercased(with: Locale(identifier: "fr_FR"))
-    return text.contains("autre appareil") || text.contains("another device")
+/// The refusal the identity provider wrote on a page, as is: its feedback message, else the text of a short page.
+/// Nothing is inferred from the wording (the one-device rule is not confirmed).
+func serverRefusal(_ html: String) -> String? {
+    let collapse = { (text: String) in text.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
+    let page = Substring(html)
+    for tag in HTML.tags("[a-z]+[0-9]?", in: page) {
+        let classes = (tag.attributes["class"] ?? "").split(separator: " ")
+        guard classes.contains(where: { $0 == "kc-feedback-text" || $0 == "alert-error" }) || tag.attributes["id"] == "input-error" else { continue }
+        let name = page[tag.range].dropFirst().prefix { $0.isLetter || $0.isNumber }
+        let rest = page[tag.range.upperBound...]
+        let end = rest.range(of: "</\(name)", options: .caseInsensitive)?.lowerBound ?? rest.endIndex
+        let text = collapse(HTML.text(String(rest[..<end])))
+        if !text.isEmpty { return text }
+    }
+    let text = collapse(HTML.text(html))
+    return text.isEmpty || text.count > 300 ? nil : text
 }
 
 /// Only pages of the Vélo’v realm may receive the credentials or the device id.
@@ -80,10 +93,10 @@ public func readForm(_ html: String, id: String) throws -> LoginForm {
     let page = Substring(html)
     let forms = HTML.tags("form", in: page).filter { $0.attributes["id"] == id }
     guard forms.count == 1, let action = forms[0].attributes["action"], !action.isEmpty else {
-        if pageMentionsOtherDevice(html) { throw VelovError(.device, Messages.otherDevice) }
         if id == "vls-form-device-id", HTML.tags("[a-z]+", in: page).contains(where: { $0.attributes["id"] == "kc-form-login" }) {
             throw VelovError(.credentials, Messages.credentials)
         }
+        if let message = serverRefusal(html) { throw VelovError(.refused, message) }
         throw VelovError(.protocol, "La connexion demande une étape supplémentaire. Réessayez depuis le service officiel.")
     }
     let start = forms[0].range.upperBound

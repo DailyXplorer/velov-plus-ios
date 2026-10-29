@@ -41,8 +41,8 @@ public enum Messages {
     public static let sessionRefused = "Vélo’v n’a pas reconnu votre session. Reconnectez-vous puis réessayez."
     public static let sessionToRenew = "Votre session doit être renouvelée. Reconnectez-vous pour continuer."
     public static let sessionExpired = "Votre session a expiré. Reconnectez-vous pour continuer."
-    /// Vélo’v allows one connected device per account.
-    public static let otherDevice = "Votre compte est déjà connecté ailleurs (site ou autre appareil). Déconnectez-vous-y puis réessayez."
+    /// A login refusal whose page carries no readable message. Otherwise the server's own words are shown.
+    public static let loginRefused = "Vélo’v a refusé la connexion."
     public static let credentials = "L’email ou le code secret n’a pas été reconnu."
     public static let remoteLogoutUnconfirmed = "Déconnecté ici, mais Vélo’v n’a pas confirmé la fin de session."
     public static let missing = "Indisponible pour le moment"

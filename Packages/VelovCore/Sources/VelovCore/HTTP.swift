@@ -17,7 +17,8 @@ public enum Cyclocity {
 }
 
 public struct VelovError: Error, Equatable, Sendable, LocalizedError {
-    public enum Code: String, Sendable { case credentials, device, expired, unavailable, `protocol`, origin }
+    /// `refused`: the identity provider refused the login with its own message, shown as is.
+    public enum Code: String, Sendable { case credentials, refused, expired, unavailable, `protocol`, origin }
     public let code: Code
     public let message: String
     /// The identity provider refused the refresh token itself: only this ends the session on the phone.

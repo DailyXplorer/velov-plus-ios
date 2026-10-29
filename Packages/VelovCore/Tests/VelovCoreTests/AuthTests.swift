@@ -101,10 +101,19 @@ final class AuthTests: XCTestCase {
         }
     }
 
-    func testAnotherDeviceRefusalShowsTheOneDeviceMessage() {
+    func testARefusalPageShowsTheServersOwnMessageWithoutAssumingOneDevice() {
         XCTAssertThrowsError(try readForm("<p>Ce compte est déjà en cours d&#39;utilisation sur un <b>autre appareil</b></p>", id: "vls-form-device-id")) {
-            XCTAssertEqual(($0 as? VelovError)?.code, .device)
-            XCTAssertEqual(($0 as? VelovError)?.message, "Votre compte est déjà connecté ailleurs (site ou autre appareil). Déconnectez-vous-y puis réessayez.")
+            XCTAssertEqual(($0 as? VelovError)?.code, .refused)
+            XCTAssertEqual(($0 as? VelovError)?.message, "Ce compte est déjà en cours d'utilisation sur un autre appareil")
+        }
+        let keycloak = "<html><head><title>Vélo’v</title><script>var x = 1;</script></head><body>" + String(repeating: "<div class=\"layout\">menu</div>", count: 60)
+            + "<div class=\"alert alert-error\"><span class=\"pf-icon\"></span><span class=\"kc-feedback-text\">Session  expirée,\n veuillez recommencer.</span></div></body></html>"
+        XCTAssertThrowsError(try readForm(keycloak, id: "kc-form-login")) {
+            XCTAssertEqual(($0 as? VelovError)?.code, .refused)
+            XCTAssertEqual(($0 as? VelovError)?.message, "Session expirée, veuillez recommencer.")
+        }
+        XCTAssertThrowsError(try readForm("<html><body>" + String(repeating: "<p>texte</p>", count: 80) + "</body></html>", id: "kc-form-login")) {
+            XCTAssertEqual(($0 as? VelovError)?.code, .protocol)
         }
     }
 
@@ -167,14 +176,21 @@ final class AuthTests: XCTestCase {
         catch { XCTAssertEqual((error as? VelovError)?.code, .protocol) }
     }
 
-    func testTheOtherDeviceRefusalIsShownAndTheLoginIsNotRetried() async {
-        let server = realm(TestSigner(), deviceReply: .status(400, body: "<p>Ce compte est déjà en cours d’utilisation sur un autre appareil</p>"))
-        do { _ = try await login(email: "person@example.com", code: "123456", deviceId: "device-0123456789abcdef", http: server.transport); XCTFail("no error") }
-        catch {
-            XCTAssertEqual((error as? VelovError)?.code, .device)
-            XCTAssertEqual((error as? VelovError)?.message, Messages.otherDevice)
+    func testARefusedDeviceStepShowsTheServersMessageAndTheLoginIsNotRetried() async {
+        for (body, message) in [("<p>Ce compte est déjà en cours d’utilisation sur un autre appareil</p>", "Ce compte est déjà en cours d’utilisation sur un autre appareil"),
+                                ("", Messages.loginRefused)] {
+            let server = realm(TestSigner(), deviceReply: .status(400, body: body))
+            do { _ = try await login(email: "person@example.com", code: "123456", deviceId: "device-0123456789abcdef", http: server.transport); XCTFail("no error") }
+            catch {
+                XCTAssertEqual((error as? VelovError)?.code, .refused)
+                XCTAssertEqual((error as? VelovError)?.message, message)
+            }
+            XCTAssertEqual(server.calls.count, 3)
         }
-        XCTAssertEqual(server.calls.count, 3)
+        let down = realm(TestSigner(), deviceReply: .status(503, body: "<p>Service Unavailable</p>"))
+        do { _ = try await login(email: "person@example.com", code: "123456", deviceId: "device-0123456789abcdef", http: down.transport); XCTFail("no error") }
+        catch { XCTAssertEqual((error as? VelovError)?.code, .unavailable) }
+        XCTAssertEqual(down.calls.count, 3)
     }
 
     func testASessionRenewsWithItsRefreshTokenAndWithoutAPassword() async throws {

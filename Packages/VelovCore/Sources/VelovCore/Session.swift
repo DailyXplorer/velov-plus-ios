@@ -53,7 +53,7 @@ public enum DeviceIdentity {
     static let key = "device_id"
 
     /// The id the account is linked with: created once, kept across logouts, never regenerated.
-    /// Vélo’v allows one connected device per account, so a new id would look like another phone.
+    /// Keycloak links the session to this id; a new one would look like another phone to Vélo’v.
     public static func stable(in store: SecureStore) -> String {
         if let data = store.read(key), let value = String(data: data, encoding: .utf8), value.wholeMatch(of: /[a-zA-Z0-9-]{16,80}/) != nil {
             return value

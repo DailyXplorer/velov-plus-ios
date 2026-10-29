@@ -102,7 +102,7 @@ final class LoginTransport {
             }
             let html = response.text
             if !response.ok {
-                if pageMentionsOtherDevice(html) { throw VelovError(.device, Messages.otherDevice) }
+                if (400..<500).contains(response.status) { throw VelovError(.refused, serverRefusal(html) ?? Messages.loginRefused) }
                 throw VelovError(.unavailable, "Vélo’v ne peut pas vous connecter pour le moment. Réessayez dans un instant.")
             }
             return .page(html)

@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Free Hugeicons (stroke-rounded, MIT), drawn from `Icons.xcassets` in the app and the widget extension.
-/// Each raw value is the Hugeicons name in kebab case: `scripts/fetch-assets.py` reads this table to build the assets.
 enum IconName: String {
     case house = "home-03"
     case personSimpleBike = "bike"
@@ -47,7 +45,6 @@ enum IconName: String {
     case envelopeSimple = "mail-01"
 }
 
-/// Stroke width 1.5 (light) or 2 (bold); `fill` exists for `star` and `starHalf` only.
 enum IconWeight { case light, bold, fill }
 
 struct Icon: View {

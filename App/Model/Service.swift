@@ -1,8 +1,6 @@
 import Foundation
 import VelovCore
 
-/// What the screens read and write. The live service talks to Cyclocity; the sample one serves fixtures for snapshots and previews.
-/// Every write goes out once per call: the screens call it once per confirmation.
 protocol VelovService: Sendable {
     func hasSession() async -> Bool
     func signIn(email: String, code: String) async throws
@@ -12,7 +10,6 @@ protocol VelovService: Sendable {
     func stationBikes(_ station: Int) async throws -> [Bike]
     func bike(_ number: Int) async throws -> Bike?
     func bookings() async throws -> [Booking]
-    /// The Statistiques page: the whole history read page after page (GETs only), kept 10 minutes.
     func stats() async throws -> Stats
 
     func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?)
@@ -29,7 +26,6 @@ protocol VelovService: Sendable {
     func consumePromoCode(expectedCost: Int) async throws -> PromoResult
 }
 
-/// Cyclocity directly: tokens in the Keychain, reads with the shared app token, writes once each.
 final class LiveService: VelovService {
     private let api: VelovAPI
     private let session: SessionManager
@@ -76,8 +72,6 @@ final class LiveService: VelovService {
     func consumePromoCode(expectedCost: Int) async throws -> PromoResult { try await api.consumePromoCode(try await identity(), expectedCost: expectedCost) }
 }
 
-/// A thrown write (expired session, an account read before the write) shown like a refusal: message, then the raw line.
-/// Vélo’v errors are thrown on the phone before the write goes out, so they are sure refusals (`local.`); anything else may hide a write.
 func attempt(_ run: () async throws -> Outcome) async -> Outcome {
     do {
         return try await run()

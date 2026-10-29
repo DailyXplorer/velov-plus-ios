@@ -1,7 +1,6 @@
 import Foundation
 import VelovCore
 
-/// Fictional account data around public Lyon stations, for snapshots and previews only.
 enum SampleData {
     static let now = Date()
     static func ago(_ hours: Double) -> Date { now.addingTimeInterval(-hours * 3600) }
@@ -41,7 +40,6 @@ enum SampleData {
     ]
 
     static let dashboard = Dashboard(
-        // Vélo’v stores names in lower case; the app shows them with `formatName`.
         profile: Profile(firstName: "camille", lastName: "martin", email: "camille@example.com", locked: false, complete: true,
                          phoneNumber: "+33600000000", address: "1 place de l’Exemple", addressComplement: nil, zipCode: "69002", city: "Lyon", country: "FR", favorites: [2002, 3001]),
         rewards: Rewards(balance: 85, total: 1240, autoSpend: true, movements: [
@@ -63,7 +61,6 @@ enum SampleData {
         ],
         trips: trips, ongoing: [], bookings: 0, updatedAt: now, warnings: [])
 
-    /// A booking of a sample bike at Bellecour, `minutesLeft` from now.
     static func booking(bike: Int = 20449, minutesLeft: Double = 12.6) -> Booking {
         let station = byNumber[2002]!
         return Booking(id: "bk-sample", stationNumber: station.number, stationName: station.name, standNumber: 2, bikeNumber: bike,
@@ -82,9 +79,7 @@ enum SampleData {
 }
 
 struct SampleService: VelovService {
-    /// The booking the snapshot screens show; none elsewhere.
     var booking: Booking?
-    /// The unlock answer is lost, as the uncertain snapshot shows it.
     var failUnlock = false
 
     func hasSession() async -> Bool { true }
@@ -96,7 +91,6 @@ struct SampleService: VelovService {
     func bike(_ number: Int) async throws -> Bike? { SampleData.bikes.first { $0.number == number } ?? SampleData.bikes[0] }
     func bookings() async throws -> [Booking] { booking.map { [$0] } ?? [] }
 
-    // Writes answer at once with what Vélo’v would: nothing leaves the device.
     func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?) {
         (Outcome(ok: true, httpStatus: 200), SampleData.booking(bike: bikeNumber, minutesLeft: 15))
     }

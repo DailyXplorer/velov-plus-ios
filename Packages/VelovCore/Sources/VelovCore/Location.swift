@@ -1,13 +1,11 @@
 import Foundation
 
-/// The location permission as CoreLocation names it, without importing CoreLocation.
 public enum LocationAuth: String, Sendable {
     case notDetermined, restricted, denied, authorizedAlways, authorizedWhenInUse
 
     public var allowed: Bool { self == .authorizedWhenInUse || self == .authorizedAlways }
 }
 
-/// Why a position request ended without a fix.
 public enum LocationFailure: Equatable, Sendable {
     case servicesOff, denied, timedOut, unavailable
 
@@ -21,38 +19,30 @@ public enum LocationFailure: Equatable, Sendable {
     }
 }
 
-/// « CLError 0 · auth denied · services on », under a location failure.
 public func locationRawLine(errorCode: Int?, auth: LocationAuth, servicesEnabled: Bool) -> String {
     "CLError \(errorCode.map(String.init) ?? "—") · auth \(auth.rawValue) · services \(servicesEnabled ? "on" : "off")"
 }
 
-/// The `CLError.Code` raw values the request tells apart.
 public enum LocationErrorCode {
-    /// CoreLocation is still trying: the timeout decides.
     public static let locationUnknown = 0
     public static let denied = 1
 }
 
-/// One position request: the permission prompt first if needed, then a fix within a timeout armed only once the
-/// location is allowed. Each event returns what the CoreLocation shell must do next.
 public struct LocationRequest<Fix> {
     public enum Phase: Equatable, Sendable { case idle, awaitingPermission, locating }
 
     public enum Effect {
         case requestPermission
-        /// Ask for one fix and arm the timeout.
         case requestLocation
         case succeed(Fix)
         case fail(LocationFailure)
     }
 
     public private(set) var phase = Phase.idle
-    /// The last CLError code seen during this request, for the raw line.
     public private(set) var errorCode: Int?
 
     public init() {}
 
-    /// Nil while a request already runs: the caller joins it.
     public mutating func start(servicesEnabled: Bool, auth: LocationAuth) -> Effect? {
         guard phase == .idle else { return nil }
         errorCode = nil
@@ -89,12 +79,10 @@ public struct LocationRequest<Fix> {
         }
     }
 
-    /// Any fix counts, an approximate one (reduced accuracy) included.
     public mutating func located(_ fix: Fix) -> Effect? {
         phase == .idle ? nil : end(.succeed(fix))
     }
 
-    /// Only a timeout armed by `requestLocation` can fire; one left over from an ended request does nothing.
     public mutating func timedOut() -> Effect? {
         phase == .locating ? end(.fail(.timedOut)) : nil
     }

@@ -2,7 +2,6 @@ import CoreText
 import SwiftUI
 import UIKit
 
-/// app/globals.css, light mode only.
 enum Palette {
     static let red = Color(hex: 0xdf2537)
     static let redDeep = Color(hex: 0xc91f30)
@@ -28,11 +27,9 @@ extension Color {
     }
 }
 
-/// The two bundled families: Faculty Glyphic (titles, big numbers), DM Sans (everything else).
 enum FontBook {
     private static var names: [String: String] = [:]
 
-    /// Registers the bundled .ttf files once, keyed by file name.
     static func register() {
         guard names.isEmpty else { return }
         for url in Bundle.main.urls(forResourcesWithExtension: "ttf", subdirectory: nil) ?? [] {
@@ -43,10 +40,9 @@ enum FontBook {
         }
     }
 
-    private static let weightAxis = 0x77676874 // 'wght'
-    private static let opticalAxis = 0x6f70737a // 'opsz'
+    private static let weightAxis = 0x77676874
+    private static let opticalAxis = 0x6f70737a
 
-    /// A variable font at a given weight (and DM Sans' optical size, which the browser sets to the font size).
     private static var cache: [String: Font] = [:]
 
     static func font(_ file: String, size: CGFloat, weight: CGFloat? = nil, optical: Bool = false) -> Font {
@@ -69,15 +65,10 @@ enum FontBook {
     }
 }
 
-/// The type roles of globals.css, with their letter-spacing.
 enum Typo {
-    /// Faculty Glyphic 400, -0.03em.
     case title(CGFloat)
-    /// DM Sans, -0.02em.
     case body(CGFloat, medium: Bool = false)
-    /// DM Sans 500 as written, -0.02em: buttons, tags, labels, chart axes.
     case label(CGFloat)
-    /// Faculty Glyphic, tabular digits, -0.02em: the booking countdown, so it does not jump.
     case countdown(CGFloat)
 
     var font: Font {

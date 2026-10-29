@@ -1,11 +1,7 @@
 import Foundation
 
-// lib/stats.ts: trip statistics, a pure aggregation of the whole history.
-
 public enum StatsRules {
-    /// Vélo’v gives no distance: the straight line between the two stations, lengthened for the streets.
     public static let detourFactor = 1.3
-    /// Order of magnitude for a petrol car in town, in grams of CO₂ per km.
     public static let co2GramsPerKm = 200.0
     public static let maxPages = 50
     static let top = 5
@@ -18,7 +14,6 @@ public enum StatsPeriod: String, CaseIterable, Sendable, Hashable {
 }
 
 public struct StatsBucket: Equatable, Sendable {
-    /// "2026-10-29" or "2026-10".
     public var key: String
     public var minutes: Int
     public var trips: Int
@@ -31,7 +26,6 @@ public struct StationCount: Equatable, Sendable {
 }
 
 public struct DistanceEstimate: Equatable, Sendable {
-    /// Summed over the `known` trips, those whose two stations are known.
     public var metres: Double
     public var known: Int
 }
@@ -46,7 +40,6 @@ public struct StatsRecords: Equatable, Sendable {
     public var longestMinutes: Int?
     public var busiestDayTrips: Int?
     public var streakDays: Int?
-    /// The most ridden bike's number.
     public var bike: Int?
 }
 
@@ -62,10 +55,8 @@ public struct PeriodStats: Equatable, Sendable {
     public var pointsEarned: Double
     public var unit: Unit
     public var buckets: [StatsBucket]
-    /// Seven rows, Monday first, of 24 hours (Paris time).
     public var heatmap: [[Int]]
     public var bikeTypes: BikeTypeCounts
-    /// Departures and arrivals together.
     public var stations: [StationCount]
     public var records: StatsRecords
 }
@@ -74,7 +65,6 @@ public struct Stats: Equatable, Sendable {
     public var days30: PeriodStats
     public var months12: PeriodStats
     public var all: PeriodStats
-    /// Today's points balance, else the sum of the movements; nil when neither could be read.
     public var balance: Double?
 
     public subscript(period: StatsPeriod) -> PeriodStats {
@@ -86,7 +76,6 @@ public struct Stats: Equatable, Sendable {
     }
 }
 
-/// A dated points movement: earned positive, spent negative.
 public struct StatsMovement: Equatable, Sendable {
     public var date: Date?
     public var amount: Double
@@ -104,8 +93,6 @@ public struct StatsInput: Sendable {
     }
 }
 
-/// Reads a paged list once, page after page: stops at the first empty page, at a page that brings nothing new
-/// (a server that ignores `page` repeats itself), or after `maxPages`. A failure after the first page keeps what was read.
 public func collectPages<T>(maxPages: Int = StatsRules.maxPages, id: (T) -> String, _ fetchPage: (Int) async throws -> [T]) async throws -> (items: [T], complete: Bool) {
     var items: [T] = []
     var seen = Set<String>()
@@ -122,7 +109,6 @@ public func collectPages<T>(maxPages: Int = StatsRules.maxPages, id: (T) -> Stri
     return (items, false)
 }
 
-/// Metres: nil without both stations or their coordinates, 0 for a loop back to the same station.
 public func estimateDistance(_ trip: Trip, coords: [Int: GeoPoint]) -> Double? {
     guard let start = trip.startStationNumber, let end = trip.endStationNumber else { return nil }
     if start == end { return 0 }
@@ -143,16 +129,12 @@ private let parisCalendar = calendar(paris)
 private let utcCalendar = calendar(TimeZone(identifier: "UTC")!)
 
 public struct ParisTime: Equatable, Sendable {
-    /// "2026-10-29".
     public var day: String
-    /// "2026-10".
     public var month: String
     public var hour: Int
-    /// Monday 0.
     public var weekday: Int
 }
 
-/// Calendar day, month, hour and weekday (Monday 0) in Lyon.
 public func parisTime(_ date: Date) -> ParisTime {
     let parts = parisCalendar.dateComponents([.year, .month, .day, .hour, .weekday], from: date)
     let month = String(format: "%04d-%02d", parts.year!, parts.month!)
@@ -189,7 +171,6 @@ private func range(_ first: String, _ last: String, _ next: (String) -> String) 
 
 private func present(_ text: String?) -> Bool { !(text ?? "").isEmpty }
 
-/// Every departure and arrival, most used first, ties by name so the order is stable.
 private func favouriteStations(_ trips: [Trip]) -> [StationCount] {
     var order: [String] = []
     var tally: [String: StationCount] = [:]
@@ -208,7 +189,6 @@ private func favouriteStations(_ trips: [Trip]) -> [StationCount] {
     }.map(\.station).prefix(StatsRules.top))
 }
 
-/// Longest run of consecutive days, nil without any day.
 private func longestStreak(_ days: [String]) -> Int? {
     var best = 0
     var current = 0
@@ -269,7 +249,6 @@ public func periodStats(_ period: StatsPeriod, _ input: StatsInput) -> PeriodSta
         bike.last = max(bike.last, trip.startedAt ?? .distantPast)
         bikes[number] = bike
     }
-    // The most ridden, then the one ridden last; on a full tie the first met, like the web's stable sort.
     let bike = bikeOrder.max { (left: Int, right: Int) -> Bool in
         let a = bikes[left]!, b = bikes[right]!
         if a.count != b.count { return a.count < b.count }

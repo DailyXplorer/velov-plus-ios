@@ -1,5 +1,3 @@
-// Draws the 1024 pt app icon: the brand red with "Vélo’v" in Faculty Glyphic, like the login title.
-// Run: swift scripts/make-icon.swift (after scripts/fetch-assets.py).
 import AppKit
 import CoreText
 
@@ -13,7 +11,6 @@ let size = 1024
 let context = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
 context.setFillColor(CGColor(srgbRed: 0xdf / 255, green: 0x25 / 255, blue: 0x37 / 255, alpha: 1))
 context.fill(CGRect(x: 0, y: 0, width: size, height: size))
-// White dots fading toward the top, like the summary cards.
 for x in stride(from: 16, to: size, by: 32) {
     for y in stride(from: 16, to: size / 2, by: 32) {
         context.setFillColor(CGColor(gray: 1, alpha: 0.22 * (1 - Double(y) / Double(size / 2))))

@@ -34,13 +34,10 @@ public struct Trip: Equatable, Sendable, Identifiable {
     public var endStationNumber: Int?
     public var startStand: Int?
     public var endStand: Int?
-    /// Metres, straight line between the two stations.
     public var distance: Int?
     public var bikeNumber: Int?
     public var bikeType: BikeType
-    /// Minutes.
     public var duration: Double?
-    /// Cents actually paid.
     public var price: Double?
     public var fullPrice: Double?
     public var discount: Double
@@ -78,7 +75,6 @@ public struct RewardRule: Equatable, Sendable {
 }
 
 public struct Rewards: Equatable, Sendable {
-    /// nil: Vélo’v did not answer that read, the page says so instead of showing a default.
     public var balance: Double?
     public var total: Double?
     public var autoSpend: Bool?
@@ -96,7 +92,6 @@ public struct Subscription: Equatable, Sendable {
     public var validUntil: Date?
     public var active: Bool
     public var autoRenewal: Bool?
-    /// `renewalDetails.autoRenewalBtn` of an unlocked subscription: Vélo’v lets the app change the renewal. Absent means no.
     public var autoRenewalAllowed: Bool
     public init(id: String?, title: String, type: String, validUntil: Date?, active: Bool, autoRenewal: Bool?, autoRenewalAllowed: Bool = false) {
         self.id = id; self.title = title; self.type = type; self.validUntil = validUntil; self.active = active; self.autoRenewal = autoRenewal
@@ -104,7 +99,6 @@ public struct Subscription: Equatable, Sendable {
     }
 }
 
-/// The current subscription, none at all, or a read that failed.
 public enum SubscriptionState: Equatable, Sendable {
     case unavailable
     case none
@@ -116,7 +110,6 @@ public enum SubscriptionState: Equatable, Sendable {
     }
 }
 
-/// One paid period of a subscription, whose receipt Vélo’v renders as a PDF.
 public struct Receipt: Equatable, Sendable, Identifiable {
     public var subscriptionId: String
     public var periodId: String
@@ -177,7 +170,6 @@ public struct StationData: Equatable, Sendable {
 public struct Bike: Equatable, Sendable, Identifiable {
     public enum Kind: String, Sendable { case mechanical, electrical, other }
     public struct Rating: Equatable, Sendable {
-        /// Out of 100.
         public var value: Double
         public var count: Int
         public var lastAt: Date?
@@ -222,7 +214,6 @@ public struct Booking: Equatable, Sendable, Identifiable {
     }
 }
 
-/// What Vélo’v answered to a state-changing call, raw fields kept for debugging. httpStatus 0: no answer at all.
 public struct Outcome: Equatable, Sendable {
     public var ok: Bool
     public var httpStatus: Int
@@ -238,12 +229,8 @@ public struct Outcome: Equatable, Sendable {
         Outcome(ok: false, httpStatus: 0, code: code, message: message)
     }
 
-    /// Release states after which the bike surely stayed locked (§ 5.6). Not TIME_OUT: the borne may have opened without answering.
     private static let failedStates: Set<String> = ["NOK", "ABORT", "NOT_CONNECTED"]
 
-    /// outcome.ts `isUncertain`: whether a failed state-changing call may still have gone through, so the same sheet must not offer it again.
-    /// Sure refusals: stopped on the phone before sending (no HTTP status, a `local.` code), a 4xx carrying an error code, a definite failure state.
-    /// Anything else is uncertain: no answer, a timeout, a 5xx or a gateway page, a 2xx that could not be read, a 4xx without a code.
     public var isUncertain: Bool {
         if ok { return false }
         if let transactionState, Self.failedStates.contains(transactionState), httpStatus < 500 { return false }
@@ -252,12 +239,10 @@ public struct Outcome: Equatable, Sendable {
     }
 }
 
-/// Vélo’v keeps three levels: recommended (100), or not with 60 for a minor problem and 30 for a serious one.
 public enum RateVote: Equatable, Sendable {
     case recommend
     case warn(Int)
 
-    /// nil for a combination the official app never sends.
     public static func make(recommended: Bool, rating: Int?) -> RateVote? {
         if recommended { return rating == nil ? .recommend : nil }
         guard let rating, rating == 30 || rating == 60 else { return nil }
@@ -272,15 +257,11 @@ public enum RateVote: Equatable, Sendable {
 }
 
 public enum Rules {
-    /// A booking holds a bike for 15 minutes and costs 10 points; the server never checks where the user stands, the app keeps 200 m.
     public static let bookingMinutes = 15
     public static let bookingPoints = 10
     public static let releaseDistance = 200.0
-    /// Vélo’v caps the address at 38 characters.
     public static let addressMax = 38
-    /// First and last names, as the web form caps them.
     public static let nameMax = 50
-    /// The official app offers the rating for 3 hours after the trip ends.
     public static let ratingWindow: TimeInterval = 3 * 3600
 }
 
@@ -289,7 +270,6 @@ public func canRate(_ trip: Trip, now: Date = Date()) -> Bool {
     return trip.status == "FINISHED" && trip.bikeNumber != nil && trip.isRated == false && now.timeIntervalSince(ended) < Rules.ratingWindow
 }
 
-/// "06 12 34 56 78" in France -> "+33612345678"; "0041 79…" -> "+4179…". Anything else is kept as typed, without separators.
 public func normalizePhone(_ raw: String, country: String?) -> String {
     let compact = raw.filter { !" \t\n.()-".contains($0) && !$0.isWhitespace }
     if compact.hasPrefix("00") { return "+" + compact.dropFirst(2) }

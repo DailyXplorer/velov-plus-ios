@@ -1,9 +1,5 @@
 import Foundation
 
-// Cyclocity answers -> app models. Required fields that have the wrong shape make the read fail (a zod `parse`),
-// the newer optional ones degrade to nil (`lenient`).
-
-/// A trip as Cyclocity sends it, with the same required and lenient fields as the web client's `rawTrip`.
 public struct RawTrip: Sendable {
     let id: String
     let status: String?
@@ -59,7 +55,6 @@ public struct RawTrip: Sendable {
     }
 }
 
-/// `Number(value)` that is a safe integer, for a non-blank value.
 private func stationNumber(_ value: JSON?) -> Int? {
     switch value {
     case .number(let number)?:
@@ -107,7 +102,6 @@ public func normalizeTrip(_ value: RawTrip, stations: [Int: Station]) -> Trip {
     )
 }
 
-/// A bike as Cyclocity sends it; only `number` is required, one malformed bike is skipped, not the station.
 public struct RawBike: Sendable {
     public let id: String?
     public let number: Int
@@ -167,7 +161,6 @@ public func normalizeBike(_ value: RawBike) -> Bike {
     )
 }
 
-/// GBFS v3 station_information + station_status -> the station list.
 public func parseStations(information: JSON, status: JSON) throws -> StationData {
     guard let infos = information["data"]?["stations"]?.array, let statuses = status["data"]?["stations"]?.array else { throw ShapeError("gbfs stations") }
     var availability: [String: JSON] = [:]
@@ -203,7 +196,6 @@ public func parseStations(information: JSON, status: JSON) throws -> StationData
     return StationData(stations: stations, updatedAt: updated)
 }
 
-/// A booking as GET/POST /bookings return it.
 public struct RawBooking: Equatable, Sendable {
     public let id: String
     public let stationNumber: Int

@@ -1,7 +1,6 @@
 import Foundation
 import VelovCore
 
-/// A fictional year of rides for the Statistiques page: commutes on weekdays, longer rides at weekends, one favourite bike.
 extension SampleData {
     static let statsTrips: [Trip] = {
         var seed: UInt64 = 0x5eed
@@ -18,7 +17,6 @@ extension SampleData {
         for back in stride(from: 360, through: 0, by: -1) {
             guard let day = calendar.date(byAdding: .day, value: -back, to: today) else { continue }
             let weekend = [1, 7].contains(calendar.component(.weekday, from: day))
-            // Fewer rides in winter, more as the year goes on.
             let month = calendar.component(.month, from: day)
             let chance = [11, 12, 1, 2].contains(month) ? 3 : 6
             guard random(10) < chance else { continue }
@@ -41,7 +39,6 @@ extension SampleData {
         return trips.reversed()
     }()
 
-    /// Points from the rides above: +5 for a rating, +10 now and then, a booking every fourth ride.
     static var statsMovements: [StatsMovement] {
         statsTrips.enumerated().compactMap { index, trip in
             if index % 4 == 3 { return StatsMovement(date: trip.endedAt, amount: -10) }

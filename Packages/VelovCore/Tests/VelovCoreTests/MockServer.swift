@@ -1,7 +1,6 @@
 import Foundation
 @testable import VelovCore
 
-/// What a mocked endpoint answers.
 enum Reply {
     case status(Int, body: String = "", headers: [String: String] = [:])
     case json(Any, status: Int = 200, headers: [String: String] = [:])
@@ -17,7 +16,6 @@ struct Call {
     var bodyText: String { String(decoding: body, as: UTF8.self) }
 }
 
-/// A URLProtocol-backed fake of Cyclocity: every request of the session it configures lands in `handler`, nothing reaches the network.
 final class MockServer: @unchecked Sendable {
     private static var servers: [String: MockServer] = [:]
     private static let lock = NSLock()
@@ -43,7 +41,6 @@ final class MockServer: @unchecked Sendable {
         lock.withLock { recorded.append(call); return recorded.count - 1 }
     }
 
-    /// A transport whose every request is answered here.
     var transport: URLSessionTransport {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [MockProtocol.self]

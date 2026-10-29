@@ -2,12 +2,9 @@ import SwiftUI
 import UIKit
 import VelovCore
 
-/// trip-sheet.tsx `RateBike`: five stars, then one tap on « Envoyer » sends one note; the stars are the choice, the button is the confirmation.
-/// Offered for 3 hours after the trip ends (`canRate`); a failure keeps its raw line and the stars may be sent again.
 struct RateBike: View {
     let trip: Trip
     let bikeNumber: Int
-    /// « Plus tard »: the sheet closes and « Trajet terminé » is not offered again for this trip.
     let onLater: () -> Void
     @Environment(AppModel.self) private var model
     @State private var stars: Int?
@@ -16,7 +13,6 @@ struct RateBike: View {
 
     var body: some View {
         if model.ratedHere.contains(trip.id) {
-            // `.trip-rate-done`.
             HStack(spacing: 8) {
                 Icon(.check, .bold, size: 16)
                 Text("Merci ! +5 points").typo(.body(14))
@@ -90,20 +86,16 @@ struct RateBike: View {
     }
 }
 
-/// `.trip-rate-star:active`: the star shrinks under the finger.
 private struct StarPress: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.scaleEffect(configuration.isPressed ? 0.9 : 1).animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
-/// trip-sheet.tsx `TripEndedSheet`: opened when the bike is docked, or on launch for a recent unrated trip.
-/// Where, how long, how much, and the stars; any way out counts as « Plus tard ».
 struct TripEndedSheet: View {
     let trip: Trip
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    /// Decided once: the card stays for its « Merci » after a note, whatever reloads behind the sheet.
     @State private var rateable: Bool?
 
     var body: some View {
@@ -151,7 +143,6 @@ struct TripEndedSheet: View {
     }
 }
 
-/// `tripTimes`: « jeudi 29 octobre 2026 · 10:02 → 10:16 ».
 func tripTimes(_ trip: Trip) -> some View {
     HStack(spacing: 0) {
         if let start = trip.startedAt {

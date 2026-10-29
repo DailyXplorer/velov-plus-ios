@@ -1,13 +1,9 @@
 import Foundation
 
-// The writes as the app calls them (the web client's `lib/velov.ts`): the reads a write depends on, the local refusals
-// that send nothing, then exactly one state-changing request from `Writes`.
-
 private let currentSubscriptions = "subscriptions?periods=CURRENT&typeList=ST&typeList=LT&isLocked=false"
 private let noSubscription = Outcome.refusal("local.no.subscription", "Aucun abonnement valide : achetez un ticket ou un abonnement dans l’app Vélo’v.")
 
 extension VelovAPI {
-    /// The account, the app token and the user's token, as every write needs them.
     public func writer(_ identity: Identity) async throws -> WriteAuth {
         WriteAuth(accountId: try await accountId(identity), token: try await appToken.get(), identity: identity.accessToken)
     }
@@ -25,9 +21,6 @@ extension VelovAPI {
         }?["id"]?.string
     }
 
-    // MARK: Booking and release
-
-    /// The station's id in the v4 answer, read with the app token; nil when Vélo’v does not give it.
     private func stationUUID(_ number: Int) async throws -> String? {
         let response = try await getWithAppToken(client, appToken, URL(string: "\(Cyclocity.base)/stations/\(number)")!) { token in
             ["Authorization": "Taknv1 \(token)", "Accept": "application/vnd.station.v4+json"]
@@ -35,7 +28,6 @@ extension VelovAPI {
         return response.ok ? response.json?["id"]?.string : nil
     }
 
-    /// The booking body wants the station's and the bike's ids, not their numbers (§ 5.9): both are read just before the one POST.
     public func book(_ identity: Identity, stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?) {
         let account = "/accounts/\(try await accountId(identity))"
         async let subscription = currentSubscriptionId(account, identity)
@@ -56,7 +48,6 @@ extension VelovAPI {
         return (outcome, toBooking(booking, stations: await stationsByNumber(), bikeNumbers: [bikeId: bike.number]))
     }
 
-    /// One release, then one look at the ongoing trip: it usually appears ~10 s after the bike leaves the borne.
     public func unlock(_ identity: Identity, stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?) {
         let auth = try await writer(identity)
         let account = "/accounts/\(auth.accountId)"
@@ -69,8 +60,6 @@ extension VelovAPI {
         let (trips, byNumber) = await (ongoing, stations)
         return (outcome, trips?.map { normalizeTrip($0, stations: byNumber) })
     }
-
-    // MARK: Account
 
     public func rate(_ identity: Identity, tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome {
         try await Writes.rate(try await writer(identity), tripId: tripId, bikeNumber: bikeNumber, vote: vote, http: http)
@@ -88,15 +77,11 @@ extension VelovAPI {
         try await Writes.receipt(try await writer(identity), subscriptionId: subscriptionId, periodId: periodId, http: http)
     }
 
-    /// An invalid body never leaves the phone.
     public func updateProfile(_ identity: Identity, _ body: ProfileBody) async throws -> Outcome {
         if body.problem() != nil { return .refusal("local.profile.invalid", "Coordonnées invalides.") }
         return try await Writes.setProfile(try await writer(identity), body, http: http)
     }
 
-    // MARK: Experimental
-
-    /// Verify permission before writing, then read the real server value rather than assuming the requested state.
     public func setAutoRenewal(_ identity: Identity, subscriptionId: String, autoRenewal: Bool) async throws -> AutoRenewalResult {
         let auth = try await writer(identity)
         let account = "/accounts/\(pathSegment(auth.accountId))"
@@ -106,14 +91,12 @@ extension VelovAPI {
             return AutoRenewalResult(outcome: .refusal("local.renewal.not.allowed", "Le renouvellement automatique ne peut pas être modifié pour cet abonnement."),
                                      autoRenewal: before.autoRenewal, autoRenewalAllowed: before.allowed, verified: true)
         }
-        // A failed verification is not a failed PATCH: never repeat the write or invent the state.
         let outcome = try await Writes.setAutoRenewal(auth, subscriptionId: subscriptionId, autoRenewal: autoRenewal, http: http)
         guard outcome.ok else { return AutoRenewalResult(outcome: outcome, autoRenewal: nil, autoRenewalAllowed: false, verified: false) }
         guard let after = try? await readState() else { return AutoRenewalResult(outcome: outcome, autoRenewal: nil, autoRenewalAllowed: false, verified: false) }
         return AutoRenewalResult(outcome: outcome, autoRenewal: after.autoRenewal, autoRenewalAllowed: after.allowed, verified: true)
     }
 
-    /// Find the subscription actually renting a bike, not simply the first valid ticket, and recheck the full station before writing.
     public func requestExtraTime(_ identity: Identity, stationNumber: Int) async throws -> Outcome {
         let auth = try await writer(identity)
         let account = "/accounts/\(auth.accountId)"
@@ -131,7 +114,6 @@ extension VelovAPI {
             return .refusal("local.via.trip", renting.isEmpty ? "Vous n’avez aucun trajet en cours."
                                                               : "Vous avez plusieurs trajets en cours. Utilisez l’app Vélo’v.")
         }
-        // v4 gives the UUID too; GBFS station.id is only a station number and cannot be used as the UUID fallback.
         let station = try await read("/stations/\(stationNumber)", identity, accept: "application/vnd.station.v4+json")
         guard let uuid = station["id"]?.string, let number = station["number"]?.int, let open = station["open"]?.bool,
               let stands = station["availabilities"]?["main"]?["stands"]?.number else { throw ShapeError("station v4") }
@@ -142,13 +124,11 @@ extension VelovAPI {
         return try await Writes.via(auth, subscriptionId: renting[0], station: target, http: http)
     }
 
-    /// Sends one customer-service message after the confirmation. An invalid body never leaves the phone.
     public func contactSupport(_ identity: Identity, _ body: ContactBody) async throws -> Outcome {
         guard body.isValid else { return .refusal("local.contact.invalid", "Votre message est vide ou trop long.") }
         return try await Writes.contactMail(try await writer(identity), body, http: http)
     }
 
-    /// Check the displayed price against the current configuration before the one debit.
     public func consumePromoCode(_ identity: Identity, expectedCost: Int) async throws -> PromoResult {
         let auth = try await writer(identity)
         async let configuration = read("/rewards/configurations", identity, accept: Guesses.promocodeAccept)

@@ -1,11 +1,8 @@
 import Foundation
 
-// Bodies and results of the account writes, with the web client's validation (`lib/models.ts`, `lib/*-models.ts`).
-
 private func trimmed(_ value: String) -> String { value.trimmingCharacters(in: .whitespacesAndNewlines) }
 private func hasControlCharacter(_ value: String) -> Bool { value.unicodeScalars.contains { $0.properties.generalCategory == .control } }
 
-/// `line(max)`: trimmed, at most `max` characters, no control character.
 private func validLine(_ value: String, max: Int, min: Int = 0) -> Bool {
     let value = trimmed(value)
     return value.utf16.count >= min && value.utf16.count <= max && !hasControlCharacter(value)
@@ -17,19 +14,15 @@ public struct ProfileAddress: Equatable, Sendable {
     public init(name: String, complement: String) { self.name = name; self.complement = complement }
 }
 
-/// " jean  pierre " -> "jean pierre".
 public func cleanName(_ value: String) -> String { trimmed(value).replacing(/\ {2,}/, with: " ") }
 
-/// `personName`: letters (accents included), spaces, apostrophes and hyphens, starting with a letter.
 private func validName(_ value: String) -> Bool {
     let name = cleanName(value)
     return !name.isEmpty && name.utf16.count <= Rules.nameMax && name.wholeMatch(of: /\p{L}[\p{L}\p{M} ’'\-]*/) != nil
 }
 
-/// The first field of a profile body Vélo’v would refuse, or `.empty` when nothing changes.
 public enum ProfileField: Equatable, Sendable { case firstName, lastName, address, zipCode, city, country, phoneNumber, empty }
 
-/// The fields of PATCH /accounts/{id} the app edits, each optional: only what changed is sent.
 public struct ProfileBody: Equatable, Sendable {
     public var firstName: String?
     public var lastName: String?
@@ -44,7 +37,6 @@ public struct ProfileBody: Equatable, Sendable {
         self.address = address; self.zipCode = zipCode; self.city = city; self.country = country; self.phoneNumber = phoneNumber
     }
 
-    /// `profileBodySchema`: nil when the body may be sent.
     public func problem() -> ProfileField? {
         if firstName == nil, lastName == nil, address == nil, zipCode == nil, city == nil, country == nil, phoneNumber == nil { return .empty }
         if let firstName, !validName(firstName) { return .firstName }
@@ -57,7 +49,6 @@ public struct ProfileBody: Equatable, Sendable {
         return nil
     }
 
-    /// The body as sent: text fields trimmed, like the schema's output.
     var trimmedForSending: ProfileBody {
         ProfileBody(firstName: firstName.map(cleanName), lastName: lastName.map(cleanName),
                     address: address.map { ProfileAddress(name: trimmed($0.name), complement: trimmed($0.complement)) },
@@ -65,7 +56,6 @@ public struct ProfileBody: Equatable, Sendable {
     }
 }
 
-/// One customer-service message: a category of `Guesses.mailComplaintTypes`, the text, and optionally the selected trip's token.
 public struct ContactBody: Equatable, Sendable {
     public var complaintType: String
     public var message: String
@@ -75,7 +65,6 @@ public struct ContactBody: Equatable, Sendable {
         self.complaintType = complaintType; self.message = message; self.tripToken = tripToken
     }
 
-    /// `contactBodySchema`, plus the web form's 4 KB cap on the JSON body.
     public var isValid: Bool {
         let length = trimmed(message).utf16.count
         guard Guesses.mailComplaintTypes.contains(complaintType), length >= 1, length <= 1500 else { return false }
@@ -86,13 +75,11 @@ public struct ContactBody: Equatable, Sendable {
     }
 }
 
-/// Only the selected trip token is appended, never unrelated account information.
 public func contactMessage(_ body: ContactBody) -> String {
     let token = body.tripToken.map(trimmed).flatMap { $0.isEmpty ? nil : $0 }
     return [trimmed(body.message), token.map { "Code du trajet : \($0)" }].compactMap { $0?.isEmpty == false ? $0 : nil }.joined(separator: "\n\n")
 }
 
-/// The renewal write and the state Vélo’v gives back when it is read again. `verified` false: the write may have passed, the state is unknown.
 public struct AutoRenewalResult: Equatable, Sendable {
     public var outcome: Outcome
     public var autoRenewal: Bool?
@@ -103,20 +90,17 @@ public struct AutoRenewalResult: Equatable, Sendable {
     }
 }
 
-/// The invitation code obtained for points, nil when none was received.
 public struct PromoResult: Equatable, Sendable {
     public var outcome: Outcome
     public var promoCode: String?
     public init(outcome: Outcome, promoCode: String?) { self.outcome = outcome; self.promoCode = promoCode }
 }
 
-/// The renewal of a subscription as the API shows it: the last period's details; the switch only when unlocked and offered.
 func renewalState(of subscription: JSON?) -> (autoRenewal: Bool?, allowed: Bool) {
     let details = subscription?["periods"]?.array?.last?["renewalDetails"]
     return (details?["autoRenewalValue"]?.bool, subscription?["isLocked"]?.bool != true && details?["autoRenewalBtn"]?.bool == true)
 }
 
-/// Full open stations only; accent-insensitive search, nearest first when the user shares a position.
 public func fullStations(_ stations: [Station], query: String, position: GeoPoint?) -> [Station] {
     let french = Locale(identifier: "fr_FR")
     let normalize = { (text: String) in text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: french) }

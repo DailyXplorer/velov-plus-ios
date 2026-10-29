@@ -1,15 +1,12 @@
 import CoreLocation
 import VelovCore
 
-/// One position fix on demand, with the permission asked the first time. A single instance for the app: CoreLocation
-/// holds its delegate weakly, so a locator made per call could be gone before the answer comes.
 @MainActor
 final class Locator: NSObject, CLLocationManagerDelegate {
     static let shared = Locator()
 
     struct Failure: Error {
         let reason: LocationFailure
-        /// « CLError … · auth … · services … ».
         let raw: String
         var message: String { reason.message }
     }
@@ -28,10 +25,8 @@ final class Locator: NSObject, CLLocationManagerDelegate {
 
     var allowed: Bool { LocationAuth(manager.authorizationStatus).allowed }
 
-    /// Callers during a running request share its answer. A reduced-accuracy fix is accepted as is.
     func locate() async throws -> CLLocation {
         if allowed, let recent = manager.location, recent.timestamp.timeIntervalSinceNow > -30 { return recent }
-        // Off the main thread: CoreLocation warns that this check can block the UI.
         let services = await Task.detached { CLLocationManager.locationServicesEnabled() }.value
         return try await withCheckedThrowingContinuation { continuation in
             waiting.append(continuation)

@@ -1,7 +1,6 @@
 import ActivityKit
 import SwiftUI
 
-/// The booking countdown shown on the Lock Screen and in the Dynamic Island. Updated locally only: no push.
 struct BookingActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var endsAt: Date
@@ -13,16 +12,11 @@ struct BookingActivityAttributes: ActivityAttributes {
     var stationName: String
 }
 
-// The views are shared so the app can draw them for the snapshots; the widget extension puts them in its regions.
-// Hugeicons from the shared catalogue; the extension bundles the two web fonts (UIAppFonts), the app registers them at launch.
-
 enum ActivityStyle {
     static let red = Color(red: 0xdf / 255, green: 0x25 / 255, blue: 0x37 / 255)
     static let ink = Color(red: 0x1c / 255, green: 0x17 / 255, blue: 0x17 / 255)
 
-    /// Faculty Glyphic: the bike and the countdown.
     static func title(_ size: CGFloat) -> Font { .custom("FacultyGlyphic-Regular", fixedSize: size) }
-    /// DM Sans 500 as written: everything else.
     static func label(_ size: CGFloat) -> Font { .custom("DM Sans", fixedSize: size).weight(.medium) }
 }
 
@@ -30,7 +24,6 @@ extension BookingActivityAttributes {
     var bikeLine: String { "Vélo \(bikeNumber.map(String.init) ?? "—") · Borne \(standNumber.map(String.init) ?? "—")" }
 }
 
-/// mm:ss to the end of the booking, ticking on its own; 00:00 once it has run out.
 struct BookingCountdown: View {
     let endsAt: Date
     var size: CGFloat
@@ -42,7 +35,6 @@ struct BookingCountdown: View {
     }
 }
 
-/// The white « Réservé » pill with its red clock, like the in-app banner.
 struct ReservedPill: View {
     var body: some View {
         HStack(spacing: 6) {
@@ -55,7 +47,6 @@ struct ReservedPill: View {
     }
 }
 
-/// Lock Screen and banner presentation: the pill, the bike and its borne, the station, the countdown.
 struct BookingLockScreenView: View {
     let attributes: BookingActivityAttributes
     let endsAt: Date
@@ -79,7 +70,6 @@ struct BookingLockScreenView: View {
     }
 }
 
-/// The expanded Dynamic Island regions, one view each.
 struct BookingIslandLeading: View {
     let attributes: BookingActivityAttributes
     var body: some View {

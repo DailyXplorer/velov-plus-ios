@@ -2,15 +2,11 @@ import SwiftUI
 import UIKit
 import VelovCore
 
-// The pieces every state-changing action shares: a confirmation sheet sized to its content, a haptic on « Confirmer »,
-// one request per confirmation, the sheet closing on success, and the raw status line on failure only.
-
 enum Haptics {
     static func confirm() { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
     static func result(_ ok: Bool) { UINotificationFeedbackGenerator().notificationOccurred(ok ? .success : .error) }
 }
 
-/// `.bike-action-raw`: « HTTP 400 · Code … · Detail », mono, under a failure only.
 struct RawStatus: View {
     let line: String
     init(outcome: Outcome, withState: Bool = false) { line = rawLine(outcome, withState: withState) }
@@ -21,14 +17,12 @@ struct RawStatus: View {
     }
 }
 
-/// `.form-error`.
 struct FormError: View {
     let text: String
     init(_ text: String) { self.text = text }
     var body: some View { Text(text).typo(.body(14)).foregroundStyle(Palette.formError).fixedSize(horizontal: false, vertical: true) }
 }
 
-/// `.uncertain-note`: under a failure that may have gone through, when only « Fermer » is left.
 struct UncertainNote: View {
     var unlock = false
     var body: some View {
@@ -37,7 +31,6 @@ struct UncertainNote: View {
     }
 }
 
-/// `.modal-actions`, `.bike-action-buttons` on a phone: the buttons of a row share its width, each as wide and as tall as the others.
 struct PairedActions<Content: View>: View {
     @ViewBuilder let content: () -> Content
     var body: some View {
@@ -45,7 +38,6 @@ struct PairedActions<Content: View>: View {
     }
 }
 
-/// `.write-done`: a check and the success sentence.
 struct DoneLine: View {
     let text: String
     var body: some View {
@@ -56,7 +48,6 @@ struct DoneLine: View {
     }
 }
 
-/// `.modal-heading`: the title and X.
 struct SheetHeading: View {
     let title: String
     var closeDisabled = false
@@ -70,8 +61,6 @@ struct SheetHeading: View {
     }
 }
 
-/// A sheet exactly as tall as what it shows (up to the full screen, then it scrolls). From iOS 26 the system keeps its bottom
-/// corners concentric with the display; its top corners take the tab bar's radius to match.
 struct FitSheet: ViewModifier {
     @State private var height: CGFloat = 260
 
@@ -81,7 +70,6 @@ struct FitSheet: ViewModifier {
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollIndicators(.hidden)
-        // The floating sheet already keeps clear of the home indicator: no second inset under the content.
         .ignoresSafeArea(.container, edges: .bottom)
         .presentationDetents([.height(height)])
         .presentationBackground(Palette.white)
@@ -94,13 +82,10 @@ extension View {
     func fitSheet() -> some View { modifier(FitSheet()) }
 }
 
-/// account-actions.tsx `ConfirmDialog`: a question, one request per « Confirmer »; success closes the sheet, a failure stays with its raw status.
-/// A failure that may have gone through leaves only « Fermer ».
 struct WriteDialog<Question: View>: View {
     enum Step { case confirm, sending, failed(Outcome) }
 
     let title: String
-    /// Sends the one request; applies its effect itself when it succeeds.
     let run: () async -> Outcome
     @ViewBuilder let question: () -> Question
     @Environment(\.dismiss) private var dismiss
@@ -151,13 +136,11 @@ struct WriteDialog<Question: View>: View {
 }
 
 extension WriteDialog where Question == EmptyView {
-    /// Only the title asks: « Ajouter aux favoris ? », « Enregistrer les modifications ? ».
     init(title: String, run: @escaping () async -> Outcome) {
         self.init(title: title, run: run) { EmptyView() }
     }
 }
 
-/// A form field like `.field`: the mono label above a white pill.
 struct FormField: View {
     let label: String
     @Binding var text: String

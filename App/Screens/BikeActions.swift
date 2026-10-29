@@ -1,7 +1,6 @@
 import SwiftUI
 import VelovCore
 
-/// bike-actions.tsx `Place`: the bike, its borne and its station, as the confirmation names them.
 struct Place: Equatable {
     let stationNumber: Int
     let stationName: String
@@ -23,7 +22,6 @@ struct Place: Equatable {
 
 enum BikeAction { case book, unlock }
 
-/// The distance to the station, only when the location is already allowed: this sheet never asks for it.
 @MainActor
 func knownDistance(to place: Place) async -> Double? {
     guard let lat = place.lat, let lon = place.lon else { return nil }
@@ -31,13 +29,9 @@ func knownDistance(to place: Place) async -> Double? {
     return haversine(GeoPoint(lat: here.coordinate.latitude, lon: here.coordinate.longitude), GeoPoint(lat: lat, lon: lon))
 }
 
-/// bike-actions.tsx `BikeActions` as a sheet: the confirmation and exactly one request per « Confirmer »; success closes the sheet
-/// and hands over to the page (the booking banner, the dock watch). A failure stays with Vélo’v's message and the raw line:
-/// a sure refusal may be confirmed again, an uncertain one only closes.
 struct BikeActionSheet: View {
     let place: Place
     let action: BikeAction
-    /// The account's booking of this bike, spent by an unlock.
     let bookingId: String?
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -104,8 +98,6 @@ struct BikeActionSheet: View {
         }
     }
 
-    // MARK: The one request
-
     private func send() {
         guard !sending else { return }
         Haptics.confirm()
@@ -127,7 +119,6 @@ struct BikeActionSheet: View {
                     dismiss()
                 } else {
                     failure = outcome
-                    // Only the booking's own state can be read back; the borne is checked by the user.
                     if outcome.isUncertain { Task { await model.loadBookings() } }
                 }
             case .unlock:

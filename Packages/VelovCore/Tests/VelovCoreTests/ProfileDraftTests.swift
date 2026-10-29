@@ -1,7 +1,6 @@
 import XCTest
 @testable import VelovCore
 
-/// The web `profile-draft` tests: names shown capitalised, sent only when the user changed them, each field checked before anything is sent.
 final class ProfileDraftTests: XCTestCase {
     let profile = Profile(firstName: "jean-pierre", lastName: "de la tour", email: "jp@example.com", locked: false, complete: true, phoneNumber: "+33600000000",
                           address: "1 rue Exemple", addressComplement: nil, zipCode: "69002", city: "Lyon", country: "FR", favorites: [])

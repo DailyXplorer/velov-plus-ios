@@ -1,8 +1,6 @@
 import SwiftUI
 import VelovCore
 
-/// `.station-sheet` as a card floating over the map, above the tab bar: name, star and X; the three counts and the distance;
-/// « Voir les vélos » and « Itinéraire ». All four corners take the tab bar's radius, the buttons' pills concentric with it.
 struct StationCard: View {
     let station: Station
     let favorite: Bool
@@ -18,7 +16,6 @@ struct StationCard: View {
     private static let pill: CGFloat = 40
 
     var body: some View {
-        // The bottom pills' curves run parallel to the card's.
         let padding = max(radius - Self.pill / 2, 16)
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
@@ -62,7 +59,6 @@ struct StationCard: View {
         }
     }
 
-    /// Walking directions in Apple Plans.
     private func directions() {
         if let url = URL(string: "maps://?daddr=\(station.lat),\(station.lon)&dirflg=w") { openURL(url) }
     }

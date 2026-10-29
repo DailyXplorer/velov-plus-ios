@@ -7,7 +7,6 @@ public protocol SecureStore: Sendable {
     func delete(_ key: String)
 }
 
-/// Generic passwords in the iOS Keychain, readable after the first unlock, never synced or migrated to another device.
 public struct KeychainStore: SecureStore {
     let service: String
 
@@ -52,8 +51,6 @@ public final class InMemoryStore: SecureStore, @unchecked Sendable {
 public enum DeviceIdentity {
     static let key = "device_id"
 
-    /// The id the account is linked with: created once, kept across logouts, never regenerated.
-    /// Keycloak links the session to this id; a new one would look like another phone to Vélo’v.
     public static func stable(in store: SecureStore) -> String {
         if let data = store.read(key), let value = String(data: data, encoding: .utf8), value.wholeMatch(of: /[a-zA-Z0-9-]{16,80}/) != nil {
             return value
@@ -64,25 +61,21 @@ public enum DeviceIdentity {
     }
 }
 
-/// The tokens of the signed-in account, as kept in the Keychain.
 public struct StoredSession: Codable, Equatable, Sendable {
     public var tokens: Tokens
     public var accessExpiresAt: Date
 
     public init(tokens: Tokens, obtainedAt: Date) {
         self.tokens = tokens
-        // The token's own exp when readable; expires_in otherwise.
         accessExpiresAt = accessExpiry(tokens.accessToken) ?? obtainedAt.addingTimeInterval(tokens.expiresIn)
     }
 }
 
-/// The access token one call needs, and the account it belongs to.
 public struct Identity: Sendable {
     public let accessToken: String
     public let email: String
 }
 
-/// Keeps the session: Keychain storage, one refresh at a time (a rotated refresh token is spent once), logout.
 public actor SessionManager {
     static let tokensKey = "tokens"
     private let store: SecureStore
@@ -101,20 +94,17 @@ public actor SessionManager {
     public var isSignedIn: Bool { session != nil }
     public var deviceId: String { DeviceIdentity.stable(in: store) }
 
-    /// One login attempt with the stable device id; the tokens go to the Keychain.
     public func signIn(email: String, code: String) async throws {
         let tokens = try await login(email: email, code: code, deviceId: DeviceIdentity.stable(in: store), http: http, now: now())
         save(StoredSession(tokens: tokens, obtainedAt: now()))
     }
 
-    /// A valid access token, renewed first when it expires within 30 s.
     public func identity() async throws -> Identity {
         guard var current = session else { throw VelovError.sessionRevoked }
         if current.accessExpiresAt.timeIntervalSince(now()) < 30 { current = try await renew(current) }
         return Identity(accessToken: current.tokens.accessToken, email: try accountEmail(accessToken: current.tokens.accessToken))
     }
 
-    /// Callers that find the same expired token share one refresh.
     private func renew(_ expired: StoredSession) async throws -> StoredSession {
         if let refreshing { return try await refreshing.value }
         let http = http, now = now
@@ -131,8 +121,6 @@ public actor SessionManager {
         }
     }
 
-    /// Ends the session at Vélo’v, then forgets the tokens here whatever it answered; the device id stays.
-    /// Returns whether Vélo’v confirmed.
     public func logout() async -> Bool {
         let tokens = session?.tokens
         let confirmed = tokens == nil ? true : await endSession(refreshToken: tokens?.refreshToken, idToken: tokens?.idToken, http: http)

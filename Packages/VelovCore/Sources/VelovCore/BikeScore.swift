@@ -19,7 +19,6 @@ private func hoursSince(_ date: Date?, _ now: Date) -> Double? {
     date.map { now.timeIntervalSince($0) / hour }
 }
 
-/// nextCheck is a routine 5-day mark after each control, so only a long overrun means anything.
 private let overdueGrace: TimeInterval = 30 * 24 * hour
 
 public func isCheckOverdue(_ bike: Bike, now: Date = Date()) -> Bool {
@@ -31,7 +30,6 @@ private func avoidReasons(_ bike: Bike, _ now: Date) -> [String] {
     var reasons: [String] = []
     let idle = hoursSince(bike.lastTripAt, now)
     if bike.isReserved { reasons.append("Réservé") }
-    // An unknown status is no reason to avoid a bike; only a known other one is.
     if let status = bike.status, status != "AVAILABLE" {
         reasons.append(bike.statusLabel.map { $0.isEmpty ? "Indisponible" : "Indisponible (\($0))" } ?? "Indisponible")
     }
@@ -42,7 +40,6 @@ private func avoidReasons(_ bike: Bike, _ now: Date) -> [String] {
     return reasons
 }
 
-/// Shrinks ratings with few votes toward 70, then rewards a recent trip and a charged battery.
 private func scoreBike(_ bike: Bike, _ now: Date) -> Double {
     let weight = Double(min(bike.rating?.count ?? 0, 20)) / 20
     let idle = hoursSince(bike.lastTripAt, now)
@@ -60,7 +57,6 @@ private func strengths(_ bike: Bike, _ now: Date) -> [String] {
     ].compactMap { $0 }
 }
 
-/// Rates every bike of a station: the best mechanical and electric are recommended, the doubtful ones are to avoid. Sorted for display.
 public func assessBikes(_ bikes: [Bike], now: Date = Date()) -> [AssessedBike] {
     var assessed = bikes.map { bike -> AssessedBike in
         let reasons = avoidReasons(bike, now)
@@ -76,7 +72,6 @@ public func assessBikes(_ bikes: [Bike], now: Date = Date()) -> [AssessedBike] {
         assessed[best].verdict = .recommended
         assessed[best].reasons = strengths(assessed[best].bike, now)
     }
-    // A stable sort, as Array.prototype.sort is.
     return assessed.enumerated().sorted { left, right in
         if left.element.verdict != right.element.verdict { return left.element.verdict < right.element.verdict }
         if left.element.verdict != .avoid, left.element.score != right.element.score { return left.element.score > right.element.score }

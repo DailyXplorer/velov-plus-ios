@@ -1,7 +1,6 @@
 import SwiftUI
 import VelovCore
 
-/// dashboard.tsx `AccountPage`: profile and coordinates, subscription with auto-renewal and receipts, customer service, logout.
 struct AccountPage: View {
     let data: Dashboard
     let onLogout: () -> Void
@@ -38,7 +37,6 @@ struct AccountPage: View {
         return section("Profil") {
             Text(name.isEmpty ? "Compte Vélo’v" : name).typo(.title(22)).foregroundStyle(Palette.ink).padding(.top, 18)
             Text(person.email).typo(.body(14)).foregroundStyle(Palette.inkSoft).padding(.top, 6)
-            // Only what needs attention: an active account, a complete profile and a valid card go without saying.
             if person.locked || !person.complete || data.paymentValid == false {
                 VStack(spacing: 0) {
                     if person.locked { DetailRow("Compte", "À vérifier") }

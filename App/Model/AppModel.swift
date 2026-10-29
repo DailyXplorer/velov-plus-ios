@@ -16,7 +16,6 @@ enum Page: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The bottom bar's shorter labels.
     var tab: String { self == .overview ? "Accueil" : title }
 
     var icon: IconName {
@@ -41,15 +40,12 @@ enum Resource<T> {
     }
 }
 
-/// A screen the snapshot run opens straight away (`-VelovScreen tripSheet`).
 enum SnapshotScreen: String {
     case overview, overviewMap, trips, tripSheet, rateCard, points, stations, stationSheet, bikeList, bikeSheet, account, accountEnd, accountEdit
     case bookingBanner, unlockConfirm, bookConfirm, unlockUncertain, liveActivityLock, liveActivityIsland
     case tripEnded, tripEndedStars
-    /// The Statistiques page pushed over Trajets: its top, its charts, the heatmap, its points and records, its end.
     case stats, statsCharts, statsHeatmap, statsRecords, statsEnd
 
-    /// The screens drawn with a running booking.
     var withBooking: Bool { [.bookingBanner, .unlockConfirm, .unlockUncertain].contains(self) }
 }
 
@@ -72,15 +68,10 @@ final class AppModel {
     var bookings: [Booking] = []
     var refreshing = false
     var stationsPending = false
-    /// The booking whose unlock sheet is open, from the banner of any tab.
     var unlocking: Booking?
-    /// Trips rated from this phone: the dashboard says so only after its next read.
     var ratedHere: Set<String> = []
-    /// The trip whose « Trajet terminé » sheet is open: just docked, or on launch a recent one still to rate.
     var ended: Trip?
-    /// In the foreground: the dock watch polls only then.
     var foreground = true
-    /// Trips already seen docked: a dashboard read lagging behind Vélo’v must not start watching them again.
     private var docked: Set<String> = []
     private var greeted = false
     @ObservationIgnored private lazy var dockWatch: DockWatch = DockWatch(
@@ -93,7 +84,6 @@ final class AppModel {
         },
         docked: { [unowned self] tripId, latest in tripDocked(tripId, latest: latest) },
         visible: { [unowned self] in foreground })
-    /// Where the invite codes are kept on this phone, before anything else happens to them.
     let promoBacking: PromoBacking
     private let activities = BookingActivities()
 
@@ -111,7 +101,6 @@ final class AppModel {
         }
     }
 
-    /// The app's own folder for the invite codes: Application Support, backed up with the phone.
     static func promoDirectory() -> URL {
         URL.applicationSupportDirectory.appending(path: "PromoCodes", directoryHint: .isDirectory)
     }
@@ -137,7 +126,6 @@ final class AppModel {
         Task { await loadBookings() }
     }
 
-    /// One load at a time: a second pull or a retry joins nothing and sends nothing.
     func loadDashboard() async {
         guard !refreshing else { return }
         refreshing = true
@@ -162,7 +150,6 @@ final class AppModel {
         catch { stations = .failed((error as? VelovError)?.message ?? "Les stations sont momentanément indisponibles.") }
     }
 
-    /// Best effort: without it the app only misses the booking banner. A running booking found here gets its Live Activity.
     func loadBookings() async {
         guard let value = try? await service.bookings() else { return }
         bookings = value
@@ -170,7 +157,6 @@ final class AppModel {
         if snapshot == .unlockConfirm || snapshot == .unlockUncertain { unlocking = value.first }
     }
 
-    /// Back in the foreground: the bookings may have run out or been used meanwhile, the bike may have been docked.
     func becameActive() {
         foreground = true
         guard dashboard != nil else { return }
@@ -178,14 +164,10 @@ final class AppModel {
         Task { await dockWatch.becameVisible() }
     }
 
-    /// In the background the dock watch sends nothing; the next `becameActive` checks at once.
     func resignedActive() {
         foreground = false
     }
 
-    // MARK: The end of a trip
-
-    /// Watches any ongoing trip the account reports; on the first read without one, offers to rate a recent unrated trip.
     private func watchTrips(_ data: Dashboard) {
         if snapshot == .tripEnded || snapshot == .tripEndedStars {
             ended = SampleData.trips.first
@@ -198,8 +180,6 @@ final class AppModel {
         if data.ongoing?.isEmpty != false, let trips = data.trips, let recent = tripToGreet(trips, store: UserDefaults.standard) { ended = recent }
     }
 
-    /// The bike is back in a borne: the account is read again for the trip's price, then « Trajet terminé » opens.
-    /// The bookings are read too, which ends any Live Activity whose booking is gone.
     private func tripDocked(_ tripId: String, latest: Trip?) {
         docked.insert(tripId)
         Task {
@@ -209,13 +189,10 @@ final class AppModel {
         }
     }
 
-    /// « Plus tard », or any other way out of « Trajet terminé »: that trip is not offered again on this phone.
     func closeEnded(_ trip: Trip) {
         if snapshot == nil { dismissTrip(UserDefaults.standard, trip.id) }
         if ended?.id == trip.id { ended = nil }
     }
-
-    // MARK: Effects of confirmed writes, applied here instead of reading the whole account again.
 
     func booked(_ booking: Booking?) {
         if let booking {
@@ -226,7 +203,6 @@ final class AppModel {
         Task { await loadBookings() }
     }
 
-    /// The release spends the booking: its banner and its Live Activity go, and the dock watch starts.
     func unlocked(bookingId: String?, tripId: String?) {
         if let bookingId {
             bookings.removeAll { $0.id == bookingId }
@@ -256,14 +232,12 @@ final class AppModel {
         patch { $0.rewards.autoSpend = value }
     }
 
-    /// One login attempt; a refusal is shown as is and never retried.
     func signIn(email: String, code: String) async throws {
         try await service.signIn(email: email, code: code)
         phase = .loading
         refreshAll()
     }
 
-    /// Returns the notice to show when Vélo’v did not confirm the end of the session.
     func logout() async {
         let confirmed = await service.logout()
         dockWatch.stop()

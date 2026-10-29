@@ -2,12 +2,8 @@ import Charts
 import SwiftUI
 import VelovCore
 
-// stats.tsx: the Statistiques page, pushed from the Trajets tab. Six red headline cards, then white panels on the ink-line ring;
-// the charts draw in red on mist only, a tap shows a datum's tip.
-
 enum TripsRoute: Hashable { case stats }
 
-/// The Trajets tab in its own navigation stack, so « Statistiques » and a bike sheet push over it with the tab bar kept.
 struct TripsStack: View {
     let onLogout: () -> Void
     @Environment(AppModel.self) private var model
@@ -28,7 +24,6 @@ extension SnapshotScreen {
     var showsStats: Bool { [.stats, .statsCharts, .statsHeatmap, .statsRecords, .statsEnd].contains(self) }
 }
 
-/// The button at the top of the Trajets tab.
 struct StatsLink: View {
     var body: some View {
         NavigationLink(value: TripsRoute.stats) {
@@ -49,8 +44,6 @@ struct StatsLink: View {
     }
 }
 
-// MARK: French formatting, as the web page writes it
-
 private let french = Locale(identifier: "fr_FR")
 private let paris = TimeZone(identifier: "Europe/Paris")!
 
@@ -68,7 +61,6 @@ private func kilometres(_ metres: Double) -> String {
     formatNumber(metres / 1000, maximumFractionDigits: metres < 100_000 ? 1 : 0)
 }
 
-/// A day key ("2026-10-29") or a month key ("2026-10") read at noon UTC, formatted in Lyon.
 private func keyDate(_ key: String) -> Date {
     let parts = key.split(separator: "-").compactMap { Int($0) }
     var calendar = Calendar(identifier: .gregorian)
@@ -84,36 +76,28 @@ private func format(_ date: Date, _ template: String) -> String {
     return formatter.string(from: date)
 }
 
-/// "29/10" under a day; a month's initial only (J F M A…), like Apple Santé: the full month is in the tip.
 private func axisLabel(_ unit: PeriodStats.Unit, _ key: String) -> String {
     unit == .day ? format(keyDate(key), "dM") : format(keyDate(key), "MMMMM").uppercased(with: french)
 }
 
-/// "jeudi 29 octobre" or "octobre 2026".
 private func bucketLabel(_ unit: PeriodStats.Unit, _ key: String) -> String {
     unit == .day ? format(keyDate(key), "EEEEdMMMM") : format(keyDate(key), "MMMMy")
 }
 
 private let weekdays = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
 
-/// 0, then a round half and top: 47 -> 25, 50.
 private func niceMax(_ value: Double) -> Double {
     guard value > 0 else { return 1 }
     let step = pow(10, floor(log10(value)))
     return [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map { $0 * step }.first { $0 >= value } ?? value
 }
 
-/// `.chart-axis`: DM Sans 11 in ink-soft.
 private func axisText(_ text: String) -> some View {
     Text(text).typo(.body(11)).foregroundStyle(Palette.inkSoft).fixedSize()
 }
 
-/// `--stat-gap` at the phone size: one gap between the cards, the panels and everything else.
 private let gap: CGFloat = 10
 
-// MARK: The page
-
-/// Read once per account: a period change or a return to the page reads nothing (the core keeps it 10 minutes too).
 @MainActor private var cachedStats: (account: String, stats: Stats)?
 
 struct StatsPage: View {
@@ -160,7 +144,6 @@ struct StatsPage: View {
             .toolbar(.hidden, for: .navigationBar)
             .task {
                 if let cachedStats, cachedStats.account == account { state = .ready(cachedStats.stats) } else { await load() }
-                // The snapshot run reviews the whole page in four screens; the last one at the true end, above the tab bar.
                 let anchors: [SnapshotScreen: String] = [.statsCharts: "panel-charts", .statsHeatmap: "panel-heatmap", .statsRecords: "panel-records"]
                 guard let snapshot = model.snapshot, snapshot != .stats, snapshot.showsStats else { return }
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
@@ -221,8 +204,6 @@ struct StatsView: View {
     }
 }
 
-// MARK: Headline
-
 private struct Headline: View {
     let data: PeriodStats
     let balance: Double?
@@ -243,7 +224,6 @@ private struct Headline: View {
     }
 }
 
-/// `.summary-card.stat-card` at the phone size: red, dotted, the tag, the number and its line; nothing to tap.
 private struct StatCard: View {
     let icon: IconName
     let label: String
@@ -267,9 +247,6 @@ private struct StatCard: View {
     }
 }
 
-// MARK: Panels
-
-/// `.stat-panel`: white on the ink-line ring, its title and the chart.
 private struct Panel<Content: View>: View {
     let title: String
     @ViewBuilder let content: () -> Content
@@ -285,7 +262,6 @@ private struct Panel<Content: View>: View {
     }
 }
 
-/// `.chart-tip`: a white card on the ring, the datum in two lines.
 private struct ChartTip: View {
     let title: String
     let detail: String
@@ -300,7 +276,6 @@ private struct ChartTip: View {
     }
 }
 
-/// Taps on a chart, in the plot area's coordinates: a tap never steals the page's scroll.
 private struct TapLayer: View {
     let proxy: ChartProxy
     let tapped: (CGPoint) -> Void
@@ -315,7 +290,6 @@ private struct TapLayer: View {
     }
 }
 
-/// The minutes per day or month: red bars, the tapped one deeper with its tip; axis labels thinned to fit.
 private struct MinutesChart: View {
     let data: PeriodStats
     @State private var selected: String?
@@ -324,7 +298,6 @@ private struct MinutesChart: View {
     var body: some View {
         let buckets = data.buckets
         let top = niceMax(Double(buckets.map(\.minutes).max() ?? 0))
-        // A day's "29/10" needs 38 pt; a month's initial fits in 16, so all twelve show.
         let every = max(1, Int(ceil(Double(buckets.count) * (data.unit == .day ? 38 : 16) / max(1, width - 34))))
         let shown = Set(buckets.enumerated().filter { (buckets.count - 1 - $0.offset) % every == 0 }.map { $0.element.key })
         Chart(buckets, id: \.key) { bucket in
@@ -345,7 +318,6 @@ private struct MinutesChart: View {
             }
         }
         .chartXAxis {
-            // A categorical axis marks every bar: the thinned-out ones get an empty label.
             AxisMarks(values: buckets.map(\.key)) { value in
                 AxisValueLabel(centered: true) {
                     if let key = value.as(String.self), shown.contains(key) { axisText(axisLabel(data.unit, key)) }
@@ -364,7 +336,6 @@ private struct MinutesChart: View {
     }
 }
 
-/// Departures by weekday and hour. A cell's red square grows with its count (no tint: red and mist only); empty cells stay mist.
 private struct Heatmap: View {
     let data: PeriodStats
     @State private var selected: (day: Int, hour: Int)?
@@ -409,7 +380,6 @@ private struct Heatmap: View {
         }
         .chartXAxis {
             AxisMarks(values: [0, 6, 12, 18, 23].map { Double($0) + 0.5 }) { value in
-                // Centred, « 23 h » would run past the plot's edge and be dropped: it hangs from its trailing edge instead.
                 let hour = value.as(Double.self) ?? 0
                 AxisValueLabel(anchor: hour > 23 ? .topTrailing : .top, collisionResolution: .disabled) { axisText("\(Int(hour)) h") }
             }
@@ -428,7 +398,6 @@ private struct Heatmap: View {
     }
 }
 
-/// The donut: électrique in red, mécanique in mist, both ringed so the mist reads on white.
 private struct BikeTypes: View {
     let data: PeriodStats
     @State private var selected: String?
@@ -493,9 +462,6 @@ private struct BikeTypes: View {
     }
 }
 
-// MARK: Records and stations
-
-/// `.stat-records` at the phone size: four tiles in two columns, a hairline before the second one of each row.
 private struct Records: View {
     let records: StatsRecords
 
@@ -538,7 +504,6 @@ private struct Records: View {
     }
 }
 
-/// `.stat-ranking`: rank, station and count, one hairline between rows.
 private struct Ranking: View {
     let items: [StationCount]
 

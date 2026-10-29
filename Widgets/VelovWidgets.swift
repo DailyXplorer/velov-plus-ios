@@ -9,7 +9,6 @@ struct VelovWidgets: WidgetBundle {
     }
 }
 
-/// "Réservé" + vélo + borne and the countdown to the end of the booking, started and ended by the app (no push).
 struct BookingLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: BookingActivityAttributes.self) { context in

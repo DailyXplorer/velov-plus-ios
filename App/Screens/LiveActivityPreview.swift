@@ -1,8 +1,6 @@
 import SwiftUI
 import VelovCore
 
-/// Snapshot-only: the booking Live Activity drawn with the widget's own views on a mock Lock Screen or Dynamic Island,
-/// since the simulator cannot be locked or have its island expanded from a script.
 struct LiveActivityPreview: View {
     let island: Bool
     private let booking = SampleData.booking()

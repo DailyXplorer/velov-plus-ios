@@ -1,6 +1,5 @@
 import Foundation
 
-/// Just enough HTML reading for the Keycloak login pages: one form by id, its action and hidden fields, and the page text.
 enum HTML {
     static func attributes(_ tag: Substring) -> [String: String] {
         var result: [String: String] = [:]
@@ -18,7 +17,6 @@ enum HTML {
         return html.matches(of: pattern).map { ($0.range, attributes(html[$0.range].dropFirst().dropLast())) }
     }
 
-    /// The text a reader sees: no tags, scripts or styles, entities decoded.
     static func text(_ html: String) -> String {
         let withoutCode = html.replacing(try! Regex("<(script|style)\\b[^>]*>.*?</\\1\\s*>").ignoresCase().dotMatchesNewlines(), with: " ")
         return decodeEntities(withoutCode.replacing(/<[^>]*>/, with: " "))
@@ -40,7 +38,6 @@ enum HTML {
     }
 }
 
-/// A form to post back to the identity provider, with its hidden fields in page order.
 public struct LoginForm: Equatable, Sendable {
     public let url: URL
     public private(set) var fields: [(String, String)]
@@ -51,7 +48,6 @@ public struct LoginForm: Equatable, Sendable {
 
     public func field(_ name: String) -> String? { fields.first { $0.0 == name }?.1 }
 
-    /// `URLSearchParams.set`: replaces the first value or appends.
     public mutating func set(_ name: String, _ value: String) {
         if let index = fields.firstIndex(where: { $0.0 == name }) {
             fields[index].1 = value
@@ -62,8 +58,6 @@ public struct LoginForm: Equatable, Sendable {
     }
 }
 
-/// The refusal the identity provider wrote on a page, as is: its feedback message, else the text of a short page.
-/// Nothing is inferred from the wording (the one-device rule is not confirmed).
 func serverRefusal(_ html: String) -> String? {
     let collapse = { (text: String) in text.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
     let page = Substring(html)
@@ -77,7 +71,6 @@ func serverRefusal(_ html: String) -> String? {
         if !text.isEmpty { return text }
     }
     let text = collapse(HTML.text(html))
-    // The one-device refusal sits in a page too long for the generic rule: quote its sentence.
     for marker in ["autre appareil", "another device"] {
         if let hit = text.range(of: marker, options: .caseInsensitive) {
             let start = text[..<hit.lowerBound].lastIndex(where: { ".!?".contains($0) }).map { text.index(after: $0) } ?? text.startIndex
@@ -89,7 +82,6 @@ func serverRefusal(_ html: String) -> String? {
     return text.isEmpty || text.count > 300 ? nil : text
 }
 
-/// Only pages of the Vélo’v realm may receive the credentials or the device id.
 public func safeIAMURL(_ value: String, relativeTo base: URL? = nil) throws -> URL {
     guard let url = URL(string: value, relativeTo: base ?? URL(string: Cyclocity.iam))?.absoluteURL,
           url.scheme == "https", url.host == "iam.cyclocity.fr", url.port == nil, url.path.hasPrefix("/realms/vls-default/") else {

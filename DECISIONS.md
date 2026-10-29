@@ -1,28 +1,58 @@
-# Decisions (override SPEC.md)
-- App display name: "Vélo'v+" (CFBundleDisplayName), widget/Live Activity labels too.
-- One-device rule is NOT confirmed (owner sees several sessions working). Do not assume it: no special "autre appareil" wording in the UI, show the server's own error message; never force a logout of other sessions; never auto-retry logins.
-- Owner wants autonomy: decide technical points yourself, pick the safest option, record it here.
+# Choix de conception
 
-## Stage 2 (recorded by the build agent)
-- The display name is written with the typographic apostrophe, "Vélo’v+", like every other string of the app.
-- A login refusal shows the Keycloak page's own message (`kc-feedback-text`, `alert-error`, `#input-error`), or the page text when short; "Vélo’v a refusé la connexion." when there is none. The device id stays stable.
-- Every write has a confirmation sheet except the receipt PDF: its POST only reads, so (like the web) one tap sends one request and hands the PDF to the share sheet.
-- A failed rating shows the message only, like the web: the core reports it without the raw answer.
-- Experimental flows follow the web exactly: `lib/guesses.ts` constants, one attempt, no fallback body. Auto-renewal reads the state before (no write if not allowed) and after; a failed re-read never repeats the PATCH.
-- Invite codes are written to `Application Support/PromoCodes/<sha256 of the account email>` before anything else; storage is checked before the debit. Copy says « ce téléphone » where the web says « ce navigateur ».
-- « 15 minutes de plus » picks the full station from a tappable list (the web's dropdown, as rows); the core rechecks the station before the one POST.
-- The tab bar floats 24 pt from the sides and bottom; its radius is the system's concentric radius for its frame (`GeometryProxy.concentricCornerRadii`, iOS 27; 55 − 24 before), the active pill that minus the 10 pt padding. It still insets the pages (`safeAreaInset`): pages and the map run behind it, a scroll view ends above it. Sheets keep the system corners (no `presentationCornerRadius`): concentric with the display from iOS 26. Cards in pages keep 16.
-- Live Activity: no push, no App Group. The widget draws the same Hugeicons as the app (`Shared/Icons.xcassets` is in both targets) in the app's two fonts: the extension bundles Faculty Glyphic and DM Sans (`UIAppFonts`), the countdown in Faculty Glyphic with tabular digits. The snapshots of the Lock Screen and the expanded Dynamic Island draw the widget's own views on a mock, because the simulator cannot be locked from a script.
-- Web sync 4 (fonts, Statistiques d958d8b):
-  - Azeret Mono is gone from the app, the widget and the bundle: Faculty Glyphic for titles, big numbers and the booking countdown (`Typo.countdown`, tabular digits), DM Sans for everything else, sentence case (`Typo.label` is DM Sans 500 as written). Sizes follow the web's new ones (labels 13, buttons 14, small notes 12).
-  - Statistiques is the web page of d958d8b: six red cards, then Temps à vélo par mois/jour, Horaires de départ, Répartition par type de vélo, Records (four tiles) and Stations les plus utilisées (top 5, departures and arrivals together). No notes, no subtitles, no trip count. The CO₂ card says « Face à la voiture » (owner's wording). Month bars are labelled by their initial.
-  - The heatmap keeps the size-based cells, red squares that grow on mist: red at reduced opacity over white reads pink at low counts, which the red-and-mist rule forbids.
-- Web sync 3 (trip end, stars, confirm once, Statistiques):
-  - The dock watch is `DockWatch` in the core (tested with a fake clock and timer): it polls `GET trips/ongoing` (then `trips?status=FINISHED` only once none is left) every 20 s, only while a trip is ongoing and the app is in the foreground (`scenePhase`), one request at a time, 3 h at most, and checks at once when the app comes back. After an unlock it waits up to 2 min for the trip to show up. No background task, no notification: iOS would not keep a 20 s poll alive in the background, and the check on return to the foreground covers it.
-  - At the dock the account is read again (for the price) and the bookings too, which ends any booking Live Activity left over. There is no trip Live Activity: the booking one already ends at the unlock.
-  - « Plus tard » and any other way out of « Trajet terminé » are remembered per trip in `UserDefaults` (`velov:trip-ended:v1:<id>`, the web's localStorage key); on launch the latest finished, rateable, never-dismissed trip is offered once.
-  - The rating is sent by « Envoyer · +5 points » without a second sheet, like the web; a refusal now shows its raw line (`HTTP … · Code …`).
-  - `Outcome.isUncertain` is the web's `isUncertain`. Errors thrown on the phone before a write goes out are reported with a `local.` code (sure refusals); a lost answer, a 5xx, a 4xx without a code or a TIME_OUT release are uncertain and leave only « Fermer ». The invite code keeps its result screen (the code must be copied).
-  - Paired buttons share the row equally (`PairedActions`); form actions (coordinates, contact) stack one full-width button per row like the web's phone layout. The bike sheet keeps « Réserver » and « Déverrouiller » stacked (lead's earlier choice), already equal.
-  - Statistiques is not a tab: a « Statistiques » button at the top of Trajets pushes the page.
-- Web sync (fields, select, no shadows, copy pass): the web strings are reused verbatim, with « ce téléphone » for « ce navigateur » and « Actualisez » for « Actualisez la page »; the location refusal points to « les réglages de votre téléphone ». A no-break space (U+00A0) precedes ? ! : ; in every French literal; the contact message sent to Vélo’v keeps its plain « Code du trajet : » like the web. No view casts a drop shadow: floating surfaces, fields and the switch thumb take the 1 pt ink-line ring (`ringed`); system sheets keep their own.
+Ce document rassemble les règles que le code respecte et les raisons de quelques choix moins évidents. L’app suit la [version web](https://github.com/DailyXplorer/velov-compagnon) : mêmes textes, mêmes règles, mêmes hypothèses sur l’API.
+
+## Écritures
+
+Toute requête qui modifie le compte part exactement une fois par confirmation de l’utilisateur. Elle ne passe jamais par le client de lecture, qui sait réessayer, et n’est jamais renvoyée, quelle que soit la réponse. Pour un déverrouillage, la borne a pu s’ouvrir sans que la réponse arrive ; pour une réservation, des points ont pu être débités.
+
+Un échec est classé comme refus certain ou comme résultat incertain, à la manière de `isUncertain` côté web. Sont des refus certains les erreurs détectées sur le téléphone avant tout envoi (codes `local.`), les erreurs 4xx accompagnées d’un code et les états d’échec explicites du déverrouillage. Tout le reste est incertain : absence de réponse, délai dépassé, erreur 5xx ou page de passerelle, réponse 2xx illisible, erreur 4xx sans code, et l’état `TIME_OUT` d’un déverrouillage. Après un résultat incertain, la feuille ne propose plus que « Fermer ». Le succès d’une écriture se lit dans `transactionState`, jamais dans le seul statut HTTP.
+
+La notation d’un vélo envoie une note par appui sur « Envoyer » : les étoiles sont le choix et le bouton vaut confirmation. Le téléchargement d’un justificatif est un POST qui ne fait que lire ; il part donc sans confirmation, une requête par appui.
+
+Avant une réservation, l’app relit les identifiants de la station et du vélo, que le corps de la requête exige. Avant « 15 minutes de plus », elle revérifie que la station choisie est pleine et retrouve l’abonnement qui loue réellement le vélo. Avant un changement du renouvellement automatique, elle vérifie que Vélo’v l’autorise, puis relit l’état réel ; si cette relecture échoue, l’écriture n’est pas répétée et l’état reste inconnu. Un corps invalide ne quitte jamais le téléphone.
+
+## Codes d’invitation
+
+Le code obtenu contre des points est la seule preuve du débit. L’app vérifie donc que le stockage local est lisible et inscriptible avant le débit, puis écrit le code sur le téléphone avant toute autre chose. Un stockage illisible n’est jamais écrasé, car un ancien code peut encore s’y trouver. Les codes sont rangés dans Application Support sous une clé qui ne contient pas l’adresse du compte. Un débit qui a pu avoir lieu n’est jamais reproposé depuis la même feuille.
+
+## Lectures
+
+Les lectures sont réessayées seulement sur les erreurs 502, 503 et 504, au plus trois fois et 8 secondes chacune, jamais après un délai dépassé : la passerelle de Cyclocity renvoie un 502 nu à environ une requête sur cinq. Une seule lecture tourne à la fois pour une même clé, et un échec n’est jamais mis en cache. La liste des stations sert la dernière version connue en cas de panne. Les vélos d’une station sont gardés 15 secondes pour la liste, mais une réservation les relit toujours. L’historique complet, utilisé par les statistiques, est lu page par page et gardé 10 minutes.
+
+Les réponses sont lues champ par champ : un champ obligatoire mal formé fait échouer la lecture, un champ facultatif mal formé devient simplement absent, et un vélo mal formé est ignoré sans perdre la station.
+
+## Connexion et session
+
+La connexion est une seule tentative ; un refus est affiché avec le message de Vélo’v et n’est jamais réessayé. Rien ne permet d’affirmer que Vélo’v limite un compte à un seul appareil : l’app n’en fait pas l’hypothèse et ne déconnecte jamais les autres sessions.
+
+L’identifiant d’appareil est créé une fois, gardé dans le trousseau et conservé après une déconnexion, car un nouvel identifiant ressemblerait à un autre téléphone. Les jetons sont dans le trousseau, lisibles après le premier déverrouillage, jamais synchronisés. Une seule actualisation de session tourne à la fois, puisqu’un jeton d’actualisation ne sert qu’une fois, et seul un refus de ce jeton met fin à la session. Les identifiants ne sont envoyés qu’aux pages du domaine d’authentification de Vélo’v, et le jeton d’identité est vérifié (signature RS256, émetteur, audience, nonce, expiration).
+
+## Fin de trajet
+
+Pendant un trajet, l’app interroge les trajets en cours toutes les 20 secondes, seulement au premier plan, une requête à la fois et pendant 3 heures au plus. Elle vérifie aussitôt en revenant au premier plan. Il n’y a ni tâche de fond ni notification, car iOS ne maintiendrait pas une interrogation aussi fréquente en arrière-plan. Après un déverrouillage, l’app attend jusqu’à 2 minutes que le trajet apparaisse.
+
+Quand le vélo est raccroché, l’app relit le compte pour le prix et les réservations, ce qui termine toute Activité en direct restante. « Plus tard », comme toute autre façon de fermer la fiche « Trajet terminé », est mémorisé par trajet ; au lancement, l’app propose une seule fois le dernier trajet encore notable. La notation reste ouverte 3 heures après la fin du trajet.
+
+## Activité en direct
+
+L’Activité en direct de la réservation est démarrée et arrêtée par l’app seule : aucun jeton push n’est demandé et il n’y a pas d’App Group. Si iOS la refuse, rien d’autre n’en dépend et le bandeau de l’app reste affiché. Le widget utilise les mêmes icônes et les deux mêmes polices que l’app. Les captures de l’écran verrouillé et de la Dynamic Island dessinent les vues du widget sur une maquette, car un script ne peut pas verrouiller le simulateur.
+
+## Hypothèses sur l’API
+
+Certaines écritures reposent sur des formats que la documentation publique laisse ouverts. Ils sont regroupés dans `Guesses.swift`, identique à `lib/guesses.ts` côté web. Ce sont des constantes à corriger après vérification, jamais des variantes essayées l’une après l’autre.
+
+| Écriture | Hypothèse | Confiance | Source |
+| --- | --- | --- | --- |
+| Renouvellement automatique (`PATCH …/subscriptions/{id}`) | Corps `isAutoRenewal` | Moyenne | VLSKit, `Models/Subscription.swift` |
+| « 15 minutes de plus » (`POST …/subscriptions/{id}/via`) | Type de média et champ `stationId` | Élevée | community-README §5.5, VLSKit `SubscriptionService.swift` |
+| « 15 minutes de plus » | La station est désignée par son numéro, pas son UUID | Moyenne | VLSKit `Models/Subscription.swift` |
+| Service client (`POST …/mail`, multipart) | Noms des champs | Élevée | community-README §10 |
+| Service client | Catégories de réclamation | Moyenne | VLSKit `EmailService.swift` |
+| Code d’invitation (`POST …/rewards/consume/promocode`) | Requête sans corps, réponse avec le code | Élevée | community-README §5.8, VLSKit `RewardService.swift` |
+
+Le message au service client n’envoie pas d’identifiant de trajet, dont le format attendu est incertain : le code du trajet choisi est ajouté au texte. Aucune étape de souscription n’est envoyée après l’obtention d’un code d’invitation.
+
+## Interface
+
+L’app est en mode clair uniquement, avec le rouge pour seule couleur d’accent, et aucune vue ne projette d’ombre. La barre d’onglets flotte à 24 points des bords ; son rayon est concentrique avec l’écran et toutes les surfaces flottantes le reprennent sur leurs quatre coins. Les textes viennent de la version web, avec « ce téléphone » à la place de « ce navigateur » et une espace insécable devant ? ! : ;. Les titres et les grands nombres sont en Faculty Glyphic, le reste en DM Sans.

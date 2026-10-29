@@ -1,7 +1,6 @@
 import SwiftUI
 import VelovCore
 
-/// login.tsx: the e-mail and the 6-digit secret code, one attempt per tap.
 struct LoginView: View {
     let notice: String?
     @Environment(AppModel.self) private var model

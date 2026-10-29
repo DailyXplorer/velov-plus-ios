@@ -1,14 +1,11 @@
 import XCTest
 @testable import VelovCore
 
-/// The writes as the app calls them (web `lib/velov.ts`): the reads before, the local refusals that send nothing,
-/// then exactly one state-changing request.
 final class WriteFlowsTests: XCTestCase {
     let identity = Identity(accessToken: "user-access", email: "person@example.com")
     static let accountId = "0b6e1f6c-1d2e-4f3a-9b8c-7d6e5f4a3b2c"
     var account: String { "https://api.cyclocity.fr/contracts/lyon/accounts/\(Self.accountId)" }
 
-    /// One account, station 2002 full with bike 20449 on borne 12. `route` answers first; any other write gets `write`.
     func cyclocity(write: Reply = .json([:]), route: @escaping @Sendable (Call) -> Reply? = { _ in nil }) -> MockServer {
         let account = "/accounts/\(Self.accountId)"
         return MockServer { call, _ in
@@ -34,8 +31,6 @@ final class WriteFlowsTests: XCTestCase {
 
     func api(_ server: MockServer) -> VelovAPI { VelovAPI(transport: server.transport, pause: noPause) }
     func writes(_ server: MockServer) -> [Call] { server.calls.filter { $0.method != "GET" && !$0.url.hasSuffix("/client_tokens") } }
-
-    // MARK: Booking
 
     func testABookingReadsTheIdsThenPostsOnceAndNamesTheStation() async throws {
         let server = cyclocity(write: .json(["id": "bk-1", "stationNumber": 2002, "standNumber": 12, "bikeId": "bike-uuid", "endTime": "2026-10-29T10:15:00"]))
@@ -81,8 +76,6 @@ final class WriteFlowsTests: XCTestCase {
         XCTAssertEqual(writes(server).count, 1)
     }
 
-    // MARK: Release
-
     func testAnUnlockPostsOnceThenLooksAtTheOngoingTrip() async throws {
         let server = cyclocity(write: .json(["transactionState": "OK"]))
         let (outcome, ongoing) = try await api(server).unlock(identity, stationNumber: 2002, standNumber: 12, bikeNumber: 20449)
@@ -108,8 +101,6 @@ final class WriteFlowsTests: XCTestCase {
         XCTAssertEqual(writes(none).count, 0)
     }
 
-    // MARK: Account
-
     func testTheAccountWritesGoOutOnceToTheAccount() async throws {
         let server = cyclocity(write: .json(["autoSpend": false]))
         let api = api(server)
@@ -124,8 +115,6 @@ final class WriteFlowsTests: XCTestCase {
         XCTAssertEqual(invalid.code, "local.profile.invalid")
         XCTAssertEqual(writes(server).count, 4)
     }
-
-    // MARK: Auto-renewal
 
     func testARenewalChangeIsCheckedWrittenOnceAndReadBack() async throws {
         let reads = CallCounter()
@@ -174,8 +163,6 @@ final class WriteFlowsTests: XCTestCase {
         XCTAssertEqual(refused.calls.filter { $0.url.contains("/subscriptions?periods=CURRENT") }.count, 1)
     }
 
-    // MARK: "15 minutes de plus"
-
     func testExtraTimeFindsTheRentingSubscriptionRechecksTheStationAndPostsOnce() async throws {
         let server = cyclocity(write: .json(["transactionState": "OK"]))
         let outcome = try await api(server).requestExtraTime(identity, stationNumber: 2002)
@@ -205,8 +192,6 @@ final class WriteFlowsTests: XCTestCase {
         }
     }
 
-    // MARK: Customer service
-
     func testAMessageGoesOutOnceAndAnInvalidOneNever() async throws {
         let server = cyclocity(write: .status(204))
         let outcome = try await api(server).contactSupport(identity, ContactBody(complaintType: "PAYMENT", message: "Bonjour"))
@@ -216,8 +201,6 @@ final class WriteFlowsTests: XCTestCase {
         XCTAssertEqual(invalid.code, "local.contact.invalid")
         XCTAssertEqual(writes(server).count, 1)
     }
-
-    // MARK: Invitation code
 
     func testAnInvitationCodeChecksThePriceAndTheBalanceBeforeTheOneDebit() async throws {
         let server = cyclocity(write: .json(["promoCode": "INVITE-1"]))
@@ -237,8 +220,6 @@ final class WriteFlowsTests: XCTestCase {
         }
     }
 
-    // MARK: Dashboard
-
     func testTheDashboardSaysWhetherTheRenewalMayChange() async throws {
         let server = cyclocity { call in
             let url = call.url
@@ -253,11 +234,9 @@ final class WriteFlowsTests: XCTestCase {
     }
 }
 
-/// A thread-safe call counter for mock routes.
 final class CallCounter: @unchecked Sendable {
     private let lock = NSLock()
     private var value = 0
     var count: Int { lock.withLock { value } }
-    /// The count before this call.
     func next() -> Int { lock.withLock { defer { value += 1 }; return value } }
 }

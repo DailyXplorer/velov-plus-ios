@@ -3,17 +3,10 @@ import SwiftUI
 struct SelectOption<Value: Hashable>: Identifiable {
     let value: Value
     let label: String
-    /// The trigger's text when the field sits inline in the stations search; the list always shows `label`.
     var short: String?
     var id: Value { value }
 }
 
-/// `SelectField` of ui.tsx: the web's own dropdown, not the iOS menu. A white pill on the ring with a mist chevron circle;
-/// the list a white card on the ring, the chosen option in red without a check. No focus or open ring.
-/// `hideLabel` keeps the label for VoiceOver only, when the chosen value already says what the field is.
-/// `.row` puts the label beside the pill (filters), `.stacked` above it at full width (forms), `.inline` drops the pill to sit
-/// after a divider inside another one (the stations search) and shows the short labels.
-/// The row that holds it needs `.zIndex(1)` so the list draws over what follows.
 struct SelectField<Value: Hashable>: View {
     enum Layout { case row, stacked, inline }
 
@@ -65,7 +58,6 @@ struct SelectField<Value: Hashable>: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(label), \(selected?.label ?? "")")
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-        // Inline, the list hangs under the search pill's right edge, 7 pt past the trigger.
         .overlay(alignment: inline ? .topTrailing : .topLeading) {
             if open {
                 list.offset(x: inline ? 7 : 0, y: 50).transition(.opacity.combined(with: .offset(y: -4)))
@@ -73,7 +65,6 @@ struct SelectField<Value: Hashable>: View {
         }
     }
 
-    /// The chosen label; outside the search, as wide as the widest option so the pill keeps its size.
     @ViewBuilder
     private var shown: some View {
         if inline {

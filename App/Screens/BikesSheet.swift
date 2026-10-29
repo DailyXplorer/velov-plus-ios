@@ -1,7 +1,6 @@
 import SwiftUI
 import VelovCore
 
-/// A bike sheet to push: from a station's live list (with its station) or alone from a trip.
 struct BikeRoute: Hashable {
     let number: Int
     let station: Station?
@@ -15,7 +14,6 @@ private func typeLabel(_ type: Bike.Kind) -> (String, IconName) {
     }
 }
 
-/// station-bikes.tsx `StationBikes`: the live bikes of a station, assessed, the recommended ones first; a tap pushes the bike sheet.
 struct BikesSheet: View {
     let station: Station
     @Environment(AppModel.self) private var model
@@ -89,7 +87,6 @@ struct BikesSheet: View {
     }
 }
 
-/// Bikes this account has booked are not « Réservé » against it.
 func assessForAccount(_ bikes: [Bike], own: Set<Int>) -> [AssessedBike] {
     assessBikes(bikes.map { bike in
         var copy = bike
@@ -98,7 +95,6 @@ func assessForAccount(_ bikes: [Bike], own: Set<Int>) -> [AssessedBike] {
     })
 }
 
-/// `.bike-row`: type, number, borne, « Réservé », « Recommandé », the rating and the battery.
 struct BikeRow: View {
     let item: AssessedBike
     let mine: Bool
@@ -166,7 +162,6 @@ struct Stars: View {
     }
 }
 
-/// `VerdictMark`: thumbs up in red, or a warning in mist, beside the bike number.
 struct VerdictMark: View {
     let verdict: Verdict
     var body: some View {
@@ -181,7 +176,6 @@ struct VerdictMark: View {
     }
 }
 
-/// `BikeSheet` / `BikeDrawer`: the live bike, its verdict mark beside the number, the actions (stage 2) and its facts.
 struct BikeDetail: View {
     let route: BikeRoute
     var preloaded: AssessedBike?
@@ -225,7 +219,6 @@ struct BikeDetail: View {
         do {
             guard let bike = try await model.service.bike(route.number) else { loaded = .failed(Messages.bikeUnavailable); return }
             var assessed = assessForAccount([bike], own: own)[0]
-            // Alone, a bike is no station's best pick: keep only the warnings.
             if assessed.verdict == .recommended { assessed.verdict = .neutral; assessed.reasons = [] }
             loaded = .ready(assessed)
         } catch {
@@ -301,7 +294,6 @@ struct BikeDetail: View {
         }
     }
 
-    /// Book and release, stacked full width like the web's phone layout; each opens its confirmation.
     private func actions(_ bike: Bike, station: Station, mine: Bool) -> some View {
         let booking = model.bookings.first { $0.bikeNumber == bike.number }
         let place = Place(stationNumber: station.number, stationName: station.name, standNumber: bike.standNumber ?? 0, bikeNumber: bike.number, lat: station.lat, lon: station.lon)
@@ -314,7 +306,6 @@ struct BikeDetail: View {
                 }
             }
             if !mine {
-                // The cost and the duration show in the confirmation only.
                 PillButton(variant: .secondary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: nil, action: .book) }) {
                     Icon(.timer, .light, size: 17); Text("Réserver")
                 }
@@ -332,7 +323,6 @@ struct BikeDetail: View {
     }
 }
 
-/// The sheet a bike action opens: what to confirm and with which booking.
 struct PendingAction: Identifiable {
     let place: Place
     let bookingId: String?

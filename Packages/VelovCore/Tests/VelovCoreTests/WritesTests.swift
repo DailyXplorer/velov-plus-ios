@@ -1,7 +1,6 @@
 import XCTest
 @testable import VelovCore
 
-/// The state-changing calls, against the mock only: one request per call, whatever the answer.
 final class WritesTests: XCTestCase {
     let auth = WriteAuth(accountId: "acc-1", token: "client", identity: "user")
 

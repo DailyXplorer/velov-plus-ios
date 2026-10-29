@@ -4,7 +4,6 @@ import VelovCore
 enum TripSort: String, Hashable { case recent, oldest, longest, priciest }
 enum TripFilter: String, Hashable { case all, mechanical, electrical }
 
-/// dashboard.tsx `TripsPage`: Type de vélo, Trier par, the count, ten trips at a time.
 struct TripsPage: View {
     let data: Dashboard
     @Environment(AppModel.self) private var model
@@ -59,7 +58,6 @@ struct TripsPage: View {
     }
 }
 
-/// `TripsTable` in its phone layout; a tap opens the trip sheet.
 struct TripsList: View {
     let trips: [Trip]
     var openFirst = false

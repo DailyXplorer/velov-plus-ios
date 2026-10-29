@@ -1,8 +1,6 @@
 import XCTest
 @testable import VelovCore
 
-/// The profile and experimental writes, against the mock only (web `account`, `auto-renewal`, `via`, `contact`, `promo` tests):
-/// one request per call, whatever the answer, and the raw status, code and message kept on a refusal.
 final class AccountWritesTests: XCTestCase {
     let auth = WriteAuth(accountId: "account/one", token: "app-token", identity: "user-token")
     let account = "https://api.cyclocity.fr/contracts/lyon/accounts/account%2Fone"
@@ -13,8 +11,6 @@ final class AccountWritesTests: XCTestCase {
         XCTAssertEqual(call.header("Identity"), "user-token", file: file, line: line)
         XCTAssert(call.header("User-Agent")?.hasPrefix("Mozilla/") == true, file: file, line: line)
     }
-
-    // MARK: Profile
 
     func testAProfileChangeIsAPatchOfTheAccountWithOnlyTheChangedFieldsInTheAppsOrder() async throws {
         let server = MockServer { _, _ in .json([:]) }
@@ -71,8 +67,6 @@ final class AccountWritesTests: XCTestCase {
         XCTAssertEqual(normalizePhone("0612345678", country: "BE"), "0612345678")
     }
 
-    // MARK: Auto-renewal
-
     func testRenewalPatchSendsTheSourceSupportedIsAutoRenewalBodyExactlyOnce() async throws {
         XCTAssertEqual(Guesses.autoRenewalField, "isAutoRenewal")
         let server = MockServer { _, _ in .status(204) }
@@ -107,8 +101,6 @@ final class AccountWritesTests: XCTestCase {
         XCTAssert(renewalState(of: .object(["periods": .array([.object(["renewalDetails": .object(["autoRenewalValue": .bool(false), "autoRenewalBtn": .bool(true)])])])])) == (false, true))
         XCTAssertFalse(renewalState(of: .object(["isLocked": .bool(true), "periods": .array([.object(["renewalDetails": .object(["autoRenewalBtn": .bool(true)])])])])).allowed)
     }
-
-    // MARK: "15 minutes de plus"
 
     func testViaUsesTheNumberAssumptionTheSubscriptionMediaTypeAndExactlyOnePost() async throws {
         XCTAssertEqual(Guesses.viaStationIdentifier, .number)
@@ -182,9 +174,6 @@ final class AccountWritesTests: XCTestCase {
         XCTAssertEqual(fullStations(stations, query: "2", position: nil).map(\.number), [2])
     }
 
-    // MARK: Customer service
-
-    /// The parts of a multipart body, in order.
     func parts(_ call: Call) -> [(String, String)] {
         guard let type = call.header("Content-Type"), let range = type.range(of: "boundary=") else { return [] }
         let boundary = String(type[range.upperBound...])
@@ -249,8 +238,6 @@ final class AccountWritesTests: XCTestCase {
         XCTAssertEqual(contactMessage(ContactBody(complaintType: "PAYMENT", message: " Question ")), "Question")
     }
 
-    // MARK: Invitation code
-
     func testPromocodeDebitsOnceWithNoBodyTheRewardsAcceptAndAuthenticatedBrowserHeaders() async throws {
         let server = MockServer { _, _ in .json(["promoCode": "INVITE-EXAMPLE", "offerId": 1, "badgeId": 2, "badgeType": "EXTERNAL", "rewardsSpent": 50]) }
         let auth = WriteAuth(accountId: "account/test", token: "app-token", identity: "user-token")
@@ -300,8 +287,6 @@ final class AccountWritesTests: XCTestCase {
             XCTAssert(result.outcome.message!.contains("avant de recommencer"))
         }
     }
-
-    // MARK: Promo storage
 
     func testCodesPersistAppendRatherThanOverwriteAndDeduplicate() throws {
         let store = InMemoryPromoBacking()

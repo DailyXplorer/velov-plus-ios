@@ -1,6 +1,5 @@
 import Foundation
 
-/// Cyclocity reads for one account: stations, bikes, bookings and the dashboard. Writes live in `Writes.swift`.
 public final class VelovAPI: Sendable {
     public let client: ReadClient
     public let appToken: AppToken
@@ -9,7 +8,6 @@ public final class VelovAPI: Sendable {
     private let accountIds = Memo<String>(ttl: 10 * 60)
     private let offers = Memo<[JSON]>(ttl: 10 * 60)
     private let rules = Memo<[JSON]>(ttl: 10 * 60)
-    /// The whole trip history per account: read page after page, so not on every visit.
     let statsMemo = Memo<Stats>(ttl: 10 * 60)
 
     public init(transport: HTTPTransport, pause: @escaping @Sendable (Double) async -> Void = { try? await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }) {
@@ -25,15 +23,12 @@ public final class VelovAPI: Sendable {
         }
     }
 
-    // MARK: Public reads
-
     private func gbfs(_ file: String) async throws -> JSON {
         let response = try await client.fetchTransient(makeRequest(URL(string: "\(Cyclocity.base)/gbfs/v3/\(file)")!, timeout: ReadClient.attemptTimeout))
         guard response.ok, let value = response.json else { throw VelovError(.unavailable, Messages.stationsUnavailable) }
         return value
     }
 
-    /// The only cache layer for GBFS: an outage serves the last list, however old, rather than none.
     public func stations() async throws -> StationData {
         try await stationsMemo.get("lyon") { [self] in
             async let information = gbfs("station_information.json")
@@ -51,7 +46,6 @@ public final class VelovAPI: Sendable {
         return bikes
     }
 
-    /// The live bikes of one station, by stand. Kept 15 s for the bike list only: a booking reads its station's bikes afresh.
     public func stationBikes(_ station: Int) async throws -> [Bike] {
         try await stationBikesMemo.get(String(station)) { [self] in
             try await rawBikes("stationNumber=\(station)", unavailable: Messages.stationBikesUnavailable).map(normalizeBike).sorted {
@@ -64,8 +58,6 @@ public final class VelovAPI: Sendable {
     public func bike(_ number: Int) async throws -> Bike? {
         try await rawBikes("number=\(number)", unavailable: Messages.bikeUnavailable).map(normalizeBike).first { $0.number == number }
     }
-
-    // MARK: Account reads
 
     func read(_ path: String, _ identity: Identity, accept: String = "application/json") async throws -> JSON {
         let response = try await getWithAppToken(client, appToken, URL(string: "\(Cyclocity.base)\(path)")!) { token in
@@ -90,7 +82,6 @@ public final class VelovAPI: Sendable {
         return Dictionary(data.stations.map { ($0.number, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
-    /// The account's bookings, with each bike's number found back from its id at the booking's station.
     public func bookings(_ identity: Identity) async throws -> [Booking] {
         let account = try await accountId(identity)
         let value = try await read("/accounts/\(account)/bookings", identity, accept: "*/*")
@@ -107,7 +98,6 @@ public final class VelovAPI: Sendable {
         return bookings.map { toBooking($0, stations: byNumber, bikeNumbers: bikeNumbers) }
     }
 
-    /// The dock watch's poll: the ongoing trips, and only once none is left the latest finished one (two small reads, no dashboard).
     public func tripCheck(_ identity: Identity) async throws -> TripCheck {
         let account = "/accounts/\(try await accountId(identity))"
         let trips = { [self] (path: String) in try RawTrip.list(try await read("\(account)/\(path)", identity, accept: "application/vnd.trip.v6+json")) }
@@ -123,7 +113,6 @@ public final class VelovAPI: Sendable {
         return TripCheck(ongoing: ongoing?.map { normalizeTrip($0, stations: byNumber) }, latest: nil)
     }
 
-    /// Only the account id and the profile are needed: every other read degrades to a warning and a missing piece.
     public func dashboard(_ identity: Identity, now: Date = Date()) async throws -> Dashboard {
         let account = "/accounts/\(try await accountId(identity))"
         let reads = DashboardReads()
@@ -164,7 +153,6 @@ private actor DashboardReads {
     func warn(_ warning: String) { warnings.append(warning) }
 }
 
-/// The raw answers of the dashboard reads; nil where a read failed.
 public struct DashboardParts: Sendable {
     public var profile: JSON
     public var rewards: JSON?
@@ -186,7 +174,6 @@ private func titleOf(_ subscription: JSON, period: JSON?, offers: [JSON]) -> Str
     return subscription["type"]?.string == "LT" ? "Abonnement longue durée" : "Ticket Vélo’v"
 }
 
-/// The current subscription: the first unlocked one with a period.
 private func currentSubscription(_ list: [JSON]) -> JSON? {
     list.first { $0["isLocked"]?.bool != true && ($0["periods"]?.array?.isEmpty == false) }
 }

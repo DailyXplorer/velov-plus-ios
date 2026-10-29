@@ -1,10 +1,5 @@
 import Foundation
 
-// State-changing Cyclocity calls. Each one goes out EXACTLY ONCE per user confirmation: never through `ReadClient`,
-// never retried, whatever the answer (a lost answer may hide a booking or a release that went through).
-// The experimental ones (renewal, extra time, mail, invitation code) are in `ExperimentalWrites.swift`.
-
-/// The tokens a write needs: the account, the app token and the user's access token.
 public struct WriteAuth: Sendable {
     public let accountId: String
     public let token: String
@@ -33,7 +28,6 @@ private func networkFailure(_ error: Error) -> String {
     (error as? URLError)?.code == .timedOut ? "TimeoutError" : String(describing: type(of: error))
 }
 
-/// JSON with the keys in the given order, as the official app writes its bodies.
 func orderedJSON(_ pairs: [(String, Any?)]) -> Data {
     let parts = pairs.map { key, value -> String in
         let encoded: String
@@ -51,7 +45,6 @@ func orderedJSON(_ pairs: [(String, Any?)]) -> Data {
 }
 
 public enum Writes {
-    /// Rates the bike of a trip, once; a failure keeps its raw status for the line under the stars.
     public static func rate(_ auth: WriteAuth, tripId: String, bikeNumber: Int, vote: RateVote, http: HTTPTransport) async throws -> Outcome {
         let url = URL(string: "\(accountURL(auth.accountId))/trips/\(pathSegment(tripId))/rate")!
         let body = orderedJSON([("bikeId", bikeNumber), ("recommended", vote.recommended), ("contract", "lyon"), ("rating", vote.rating)])
@@ -70,7 +63,6 @@ public enum Writes {
         return Outcome(ok: false, httpStatus: response.status, code: reply.code, message: "Vélo’v n’a pas enregistré la note. Réessayez dans un instant.", detail: reply.detail)
     }
 
-    /// Releases a bike, exactly once: the borne may already have opened, so a lost answer must never be retried.
     public static func release(_ auth: WriteAuth, subscriptionId: String, stationNumber: Int, standNumber: Int, bikeNumber: Int, http: HTTPTransport) async throws -> Outcome {
         let url = URL(string: "\(accountURL(auth.accountId))/subscriptions/\(pathSegment(subscriptionId))/trips")!
         let body = orderedJSON([("stationNumber", stationNumber), ("standNumber", standNumber), ("bikeNumber", bikeNumber), ("typeFrom", "SMARTPHONE")])
@@ -89,10 +81,8 @@ public enum Writes {
         return releaseOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail, transactionState: reply.transactionState)
     }
 
-    /// Books a bike, exactly once: it costs points, and a lost answer may hide a booking that went through.
     public static func book(_ auth: WriteAuth, stationId: String, stationNumber: Int, standNumber: Int, subscriptionId: String, bikeId: String, http: HTTPTransport) async throws -> (outcome: Outcome, booking: RawBooking?) {
         let url = URL(string: "\(accountURL(auth.accountId))/bookings")!
-        // Field order of the app's CreateBooking constructor.
         let body = orderedJSON([("stationId", stationId), ("stationNumber", stationNumber), ("standNumber", standNumber), ("subscriptionId", subscriptionId), ("bikeId", bikeId)])
         let response: HTTPResponse
         do {
@@ -109,8 +99,6 @@ public enum Writes {
         return (outcome, outcome.ok ? reply.value.flatMap(RawBooking.init) : nil)
     }
 
-    /// One call that changes the account, exactly once: whatever happens, it is never sent again without a new confirmation.
-    /// With `preserveUnauthorized` a 401 comes back as an outcome (experimental writes keep their raw answer) instead of ending the session.
     static func accountCall(_ url: URL, method: String, headers: [String: String], body: Data?, auth: WriteAuth, failed: String, http: HTTPTransport,
                             preserveUnauthorized: Bool = false) async throws -> (outcome: Outcome, value: JSON?) {
         let response: HTTPResponse
@@ -129,7 +117,6 @@ public enum Writes {
         return (accountOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail, failed: failed), response.ok ? reply.value : nil)
     }
 
-    /// PATCH /rewards with the app's UpdateReward body; Vélo’v answers the whole rewards object.
     public static func setAutoSpend(_ auth: WriteAuth, _ autoSpend: Bool, http: HTTPTransport) async throws -> (outcome: Outcome, autoSpend: Bool?) {
         let (outcome, value) = try await accountCall(URL(string: "\(accountURL(auth.accountId))/rewards")!, method: "PATCH",
                                                      headers: ["Content-Type": "application/vnd.rewards.v5+json"], body: orderedJSON([("autoSpend", autoSpend)]),
@@ -137,14 +124,12 @@ public enum Writes {
         return (outcome, value?["autoSpend"]?.bool ?? (outcome.ok ? autoSpend : nil))
     }
 
-    /// Adds (POST) or removes (DELETE) a favourite station, with the app's trailing slash and Accept.
     public static func setFavorite(_ auth: WriteAuth, station: Int, on: Bool, http: HTTPTransport) async throws -> Outcome {
         try await accountCall(URL(string: "\(accountURL(auth.accountId))/stationbookmarks/\(station)/")!, method: on ? "POST" : "DELETE",
                               headers: ["Accept": "application/vnd.account.v4+json"], body: nil, auth: auth,
                               failed: on ? "Vélo’v n’a pas ajouté cette station aux favoris." : "Vélo’v n’a pas retiré cette station des favoris.", http: http).outcome
     }
 
-    /// The receipt of one subscription period: a POST without body that only reads, answered as base64 under Accept: application/json.
     public static func receipt(_ auth: WriteAuth, subscriptionId: String, periodId: String, http: HTTPTransport) async throws -> (outcome: Outcome, filename: String?, pdf: Data?) {
         let url = URL(string: "\(accountURL(auth.accountId))/subscriptions/\(pathSegment(subscriptionId))/periods/\(pathSegment(periodId))/reports")!
         var (outcome, value) = try await accountCall(url, method: "POST", headers: ["Accept": "application/json"], body: nil, auth: auth, failed: "Ce reçu n’est pas disponible.", http: http)
@@ -159,7 +144,6 @@ public enum Writes {
         return (outcome, name.isEmpty ? "recu-\(periodId).pdf" : name, bytes)
     }
 
-    /// PATCH /accounts/{id} with only the changed fields, in the order of the body the app sends.
     public static func setProfile(_ auth: WriteAuth, _ body: ProfileBody, http: HTTPTransport) async throws -> Outcome {
         let body = body.trimmedForSending
         let address = body.address.map { orderedJSON([("name", $0.name), ("complement", $0.complement)]) }
@@ -167,7 +151,6 @@ public enum Writes {
                                        ("city", body.city), ("phoneNumber", body.phoneNumber), ("address", address)]
         var outcome = try await accountCall(URL(string: accountURL(auth.accountId))!, method: "PATCH", headers: ["Content-Type": "application/vnd.account.v4+json"],
                                             body: orderedJSON(pairs.filter { $0.1 != nil }), auth: auth, failed: "Vélo’v n’a pas enregistré ces coordonnées.", http: http).outcome
-        // The app only sends names to complete a new account: on a complete one, a 4xx is most likely the name refused.
         if body.firstName != nil || body.lastName != nil, (400..<500).contains(outcome.httpStatus) {
             outcome.message = "Vélo’v n’a pas accepté ce changement de nom."
         }

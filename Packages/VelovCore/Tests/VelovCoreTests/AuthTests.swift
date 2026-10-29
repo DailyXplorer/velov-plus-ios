@@ -3,7 +3,6 @@ import Security
 import XCTest
 @testable import VelovCore
 
-/// A throwaway RSA key standing in for the realm's signing key.
 struct TestSigner {
     let privateKey: SecKey
     let jwks: [String: Any]
@@ -16,7 +15,6 @@ struct TestSigner {
         jwks = ["keys": [["kty": "RSA", "kid": "test", "alg": "RS256", "use": "sig", "n": base64URL(modulus), "e": base64URL(exponent)]]]
     }
 
-    /// The two INTEGERs of a PKCS#1 RSAPublicKey.
     static func integers(_ der: Data) -> (Data, Data) {
         var bytes = [UInt8](der)
         func length() -> Int {
@@ -41,7 +39,6 @@ struct TestSigner {
     }
 }
 
-/// An unsigned access token: the app only reads it, Cyclocity checks it.
 func accessToken(email: String = "person@example.com", expires: Date) -> String {
     let header = base64URL(Data(#"{"alg":"none"}"#.utf8))
     let payload = base64URL(try! JSONSerialization.data(withJSONObject: ["azp": "vls-web-lyon", "preferred_username": email, "exp": expires.timeIntervalSince1970]))
@@ -124,7 +121,6 @@ final class AuthTests: XCTestCase {
         XCTAssertEqual(server.calls.count, 1)
     }
 
-    /// The whole Keycloak dance, served by the mock realm.
     func realm(_ signer: TestSigner, deviceReply: Reply? = nil) -> MockServer {
         let state = Box<String>(), nonce = Box<String>()
         return MockServer { call, _ in

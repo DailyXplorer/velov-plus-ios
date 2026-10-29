@@ -1,5 +1,4 @@
 #!/bin/zsh
-# Renders the key screens with sample data: boots a dedicated simulator, launches the app once per screen and takes a PNG.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT="$PWD/snapshots"

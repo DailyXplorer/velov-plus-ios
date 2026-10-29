@@ -5,9 +5,7 @@ public struct Tokens: Codable, Equatable, Sendable {
     public var accessToken: String
     public var refreshToken: String
     public var idToken: String
-    /// Seconds.
     public var expiresIn: Double
-    /// Seconds; Keycloak sends 0 for a refresh token without its own expiry.
     public var refreshExpiresIn: Double
 
     public init(accessToken: String, refreshToken: String, idToken: String, expiresIn: Double, refreshExpiresIn: Double) {
@@ -15,7 +13,6 @@ public struct Tokens: Codable, Equatable, Sendable {
         self.expiresIn = expiresIn; self.refreshExpiresIn = refreshExpiresIn
     }
 
-    /// The token endpoint's answer, every field checked.
     static func parse(_ value: JSON?) throws -> Tokens {
         guard let value, let access = value["access_token"]?.string, !access.isEmpty, let refresh = value["refresh_token"]?.string, !refresh.isEmpty,
               let identity = value["id_token"]?.string, !identity.isEmpty, let expires = value["expires_in"]?.number, expires > 0,
@@ -39,7 +36,6 @@ private func randomToken(_ count: Int) -> String {
     return base64URL(Data(bytes))
 }
 
-/// The PKCE S256 challenge of a verifier.
 public func codeChallenge(_ verifier: String) -> String {
     base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))
 }
@@ -60,7 +56,6 @@ private func isCallback(_ url: URL) -> Bool {
     return url.scheme == callback.scheme && url.host == callback.host && url.port == callback.port && url.path == callback.path
 }
 
-/// The authorization code of the expected callback for this login.
 public func readCallback(_ value: String, state: String) throws -> String {
     guard let url = URL(string: value), isCallback(url), let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
           items.first(where: { $0.name == "state" })?.value == state, !items.contains(where: { $0.name == "error" }),
@@ -70,7 +65,6 @@ public func readCallback(_ value: String, state: String) throws -> String {
     return code
 }
 
-/// The Keycloak pages of one login: their own cookie jar, redirects followed by hand, never outside the realm.
 final class LoginTransport {
     enum Page { case page(String), callback(String) }
     private var cookies: [(String, String)] = []
@@ -111,8 +105,6 @@ final class LoginTransport {
     }
 }
 
-/// Headless Keycloak login: credentials form, then the device form with the phone's stable device id, then the code exchange.
-/// Exactly one pass: a refusal is shown, never retried.
 public func login(email: String, code: String, deviceId: String, http: HTTPTransport, now: Date = Date()) async throws -> Tokens {
     let authorization = makeAuthorization()
     let transport = LoginTransport(http)
@@ -142,7 +134,6 @@ public func login(email: String, code: String, deviceId: String, http: HTTPTrans
     return tokens
 }
 
-/// The id token: signed by the realm, for this client, this login, still valid.
 func verifyIdentity(_ token: String, jwks: JSON?, nonce: String, now: Date) throws {
     let failed = VelovError(.protocol, "Connexion impossible. Réessayez dans un instant.")
     guard let jwt = JWT(token), let jwks, jwt.verifiesRS256(jwks: jwks) else { throw failed }
@@ -152,7 +143,6 @@ func verifyIdentity(_ token: String, jwks: JSON?, nonce: String, now: Date) thro
           let expiry = jwt.payload["exp"]?.number, expiry > now.timeIntervalSince1970 else { throw failed }
 }
 
-/// Renews the session with its refresh token, never a password. Only a refusal of the token itself ends the session.
 public func refreshTokens(_ refreshToken: String, http: HTTPTransport) async throws -> Tokens {
     let request = makeRequest(URL(string: "\(Cyclocity.oidc)/token")!, method: "POST", headers: ["Content-Type": "application/x-www-form-urlencoded"],
                               body: formBody([("grant_type", "refresh_token"), ("client_id", Cyclocity.clientId), ("refresh_token", refreshToken)]), timeout: 20)
@@ -162,7 +152,6 @@ public func refreshTokens(_ refreshToken: String, http: HTTPTransport) async thr
     return try Tokens.parse(response.json)
 }
 
-/// Ends the session at the identity provider; true only when it confirmed. The refresh token is preferred, the id token is the fallback.
 public func endSession(refreshToken: String?, idToken: String?, http: HTTPTransport) async -> Bool {
     do {
         if let refreshToken {
@@ -174,14 +163,12 @@ public func endSession(refreshToken: String?, idToken: String?, http: HTTPTransp
         var components = URLComponents(string: "\(Cyclocity.oidc)/logout")!
         components.queryItems = [URLQueryItem(name: "id_token_hint", value: idToken), URLQueryItem(name: "post_logout_redirect_uri", value: "https://velov.grandlyon.com/openid_connect_logout")]
         let response = try await http.send(makeRequest(components.url!, timeout: 10), followRedirects: false)
-        // Keycloak answers this one with a redirect to post_logout_redirect_uri.
         return response.ok || [302, 303].contains(response.status)
     } catch {
         return false
     }
 }
 
-/// The account e-mail an access token was issued for, to this client.
 public func accountEmail(accessToken: String) throws -> String {
     guard let jwt = JWT(accessToken) else { throw VelovError(.expired, "Votre session a expiré. Reconnectez-vous.") }
     guard jwt.payload["azp"]?.string == Cyclocity.clientId else { throw VelovError(.expired, "Votre session a expiré. Reconnectez-vous.") }

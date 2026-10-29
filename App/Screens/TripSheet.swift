@@ -2,7 +2,6 @@ import SwiftUI
 import UIKit
 import VelovCore
 
-/// trip-sheet.tsx as a bottom sheet: times, stands, facts, points, litigious banner, the rating offer and the details.
 struct TripSheet: View {
     let trip: Trip
     @Environment(\.dismiss) private var dismiss

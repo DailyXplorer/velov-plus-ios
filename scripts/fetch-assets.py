@@ -34,7 +34,6 @@ HUGEICONS_VERSION = "4.4.0"
 HUGEICONS_INTEGRITY = "sha512-7Mz8bmGoY6tZ6l3C2TXwNMLVSr0I8HPwjjFIERAuJFj3rWwLxdF2ZLkDqdrVuEE1dx5b/VXyIsP4WoSU6Q40KQ=="
 HUGEICONS_TARBALL = f"https://registry.npmjs.org/@hugeicons/core-free-icons/-/core-free-icons-{HUGEICONS_VERSION}.tgz"
 
-# Stroke width per variant: `<name>` is light, `<name>-bold` bold. Stars also get `<name>-fill` for ratings and favourites.
 STROKES = {"": "1.5", "-bold": "2"}
 FILLED = {"star", "star-half"}
 

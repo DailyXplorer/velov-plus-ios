@@ -7,21 +7,16 @@ public enum Cyclocity {
     public static let realm = "\(iam)/realms/vls-default"
     public static let oidc = "\(realm)/protocol/openid-connect"
     public static let callback = "https://velov.grandlyon.com/openid_connect_login"
-    /// The iOS app's public Keycloak client.
     public static let clientId = "vls-web-lyon"
-    /// The bikes endpoint sits behind a WAF that answers non-browser user agents with an HTML 403.
     public static let browserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36"
-    /// The web client's public app-token credentials, already published by the official site.
     static let appTokenCode = "vls.web.lyon:PRD"
     static let appTokenKey = "c3d9f5c22a9157a7cc7fe0e38269573bdd2f13ec48f867360ecdcbd35b196f87"
 }
 
 public struct VelovError: Error, Equatable, Sendable, LocalizedError {
-    /// `refused`: the identity provider refused the login with its own message, shown as is.
     public enum Code: String, Sendable { case credentials, refused, expired, unavailable, `protocol`, origin }
     public let code: Code
     public let message: String
-    /// The identity provider refused the refresh token itself: only this ends the session on the phone.
     public let revoked: Bool
 
     public init(_ code: Code, _ message: String, revoked: Bool = false) {
@@ -52,7 +47,6 @@ public struct HTTPResponse: Sendable {
 }
 
 public protocol HTTPTransport: Sendable {
-    /// One request, one answer. With `followRedirects` false a 3xx comes back as is.
     func send(_ request: URLRequest, followRedirects: Bool) async throws -> HTTPResponse
 }
 
@@ -60,7 +54,6 @@ extension HTTPTransport {
     public func send(_ request: URLRequest) async throws -> HTTPResponse { try await send(request, followRedirects: true) }
 }
 
-/// URLSession without cookies or cache: the login keeps its own cookie jar, and every read is fresh.
 public final class URLSessionTransport: HTTPTransport {
     private let session: URLSession
 
@@ -96,7 +89,6 @@ public func makeRequest(_ url: URL, method: String = "GET", headers: [String: St
     return request
 }
 
-/// `application/x-www-form-urlencoded` the way URLSearchParams writes it.
 public func formBody(_ fields: [(String, String)]) -> Data {
     var allowed = CharacterSet.alphanumerics
     allowed.insert(charactersIn: "*-._")
@@ -113,16 +105,12 @@ public func parseForm(_ data: Data) -> [String: String] {
     return fields
 }
 
-/// Percent-encodes one URL path segment (`encodeURIComponent`).
 func pathSegment(_ value: String) -> String {
     var allowed = CharacterSet.alphanumerics
     allowed.insert(charactersIn: "-_.!~*'()")
     return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
 }
 
-/// Reads only, plus the app token POST. Cyclocity's gateway answers a bare 502 to roughly one request in five:
-/// those (and 503/504) are retried with a short backoff, a timeout or any other status never is.
-/// A state-changing call must go out exactly once and never comes through here.
 public struct ReadClient: Sendable {
     public static let attemptTimeout: TimeInterval = 8
     public let transport: HTTPTransport
@@ -154,7 +142,6 @@ public struct RefusedRetry: Error, CustomStringConvertible {
     public let description: String
 }
 
-/// The app token, shared by concurrent requests and kept 100 min.
 public actor AppToken {
     private let request: @Sendable () async throws -> String
     private let now: @Sendable () -> Date
@@ -177,13 +164,11 @@ public actor AppToken {
         return token
     }
 
-    /// Only the token that was refused: a concurrent request may already have replaced it.
     public func drop(_ token: String) {
         if current?.token == token { current = nil }
     }
 }
 
-/// A GET with the app token. A 401 may come from a stale app token, so it is renewed and the call tried once more.
 public func getWithAppToken(_ client: ReadClient, _ tokens: AppToken, _ url: URL, headers: @Sendable (String) -> [String: String]) async throws -> HTTPResponse {
     for attempt in 1... {
         let token = try await tokens.get()
@@ -194,8 +179,6 @@ public func getWithAppToken(_ client: ReadClient, _ tokens: AppToken, _ url: URL
     fatalError("unreachable")
 }
 
-/// One load per key at a time, its result kept for `ttl` seconds. A failed load is never kept;
-/// with `stale`, it falls back to the last value, however old.
 public actor Memo<Value: Sendable> {
     private let ttl: TimeInterval
     private let stale: Bool

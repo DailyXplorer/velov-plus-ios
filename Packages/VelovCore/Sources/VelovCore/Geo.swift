@@ -6,7 +6,6 @@ public struct GeoPoint: Equatable, Sendable, Hashable {
     public init(lat: Double, lon: Double) { self.lat = lat; self.lon = lon }
 }
 
-/// Great-circle distance in metres.
 public func haversine(_ from: GeoPoint, _ to: GeoPoint) -> Double {
     let radians = Double.pi / 180
     let latitude = (to.lat - from.lat) * radians

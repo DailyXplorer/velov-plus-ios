@@ -2,7 +2,6 @@ import MapKit
 import SwiftUI
 import VelovCore
 
-/// dashboard.tsx `Overview` on a phone: summary cards, the stations map card, the last trips.
 struct OverviewPage: View {
     let data: Dashboard
     @Environment(AppModel.self) private var model
@@ -49,7 +48,6 @@ struct OverviewPage: View {
         .padding(.top, padding)
     }
 
-    /// Phones: no preselected station; the whole map opens the Stations tab.
     private var mapCard: some View {
         ZStack {
             StationMapView(stations: model.stations.value?.stations ?? [], camera: $camera, interactive: false)
@@ -70,13 +68,11 @@ struct OverviewPage: View {
         .frame(height: 310)
         .clipShape(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
-        // Scrolled to its end, the card and MapKit's attribution rest `gap` above the tab bar, like the station card.
         .padding(.bottom, Concentric.gap)
         .id("stations-map")
     }
 }
 
-/// `.ongoing-banner`: « Trajet en cours », the start station and « 15 minutes de plus ».
 struct OngoingBanner: View {
     let trip: Trip
     var body: some View {

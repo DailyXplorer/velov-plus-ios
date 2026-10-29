@@ -3,8 +3,6 @@ import Foundation
 extension VelovAPI {
     static let tripPageSize = 100
 
-    /// lib/velov.ts `getStats`: the history read once, page after page, kept 10 minutes per account; points and coordinates
-    /// only enrich it and degrade to nothing. GETs only.
     public func stats(_ identity: Identity, now: @escaping @Sendable () -> Date = { Date() }) async throws -> Stats {
         try await statsMemo.get(identity.email) { [self] in
             let account = "/accounts/\(try await accountId(identity))"

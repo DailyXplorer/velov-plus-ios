@@ -1,7 +1,6 @@
 import SwiftUI
 import VelovCore
 
-/// The signed-in app: the page, its header, and the web's mobile bottom navigation.
 struct Shell: View {
     @Environment(AppModel.self) private var model
     @State private var logoutOpen = false
@@ -15,12 +14,10 @@ struct Shell: View {
             switch model.page {
             case .stations: StationsPage(onLogout: { logoutOpen = true })
             case .trips: TripsStack(onLogout: { logoutOpen = true })
-            default: PageScaffold(page: model.page, onLogout: { logoutOpen = true }).id(model.page) // a fresh scroll view per tab: every tab opens at the top
+            default: PageScaffold(page: model.page, onLogout: { logoutOpen = true }).id(model.page)
             }
         }
         .frame(maxHeight: .infinity)
-        // The bar floats `inset` from the sides and the bottom, over the home indicator's band. The page scrolls behind it
-        // and the end of every scroll view stops above it.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             TabBar(radius: radius)
                 .onGeometryChange(for: CGFloat.self, of: { Concentric.radius($0) }) { radius = $0 }
@@ -36,14 +33,11 @@ struct Shell: View {
             if let place = Place(booking) { BikeActionSheet(place: place, bookingId: booking.id, action: .unlock) }
         }
         .sheet(item: $model.ended) { TripEndedSheet(trip: $0) }
-        // The station card and every sheet take the bar's radius.
         .environment(\.floatingRadius, radius)
         .environment(\.tabBarBand, tabBarBand)
     }
 }
 
-/// The web's mobile navigation as a floating white bar on the 1 pt ink-line ring (no shadow), its corners concentric with the display's,
-/// the active tab's red pill concentric with the bar.
 struct TabBar: View {
     let radius: CGFloat
     @Environment(AppModel.self) private var model
@@ -74,7 +68,6 @@ struct TabBar: View {
     }
 }
 
-/// `.app-header` on phones: the page title, refresh and the initial.
 struct Header: View {
     let title: String
     @Environment(AppModel.self) private var model
@@ -113,7 +106,6 @@ struct Header: View {
     }
 }
 
-/// A scrolling page: header, booking banners, warnings, then the page itself once the account is read.
 struct PageScaffold: View {
     let page: Page
     let onLogout: () -> Void
@@ -187,7 +179,6 @@ struct DashboardSkeleton: View {
     }
 }
 
-/// `details.data-notice`: the reads that failed, folded.
 struct DataNotice: View {
     let warnings: [String]
     var body: some View {
@@ -205,7 +196,6 @@ struct DataNotice: View {
     }
 }
 
-/// `.booking-banner`: a solid red card, « Réservé », the countdown and « Déverrouiller », on every tab; gone once the booking has run out.
 struct BookingBanners: View {
     var bottom: CGFloat = 24
     @Environment(AppModel.self) private var model
@@ -215,7 +205,6 @@ struct BookingBanners: View {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let left = booking.endsAt.map { max(0, Int($0.timeIntervalSince(context.date).rounded())) }
                 if left != 0 {
-                    // The web's phone sizes: a tighter tag, 22 pt digits, the button without its icon.
                     HStack(spacing: 8) {
                         HStack(spacing: 8) {
                             Icon(.clock, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
@@ -240,7 +229,6 @@ struct BookingBanners: View {
     }
 }
 
-/// « Se déconnecter ? »: the logout ends the session at Vélo’v, then forgets the tokens here; the device id stays.
 struct LogoutSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss

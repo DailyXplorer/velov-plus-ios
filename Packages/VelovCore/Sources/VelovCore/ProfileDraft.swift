@@ -1,7 +1,5 @@
 import Foundation
 
-// profile-draft.ts: the « Modifier mes coordonnées » form without SwiftUI: what the user typed, and the PATCH body it becomes.
-
 public struct ProfileDraft: Equatable, Sendable {
     public var firstName: String
     public var lastName: String
@@ -12,7 +10,6 @@ public struct ProfileDraft: Equatable, Sendable {
     public var country: String
     public var phone: String
 
-    /// The current values; names are shown capitalised (Vélo’v stores them in lower case) and only sent if the user edits them.
     public init(_ profile: Profile) {
         firstName = formatName(profile.firstName); lastName = formatName(profile.lastName)
         address = profile.address ?? ""; complement = profile.addressComplement ?? ""; zipCode = profile.zipCode ?? ""
@@ -29,7 +26,6 @@ private func nameError(_ field: ProfileField) -> String {
     "\(field == .firstName ? "Prénom" : "Nom") invalide : lettres, espaces, apostrophes et traits d’union uniquement, \(Rules.nameMax) caractères au plus."
 }
 
-/// `changesOf`: the PATCH body with only the fields that changed, or the first problem to fix; nil when nothing changed.
 public func reviewProfile(_ profile: Profile, _ draft: ProfileDraft) -> Result<ProfileBody, ProfileProblem>? {
     var body = ProfileBody()
     let trim = { (value: String) in value.trimmingCharacters(in: .whitespacesAndNewlines) }

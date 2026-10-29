@@ -2,8 +2,6 @@ import SwiftUI
 import UIKit
 import VelovCore
 
-// account-actions.tsx, auto-renewal.tsx and contact-support.tsx: the account's writes, each confirmed and sent once.
-
 let countries: [SelectOption<String>] = [
     .init(value: "FR", label: "France"), .init(value: "BE", label: "Belgique"), .init(value: "CH", label: "Suisse"), .init(value: "LU", label: "Luxembourg"),
     .init(value: "DE", label: "Allemagne"), .init(value: "ES", label: "Espagne"), .init(value: "IT", label: "Italie"), .init(value: "GB", label: "Royaume-Uni")
@@ -11,14 +9,11 @@ let countries: [SelectOption<String>] = [
 
 func countryName(_ code: String?) -> String? { countries.first { $0.value == code }?.label ?? code }
 
-// MARK: Coordinates
-
 struct ProfileReview: Identifiable {
     let body: ProfileBody
     let id = UUID()
 }
 
-/// `ProfileCoordinates`: first and last name, address, postcode, city, country and phone (PATCH /accounts/{id}); email and secret code stay with Vélo’v.
 struct ProfileCoordinates: View {
     let profile: Profile
     @Environment(AppModel.self) private var model
@@ -34,7 +29,6 @@ struct ProfileCoordinates: View {
         .sheet(item: $review) { review in
             WriteDialog(title: "Enregistrer les modifications ?") {
                 let outcome = await attempt { try await model.service.updateProfile(review.body) }
-                // Back to the coordinates, read again from Vélo’v.
                 if outcome.ok {
                     draft = nil
                     Task { await model.loadDashboard() }
@@ -61,7 +55,6 @@ struct ProfileCoordinates: View {
         }
         let country = draft?.country ?? "FR"
         return VStack(alignment: .leading, spacing: 14) {
-            // `.name-pair` on a phone: one field per row.
             FormField(label: "Prénom", text: binding(\.firstName), maxLength: Rules.nameMax, content: .givenName)
             FormField(label: "Nom", text: binding(\.lastName), maxLength: Rules.nameMax, content: .familyName)
             FormField(label: "Adresse", text: binding(\.address), maxLength: Rules.addressMax, content: .streetAddressLine1)
@@ -94,22 +87,17 @@ struct ProfileCoordinates: View {
     }
 }
 
-/// `.profile-form-actions` on a phone: one full-width button per row, all the same size.
 struct FormActions<Content: View>: View {
     @ViewBuilder let content: () -> Content
     var body: some View { VStack(spacing: 8) { content() } }
 }
 
-// MARK: Auto-renewal
-
-/// auto-renewal.tsx: the switch shows only when Vélo’v offers it; success closes the sheet and the state shown is the one read back.
 struct AutoRenewalSetting: View {
     let subscription: Subscription
     @Environment(AppModel.self) private var model
     @State private var asking = false
     @State private var pending = false
     @State private var failure: Outcome?
-    /// Vélo’v's answer to the last change, shown until the account is read again.
     @State private var saved: AutoRenewalResult?
 
     private var actual: Bool? { saved.map(\.autoRenewal) ?? subscription.autoRenewal }
@@ -182,9 +170,6 @@ struct AutoRenewalSetting: View {
     }
 }
 
-// MARK: Receipts
-
-/// The receipt POST only reads: no confirmation, one request per tap, the PDF handed to the share sheet.
 struct ReceiptRow: View {
     let receipt: Receipt
     @Environment(AppModel.self) private var model
@@ -237,7 +222,6 @@ struct ReceiptRow: View {
     }
 }
 
-/// "Du 1 mars au 2 mars 2026": the period a receipt covers.
 func periodLabel(_ receipt: Receipt) -> String {
     switch (receipt.start, receipt.end) {
     case let (start?, end?): "Du \(formatDate(start, .dayMonthYear)) au \(formatDate(end, .dayMonthYear))"
@@ -258,11 +242,8 @@ struct ShareSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
-// MARK: Customer service
-
 private let subjects: [SelectOption<String>] = zip(Guesses.mailComplaintTypes, ["Un trajet", "Mon abonnement", "Mes paiements", "Un parking"]).map { .init(value: $0, label: $1) }
 
-/// contact-support.tsx: one multipart message after « Confirmer »; success clears and closes the form.
 struct ContactSupport: View {
     let trips: [Trip]?
     @Environment(AppModel.self) private var model
@@ -308,7 +289,6 @@ struct ContactSupport: View {
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("Message").typo(.label(13)).foregroundStyle(Palette.inkSoft)
-                // `.field textarea`: the ring on the card radius; TextEditor's own inset brings the text to 18 × 12.
                 TextEditor(text: $message).typo(.body(16)).frame(minHeight: 110).scrollContentBackground(.hidden)
                     .padding(.horizontal, 13).padding(.vertical, 4)
                     .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))

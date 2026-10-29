@@ -1,14 +1,10 @@
 import SwiftUI
 
-// The shared pieces of components/ui.tsx and globals.css.
-
 extension View {
-    /// `--shadow-ring`: a white surface on a 1 pt ink-line ring. Nothing in the app casts a drop shadow.
     func ringed<S: InsettableShape>(_ shape: S) -> some View {
         background(shape.fill(Palette.white)).overlay(shape.strokeBorder(Palette.inkLine, lineWidth: 1))
     }
 
-    /// `.search-field`, `.field input`, `.login-form input`: a white pill on the ring, as tall as the buttons.
     func fieldPill() -> some View {
         padding(.horizontal, 18).frame(minHeight: 42).ringed(Capsule())
     }
@@ -16,7 +12,6 @@ extension View {
 
 enum ButtonVariant { case primary, secondary, ghost, onRed }
 
-/// `.button`: a 42 pt pill in DM Sans 500, primary red, secondary outline, ghost.
 struct PillButton<Label: View>: View {
     var variant: ButtonVariant = .primary
     var pending = false
@@ -90,7 +85,6 @@ struct Spinner: View {
     }
 }
 
-/// `.circle-arrow`: a 28 pt circle with an arrow, filled red, outlined red, white on a primary button, outlined white on a red card.
 struct CircleArrow: View {
     enum Style { case filled, outline, onPrimary, onCard }
     var external = false
@@ -105,7 +99,6 @@ struct CircleArrow: View {
     }
 }
 
-/// `.eyebrow`: mist pill with a red icon circle.
 struct Eyebrow: View {
     let icon: IconName
     let text: String
@@ -119,7 +112,6 @@ struct Eyebrow: View {
     }
 }
 
-/// `.card-tag`: white pill with a red icon circle.
 struct CardTag: View {
     let icon: IconName
     let text: String
@@ -136,7 +128,6 @@ struct CardTag: View {
     }
 }
 
-/// White dots on a 10 pt grid, fading out toward the top: the summary cards' texture.
 struct DottedTexture: View {
     var body: some View {
         Canvas { context, size in
@@ -151,7 +142,6 @@ struct DottedTexture: View {
     }
 }
 
-/// `.summary-card`: red, dotted, a tag, a big number and a detail line with an arrow.
 struct SummaryCard<Value: View>: View {
     let tag: (IconName, String)
     let detail: String
@@ -181,7 +171,6 @@ struct SummaryCard<Value: View>: View {
     }
 }
 
-/// `.section-heading`: a 23 pt title and an optional action.
 struct SectionHeading<Trailing: View>: View {
     let title: String
     @ViewBuilder var trailing: () -> Trailing
@@ -199,7 +188,6 @@ extension SectionHeading where Trailing == EmptyView {
     init(_ title: String) { self.init(title: title) { EmptyView() } }
 }
 
-/// `.text-button`: red-deep mono text.
 struct TextButton: View {
     let title: String
     let action: () -> Void
@@ -234,7 +222,6 @@ struct EmptyState: View {
     }
 }
 
-/// `.notice-error`: the message and « Réessayer ».
 struct ErrorNotice: View {
     let message: String
     var pending = false
@@ -248,7 +235,6 @@ struct ErrorNotice: View {
     }
 }
 
-/// `.skeleton`: mist block with a faint red shimmer.
 struct Skeleton: View {
     var height: CGFloat
     var radius: CGFloat = Palette.radius
@@ -268,7 +254,6 @@ struct Skeleton: View {
     }
 }
 
-/// `.account-details > div`: mono label left, value right, a hairline below.
 struct DetailRow<Value: View>: View {
     let label: String
     var last = false
@@ -292,7 +277,6 @@ extension DetailRow where Value == Text {
     }
 }
 
-/// Value with a small second line under it, right-aligned (`dd > small`).
 struct StackedValue: View {
     let value: String
     let small: String?
@@ -304,7 +288,6 @@ struct StackedValue: View {
     }
 }
 
-/// `.switch`: 52 × 30, red when on.
 struct VelovSwitch: View {
     let on: Bool
     var action: () -> Void = {}
@@ -322,7 +305,6 @@ struct VelovSwitch: View {
     }
 }
 
-/// `.bike-reserved`: a small red-outlined pill.
 struct OutlinePill: View {
     let text: String
     var body: some View {
@@ -332,13 +314,11 @@ struct OutlinePill: View {
     }
 }
 
-/// A hairline under list rows.
 struct Hairline: View {
     var color = Palette.line
     var body: some View { Rectangle().fill(color).frame(height: 1) }
 }
 
-/// `details.bike-more`: « Détails » with a caret that turns.
 struct Disclosure<Content: View>: View {
     var title = "Détails"
     @State private var open = false
@@ -358,7 +338,6 @@ struct Disclosure<Content: View>: View {
     }
 }
 
-/// « Bientôt disponible » under an action stage 1 shows but does not send.
 struct SoonNote: View {
     var text = "Bientôt disponible"
     var body: some View { Text(text).typo(.body(12)).foregroundStyle(Palette.inkSoft) }

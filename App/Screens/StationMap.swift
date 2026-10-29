@@ -2,7 +2,6 @@ import MapKit
 import SwiftUI
 import VelovCore
 
-/// station-map.tsx on Apple Plans: muted standard style, red pins with the bike count, the user as a red-ringed dot.
 struct StationMapView: View {
     let stations: [Station]
     var selected: String?
@@ -35,7 +34,6 @@ struct StationMapView: View {
     }
 }
 
-/// `.station-pin`: 28 pt, white ring, red with the count; white when empty; larger once selected.
 struct StationPin: View {
     let total: Int
     let selected: Bool
@@ -53,7 +51,6 @@ struct StationPin: View {
     }
 }
 
-/// `.user-position`: a white dot ringed in red with a soft halo.
 struct UserDot: View {
     var body: some View {
         Circle().fill(Palette.white).frame(width: 18, height: 18)
@@ -62,7 +59,6 @@ struct UserDot: View {
     }
 }
 
-/// The three counts of a station: mechanical, electric, free stands.
 struct StationNumbers: View {
     let station: Station
     var compact = false

@@ -5,7 +5,6 @@ final class DashboardTests: XCTestCase {
     let identity = Identity(accessToken: "user-access", email: "person@example.com")
     let accountId = "0b6e1f6c-1d2e-4f3a-9b8c-7d6e5f4a3b2c"
 
-    /// A mock Cyclocity with one account; `failing` path fragments answer 500.
     func cyclocity(failing: [String] = [], profileStatus: Int = 200) -> MockServer {
         let accountId = accountId
         return MockServer { call, _ in

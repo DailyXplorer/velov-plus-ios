@@ -11,7 +11,6 @@ public func base64URLDecode(_ value: some StringProtocol) -> Data? {
     return Data(base64Encoded: text)
 }
 
-/// A compact JWS, read without trusting it.
 public struct JWT: Sendable {
     public let header: JSON
     public let payload: JSON
@@ -28,7 +27,6 @@ public struct JWT: Sendable {
         self.signature = signature
     }
 
-    /// An RS256 signature by one of the provider's published keys.
     public func verifiesRS256(jwks: JSON) -> Bool {
         guard header["alg"]?.string == "RS256", let keys = jwks["keys"]?.array else { return false }
         let kid = header["kid"]?.string
@@ -41,7 +39,6 @@ public struct JWT: Sendable {
     }
 }
 
-/// PKCS#1 RSAPublicKey DER from a JWK's modulus and exponent.
 func rsaPublicKey(modulus: Data, exponent: Data) -> SecKey? {
     func length(_ count: Int) -> Data {
         if count < 0x80 { return Data([UInt8(count)]) }

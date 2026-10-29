@@ -15,7 +15,6 @@ func matches(_ station: Station, _ filter: StationFilter, favorites: Set<Int>) -
     }
 }
 
-/// dashboard.tsx `StationsPage` on a phone: search with the filter inside, Autour de moi, the map filling the screen, a card floating above the tab bar on selection.
 struct StationsPage: View {
     let onLogout: () -> Void
     @Environment(AppModel.self) private var model
@@ -28,7 +27,6 @@ struct StationsPage: View {
     @State private var locationError = ""
     @State private var locationRaw = ""
     @FocusState private var searching: Bool
-    /// The band the tab bar takes under the map, and the station card's height: MapKit's attribution stays above both.
     @State private var barBand: CGFloat = 0
     @State private var cardHeight: CGFloat = 0
 
@@ -36,7 +34,6 @@ struct StationsPage: View {
     private var favorites: Set<Int> { Set(model.dashboard?.profile.favorites ?? []) }
     private var here: GeoPoint? { position.map { GeoPoint(lat: $0.coordinate.latitude, lon: $0.coordinate.longitude) } }
 
-    /// Favourites first, then open stations, then the nearest (or by name).
     private var filtered: [Station] {
         let needle = fold(query)
         let favorites = favorites
@@ -81,7 +78,6 @@ struct StationsPage: View {
         }
     }
 
-    /// One pill: the search, then the filter after a divider (its list under the pill's right edge); Autour de moi beside it.
     private var toolbar: some View {
         HStack(spacing: 8) {
             HStack(spacing: 0) {
@@ -125,15 +121,12 @@ struct StationsPage: View {
     private var map: some View {
         ZStack(alignment: .top) {
             StationMapView(stations: filtered, selected: selectedId, camera: $camera, showsUser: position != nil) { select($0) }
-                // MapKit's logo and legal link sit above the tab bar and the station card, never under them.
                 .safeAreaPadding(.bottom, barBand + (selected == nil ? 0 : cardHeight + Concentric.gap))
             if !query.isEmpty, model.stations.value != nil { results.padding(12) }
         }
         .ignoresSafeArea(.keyboard)
-        // The map runs down behind the floating tab bar, to the screen's edge.
         .ignoresSafeArea(.container, edges: .bottom)
         .onGeometryChange(for: CGFloat.self, of: { $0.safeAreaInsets.bottom }) { barBand = $0 }
-        // The card floats `gap` above the tab bar, with its side insets; the bar stays in view.
         .overlay(alignment: .bottom) {
             if let station = selected {
                 StationCard(station: station, favorite: favorites.contains(station.number), distance: here.map { haversine($0, station.point) }) {
@@ -149,7 +142,6 @@ struct StationsPage: View {
         .animation(.snappy(duration: 0.3), value: selected?.id)
     }
 
-    /// The search shows a short results list over the map.
     private var results: some View {
         let shown = Array(filtered.prefix(6))
         return VStack(spacing: 0) {
@@ -182,8 +174,6 @@ struct StationsPage: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Pans on a new selection only: a refreshed station list must not move the map. The map's safe area already ends above
-    /// the card, so the station lands in the middle of what stays visible.
     private func select(_ id: String) {
         selectedId = id
         guard let station = stations.first(where: { $0.id == id }) else { return }
@@ -210,7 +200,6 @@ struct StationsPage: View {
         }
     }
 
-    /// Selects the nearest open station and frames it with the user and up to three stations that have what the filter asks for.
     private func located(_ location: CLLocation) {
         position = location
         let here = GeoPoint(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
@@ -228,14 +217,12 @@ struct StationsPage: View {
             let mapPoint = MKMapPoint(CLLocationCoordinate2D(latitude: point.lat, longitude: point.lon))
             rect = rect.union(MKMapRect(x: mapPoint.x, y: mapPoint.y, width: 0, height: 0))
         }
-        // The map's safe area keeps the station card clear: the same margin all round.
         let padX = max(rect.width * 0.25, 400), padY = max(rect.height * 0.2, 400)
         rect = MKMapRect(x: rect.minX - padX, y: rect.minY - padY, width: rect.width + 2 * padX, height: rect.height + 2 * padY)
         withAnimation(.easeInOut(duration: 0.6)) { camera = .rect(rect) }
     }
 }
 
-/// Accent- and case-insensitive search text.
 func fold(_ value: String) -> String {
     value.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "fr_FR")).trimmingCharacters(in: .whitespaces)
 }

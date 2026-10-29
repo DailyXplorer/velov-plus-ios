@@ -1,7 +1,5 @@
 import Foundation
 
-/// Any JSON value. Cyclocity answers are read through it field by field, so one malformed new field
-/// degrades to nil instead of failing the whole answer (the web client's `lenient` schemas).
 public enum JSON: Equatable, Sendable {
     case null
     case bool(Bool)
@@ -29,7 +27,6 @@ public enum JSON: Equatable, Sendable {
         return nil
     }
 
-    /// A number that is a whole value: bike, station and stand numbers.
     public var int: Int? {
         guard let value = number, value.rounded() == value, abs(value) <= 9_007_199_254_740_991 else { return nil }
         return Int(value)
@@ -77,17 +74,14 @@ extension JSON: Codable {
     }
 }
 
-/// A required field had the wrong shape: the whole answer is unreadable (a zod `parse` failure).
 struct ShapeError: Error, CustomStringConvertible {
     let description: String
     init(_ description: String) { self.description = description }
 }
 
 extension Optional where Wrapped == JSON {
-    /// Absent or null.
     var isMissing: Bool { self == nil || self == .null }
 
-    /// `z.string().nullish()`: nil when missing, an error when present with another type.
     func nullishString(_ field: String) throws -> String? {
         guard let value = self, value != .null else { return nil }
         guard let string = value.string else { throw ShapeError("\(field) is not a string") }

@@ -10,8 +10,6 @@ private var utcCalendar: Calendar {
     return calendar
 }
 
-/// Cyclocity date-times are UTC without a zone designator; a date alone ("2026-03-02") stays a calendar date.
-/// Returns the normalised ISO string ("…T09:32:14.000Z", or the calendar date itself), nil when unreadable.
 public func utcDate(_ value: String?) -> String? {
     guard let value, !value.isEmpty else { return nil }
     if value.wholeMatch(of: /\d{4}-\d{2}-\d{2}/) != nil {
@@ -21,14 +19,12 @@ public func utcDate(_ value: String?) -> String? {
     return isoString(date)
 }
 
-/// The same reading as `utcDate`, as a `Date` (a calendar date is its midnight UTC).
 public func cyclocityDate(_ value: String?) -> Date? {
     guard let value, !value.isEmpty else { return nil }
     if value.wholeMatch(of: /\d{4}-\d{2}-\d{2}/) != nil { return calendarDay(value) }
     return instant(value)
 }
 
-/// `Date.toISOString()`: milliseconds and "Z".
 public func isoString(_ date: Date) -> String {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -65,19 +61,12 @@ private func instant(_ value: String) -> Date? {
     return date.addingTimeInterval(milliseconds / 1000 - Double(offset))
 }
 
-/// The date styles the web app passes to `Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", … })`.
 public enum DateStyle: String, Sendable {
-    /// "2 mars"
     case dayMonth = "dMMM"
-    /// "2 mars 2026" with the short month ("12 janv. 2026")
     case dayMonthYear = "dMMMy"
-    /// "2 mars 2026" with the long month ("12 janvier 2026")
     case dayLongMonthYear = "dMMMMy"
-    /// "09:32"
     case time = "HHmm"
-    /// "12 janv. 2026, 09:32"
     case dayMonthYearTime = "dMMMyHHmm"
-    /// "12 janvier 2026 à 09:32"
     case dayLongMonthYearTime = "dMMMMyHHmm"
 }
 
@@ -107,7 +96,6 @@ public func formatDate(_ date: Date?, _ style: DateStyle = .dayMonth) -> String 
     return formatterCache.string(date, template: style.rawValue)
 }
 
-/// Relative to now, in the past ("il y a 3 h") or the future ("dans 2 j"); nil without a date.
 public func fromNow(_ date: Date?, now: Date = Date()) -> String? {
     guard let date else { return nil }
     let minutes = date.timeIntervalSince(now) / 60
@@ -130,7 +118,6 @@ public func fromNow(_ date: Date?, now: Date = Date()) -> String? {
     return nil
 }
 
-/// "05:07" for a countdown in seconds.
 public func clock(_ seconds: Int) -> String {
     String(format: "%02d:%02d", max(0, seconds) / 60, max(0, seconds) % 60)
 }

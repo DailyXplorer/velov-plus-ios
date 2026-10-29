@@ -146,7 +146,6 @@ final class TripTests: XCTestCase {
         XCTAssertEqual(formatDate(summer, .dayLongMonthYear), "14 juillet 2026")
         XCTAssertEqual(formatDate(date("2026-03-01T23:30:00Z"), .dayMonth), "2 mars")
         XCTAssertEqual(clock(305), "05:05")
-        // Like Intl, the units are joined with no-break spaces.
         let plain = { (text: String?) in text?.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ") }
         XCTAssertEqual(plain(fromNow(date("2026-07-14T05:00:00Z"), now: summer)), "il y a 3 h")
         XCTAssertEqual(plain(fromNow(date("2026-07-16T09:00:00Z"), now: summer)), "dans 2 j")

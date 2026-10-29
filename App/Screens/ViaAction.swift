@@ -1,9 +1,6 @@
 import SwiftUI
 import VelovCore
 
-/// via-action.tsx: « 15 minutes de plus » during a trip, to bring the bike back to another station when this one is full.
-/// The station is chosen, reviewed, rechecked by the core before the one request; success closes the sheet,
-/// a failure stays with its raw status, and only a sure refusal may be confirmed again.
 struct ViaAction: View {
     @State private var open = false
 
@@ -91,7 +88,6 @@ private struct ViaSheet: View {
                 VStack(spacing: 0) {
                     ForEach(choices.prefix(8)) { item in
                         Button { selected = item.number } label: {
-                            // The chosen station in red, without a check, like the select it stands for.
                             Text(verbatim: "\(item.name) · N° \(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
                                 .typo(.body(14)).foregroundStyle(selected == item.number ? Palette.red : Palette.ink).multilineTextAlignment(.leading)
                                 .frame(maxWidth: .infinity, alignment: .leading)

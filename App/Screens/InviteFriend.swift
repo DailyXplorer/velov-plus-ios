@@ -4,8 +4,6 @@ import VelovCore
 
 private let storageWarning = "Ce téléphone ne peut pas garder le code. Copiez-le maintenant."
 
-/// invite-friend.tsx: points for a code to pass on. The storage is checked before the one debit, and a returned code is
-/// written to this phone before anything else happens; no subscription process is ever sent.
 struct InviteFriend: View {
     let cost: Int?
     let balance: Int?
@@ -19,7 +17,6 @@ struct InviteFriend: View {
     @State private var outcome: PromoResult?
     @State private var copied: String?
 
-    /// A debit that may have happened is never offered again from the same sheet.
     private var settled: Bool { outcome.map { $0.outcome.ok || $0.outcome.isUncertain } ?? false }
 
     private var canObtain: Bool {
@@ -111,7 +108,6 @@ struct InviteFriend: View {
 
     private func confirm() {
         guard let cost, let key, !pending, !settled else { return }
-        // Fail before the debit if the storage is already unusable; never erase earlier codes.
         do { _ = try PromoStore.prepare(model.promoBacking, key: key) } catch {
             warning = "Ce téléphone ne peut pas enregistrer le code. Vos points n’ont pas été utilisés."
             return
@@ -129,7 +125,6 @@ struct InviteFriend: View {
                 result = PromoResult(outcome: Outcome(ok: false, httpStatus: 0, code: "network", message: "Vélo’v ne répond pas. Vos points ont peut-être été débités."), promoCode: nil)
             }
             if let code = result.promoCode {
-                // Written to this phone before anything else; if that fails, at least on screen.
                 do { codes = try PromoStore.save(model.promoBacking, key: key, code: code) } catch {
                     if !codes.contains(where: { $0.code == code }) { codes.append(SavedPromo(code: code, createdAt: ISO8601DateFormatter().string(from: Date()))) }
                     warning = storageWarning
@@ -141,7 +136,6 @@ struct InviteFriend: View {
         }
     }
 
-    /// The balance changed (or may have): read the account again once the answer has been seen.
     private func closed() {
         if outcome != nil { Task { await model.loadDashboard() } }
     }

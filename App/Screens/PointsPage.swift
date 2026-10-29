@@ -3,7 +3,6 @@ import VelovCore
 
 private func rewardLabel(_ label: String) -> String { label == "Vélo évalué" ? "Évaluation" : label }
 
-/// dashboard.tsx `PointsPage`: balance, total, the auto-spend setting, the invite offer, how to earn and the history.
 struct PointsPage: View {
     let data: Dashboard
     @State private var limit = 8
@@ -60,7 +59,6 @@ struct PointsPage: View {
         }
     }
 
-    /// `.points-summary > div`: one of two equal mist cards sharing the row.
     private func figure(_ icon: IconName, _ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Eyebrow(icon: icon, text: label)
@@ -77,7 +75,6 @@ struct PointsPage: View {
 
 }
 
-/// account-actions.tsx `AutoSpendSetting`: « Utilisation automatique » as a real switch (PATCH /rewards), confirmed first.
 struct AutoSpendSetting: View {
     let value: Bool?
     @Environment(AppModel.self) private var model

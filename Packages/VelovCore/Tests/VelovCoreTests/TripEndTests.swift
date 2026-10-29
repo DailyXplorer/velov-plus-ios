@@ -1,7 +1,6 @@
 import XCTest
 @testable import VelovCore
 
-/// The web `trip-end`, `outcome` and `profile-draft` tests: stars, « Plus tard », the dock watch, the uncertain outcomes and the names.
 @MainActor
 final class TripEndTests: XCTestCase {
     final class Store: TripEndStore {
@@ -16,8 +15,6 @@ final class TripEndTests: XCTestCase {
         let end = now.addingTimeInterval(-endedMinutesAgo * 60)
         return Trip(id: id, status: status, startedAt: end.addingTimeInterval(-600), endedAt: end, bikeNumber: 20449, isRated: rated)
     }
-
-    // MARK: Stars
 
     func testFiveAndFourStarsRecommendThreeAndTwoReportAMinorProblemOneASeriousOne() {
         XCTAssertEqual((1...5).map(StarRating.vote), [.warn(30), .warn(60), .warn(60), .recommend, .recommend])
@@ -40,8 +37,6 @@ final class TripEndTests: XCTestCase {
         XCTAssertEqual(lost.calls.count, 1)
     }
 
-    // MARK: « Plus tard »
-
     func testTheGreetingOffersOnlyTheLatestFinishedRateableTripNeverDismissedHere() {
         let store = Store()
         let latest = finished("late", endedMinutesAgo: 30)
@@ -54,8 +49,6 @@ final class TripEndTests: XCTestCase {
         XCTAssertNil(tripToGreet([finished("rated", endedMinutesAgo: 10, rated: true)], store: Store(), now: now))
         XCTAssertNil(tripToGreet([finished("old", endedMinutesAgo: 181)], store: Store(), now: now))
     }
-
-    // MARK: Dock watch
 
     final class Harness {
         var clock: Date
@@ -80,7 +73,6 @@ final class TripEndTests: XCTestCase {
         })
     }
 
-    /// Lets the next live timer fire after its delay.
     func fire(_ harness: Harness) async {
         guard let index = harness.timers.lastIndex(where: { !$0.cancelled }) else { return XCTFail("no timer") }
         harness.timers[index].cancelled = true
@@ -188,8 +180,6 @@ final class TripEndTests: XCTestCase {
         XCTAssertTrue(harness.docked.isEmpty)
     }
 
-    // MARK: Uncertain outcomes
-
     func testOnlyASureRefusalMayBeConfirmedAgain() {
         let sure = [
             Outcome.refusal("local.no.subscription", "x"),
@@ -211,8 +201,6 @@ final class TripEndTests: XCTestCase {
         XCTAssertEqual(uncertain.filter { !$0.isUncertain }, [])
         XCTAssertFalse(Outcome(ok: true, httpStatus: 0).isUncertain)
     }
-
-    // MARK: Names
 
     func testNamesAreShownCapitalisedWithTheFrenchParticlesKeptLow() {
         let cases = [
@@ -243,8 +231,6 @@ final class TripEndTests: XCTestCase {
         XCTAssertNotEqual(address.message, renamed.message)
     }
 
-    // MARK: The poll
-
     func testThePollReadsTheOngoingTripsThenTheLatestFinishedOneOnlyOnceNoneIsLeft() async throws {
         let identity = Identity(accessToken: "user-access", email: "person@example.com")
         let accountId = WriteFlowsTests.accountId
@@ -271,7 +257,6 @@ final class TripEndTests: XCTestCase {
         let docked = try await api.tripCheck(identity)
         XCTAssertEqual(docked.ongoing, [])
         XCTAssertEqual(docked.latest?.id, "t-9")
-        // Only reads: the one POST is the anonymous app token.
         XCTAssertEqual(server.calls.filter { $0.method != "GET" }.map(\.url), ["https://api.cyclocity.fr/auth/environments/PRD/client_tokens"])
 
         let down = MockServer { call, _ in

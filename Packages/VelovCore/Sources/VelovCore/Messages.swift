@@ -1,8 +1,6 @@
 import Foundation
 
-/// French copy for Cyclocity error codes and states, identical to the web app.
 public enum Messages {
-    /// Release refusals the official app translates, plus the booking clash it shows with its generic message.
     public static let releaseCodes: [String: String] = [
         "trips.exception.bookings.already.reserved": "Vélo réservé par un autre usager. Choisissez-en un autre.",
         "trips.exception.invalid.customer.maxBikesRented": "Impossible de libérer le vélo, un autre trajet est en cours.",
@@ -43,7 +41,6 @@ public enum Messages {
     public static let sessionRefused = "Votre session n’est plus valide. Reconnectez-vous."
     public static let sessionToRenew = "Votre session a expiré. Reconnectez-vous."
     public static let sessionExpired = "Votre session a expiré. Reconnectez-vous."
-    /// A login refusal whose page carries no readable message. Otherwise the server's own words are shown.
     public static let loginRefused = "Vélo’v a refusé la connexion."
     public static let credentials = "Adresse e-mail ou code secret incorrect."
     public static let remoteLogoutUnconfirmed = "Déconnexion effectuée. Vélo’v ne l’a pas encore confirmée."
@@ -55,7 +52,6 @@ public enum Messages {
     public static let soon = "Bientôt disponible"
 }
 
-/// Success is transactionState OK, never the HTTP status alone.
 public func releaseOutcome(httpStatus: Int, code: String?, detail: String?, transactionState: String?) -> Outcome {
     let ok = httpStatus == 200 && transactionState == "OK"
     let message: String? = ok ? nil
@@ -77,7 +73,6 @@ public func accountOutcome(httpStatus: Int, code: String?, detail: String?, fail
     return Outcome(ok: ok, httpStatus: httpStatus, code: code, message: message, detail: detail)
 }
 
-/// "TransactionState OK · Code — · HTTP 200 · Detail": the raw line shown under a failed action.
 public func rawLine(_ outcome: Outcome, extra: String? = nil, withState: Bool = true) -> String {
     var parts: [String] = []
     if withState { parts.append("TransactionState \(outcome.transactionState ?? "—")") }

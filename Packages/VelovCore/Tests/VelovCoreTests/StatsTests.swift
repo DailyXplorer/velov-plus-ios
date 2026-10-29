@@ -2,7 +2,6 @@ import XCTest
 @testable import VelovCore
 
 final class StatsTests: XCTestCase {
-    /// Thursday 29 October 2026, noon in Lyon (winter time, UTC+1).
     let now = date("2026-10-29T11:00:00Z")
     let coords: [Int: GeoPoint] = [1: GeoPoint(lat: 45.75, lon: 4.83), 2: GeoPoint(lat: 45.76, lon: 4.85)]
 
@@ -41,8 +40,8 @@ final class StatsTests: XCTestCase {
     func testEachPeriodKeepsItsTripsByParisDayOrMonthAndDropsReversedOnes() {
         let trips = [
             trip("today", "2026-10-29T08:00:00Z", minutes: 12),
-            trip("edge-in", "2026-09-29T22:30:00Z", minutes: 30),   // 30 September 00:30 in Lyon: the first day of the 30.
-            trip("edge-out", "2026-09-29T21:59:00Z", minutes: 7),   // 29 September 23:59 in Lyon.
+            trip("edge-in", "2026-09-29T22:30:00Z", minutes: 30),
+            trip("edge-out", "2026-09-29T21:59:00Z", minutes: 7),
             trip("year", "2025-11-03T10:00:00Z", minutes: 20),
             trip("old", "2024-05-10T10:00:00Z", minutes: 5),
             trip("reversed", "2026-10-28T10:00:00Z", status: "REVERSED")
@@ -62,7 +61,6 @@ final class StatsTests: XCTestCase {
         XCTAssertEqual(stats.all.buckets.first?.key, "2024-05")
         XCTAssertEqual(stats.all.buckets.count, 30)
         XCTAssertNil(stats.balance)
-        // Thursday, 9 h in Lyon.
         XCTAssertEqual(stats.days30.heatmap[3][9], 1)
         XCTAssertEqual(stats.days30.heatmap.flatMap { $0 }.reduce(0, +), 2)
     }
@@ -105,7 +103,6 @@ final class StatsTests: XCTestCase {
             trip("d", "2026-10-22T17:00:00Z", minutes: 12, bike: 8),
             trip("e", "2026-10-25T08:00:00Z", minutes: 45, bike: 9)
         ]
-        // Bikes 7 and 8 both twice: the one ridden last wins.
         XCTAssertEqual(periodStats(.days30, input(trips)).records, StatsRecords(longestMinutes: 45, busiestDayTrips: 2, streakDays: 3, bike: 8))
         XCTAssertEqual(periodStats(.days30, input([])).records, StatsRecords(longestMinutes: nil, busiestDayTrips: nil, streakDays: nil, bike: nil))
     }
@@ -115,7 +112,6 @@ final class StatsTests: XCTestCase {
                          StatsMovement(date: date("2025-01-10T10:00:00Z"), amount: 50), StatsMovement(date: nil, amount: 1000)]
         XCTAssertEqual(periodStats(.months12, input([], movements: movements)).pointsEarned, 5)
         XCTAssertEqual(periodStats(.all, input([], movements: movements)).pointsEarned, 55)
-        // Without the points history: what the trips say they earned.
         XCTAssertEqual(periodStats(.days30, input([trip("a", "2026-10-28T10:00:00Z", earned: 10)])).pointsEarned, 10)
         XCTAssertEqual(buildStats(input([], movements: movements, balance: 100)).balance, 100)
         XCTAssertEqual(buildStats(input([], movements: movements)).balance, 1045)

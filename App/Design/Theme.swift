@@ -1,0 +1,121 @@
+import CoreText
+import SwiftUI
+import UIKit
+
+/// app/globals.css, light mode only.
+enum Palette {
+    static let red = Color(hex: 0xdf2537)
+    static let redDeep = Color(hex: 0xc91f30)
+    static let redTint = Color(hex: 0xf9e0e3)
+    static let ink = Color(hex: 0x1c1717)
+    static let inkSoft = Color(hex: 0x1c1717, opacity: 0.72)
+    static let inkMuted = Color(hex: 0x1c1717, opacity: 0.6)
+    static let inkFaint = Color(hex: 0x1c1717, opacity: 0.5)
+    static let inkLine = Color(hex: 0x1c1717, opacity: 0.12)
+    static let line = Color(hex: 0x1c1717, opacity: 0.08)
+    static let secondaryRing = Color(hex: 0x1c1717, opacity: 0.3)
+    static let mist = Color(hex: 0xf5f2f2)
+    static let white = Color.white
+    static let onDark = Color.white.opacity(0.7)
+    static let fieldLine = Color(red: 128 / 255, green: 128 / 255, blue: 128 / 255, opacity: 0.8)
+    static let fieldFill = Color(hex: 0xf2f2f2)
+    static let formError = Color(hex: 0xb62938)
+    static let notice = Color(hex: 0x9e5b50)
+    static let dataNotice = Color(hex: 0x9c7856)
+    static let radius: CGFloat = 16
+}
+
+extension Color {
+    init(hex: UInt32, opacity: Double = 1) {
+        self.init(red: Double(hex >> 16 & 0xff) / 255, green: Double(hex >> 8 & 0xff) / 255, blue: Double(hex & 0xff) / 255, opacity: opacity)
+    }
+}
+
+/// The three bundled families: Faculty Glyphic (titles, big numbers), DM Sans (body), Azeret Mono 500 (labels, buttons, clocks).
+enum FontBook {
+    private static var names: [String: String] = [:]
+
+    /// Registers the bundled .ttf files once, keyed by file name.
+    static func register() {
+        guard names.isEmpty else { return }
+        for url in Bundle.main.urls(forResourcesWithExtension: "ttf", subdirectory: nil) ?? [] {
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            if let provider = CGDataProvider(url: url as CFURL), let font = CGFont(provider), let name = font.postScriptName as String? {
+                names[url.deletingPathExtension().lastPathComponent] = name
+            }
+        }
+    }
+
+    private static let weightAxis = 0x77676874 // 'wght'
+    private static let opticalAxis = 0x6f70737a // 'opsz'
+
+    /// A variable font at a given weight (and DM Sans' optical size, which the browser sets to the font size).
+    private static var cache: [String: Font] = [:]
+
+    static func font(_ file: String, size: CGFloat, weight: CGFloat? = nil, optical: Bool = false) -> Font {
+        let key = "\(file)|\(size)|\(weight ?? 0)|\(optical)"
+        if let cached = cache[key] { return cached }
+        register()
+        guard let name = names[file] else { return .system(size: size) }
+        defer { cache[key] = makeFont(name, size: size, weight: weight, optical: optical) }
+        return makeFont(name, size: size, weight: weight, optical: optical)
+    }
+
+    private static func makeFont(_ name: String, size: CGFloat, weight: CGFloat?, optical: Bool) -> Font {
+        var variation: [Int: CGFloat] = [:]
+        if let weight { variation[weightAxis] = weight }
+        if optical { variation[opticalAxis] = min(max(size, 9), 40) }
+        var attributes: [CFString: Any] = [kCTFontNameAttribute: name]
+        if !variation.isEmpty { attributes[kCTFontVariationAttribute] = variation as CFDictionary }
+        let descriptor = CTFontDescriptorCreateWithAttributes(attributes as CFDictionary)
+        return Font(CTFontCreateWithFontDescriptor(descriptor, size, nil))
+    }
+}
+
+/// The type roles of globals.css, with their letter-spacing.
+enum Typo {
+    /// Faculty Glyphic 400, -0.03em.
+    case title(CGFloat)
+    /// DM Sans, -0.02em.
+    case body(CGFloat, medium: Bool = false)
+    /// Azeret Mono 500, uppercase, -0.01em.
+    case label(CGFloat)
+    /// Azeret Mono 500 as typed (`.trip-points`, `.trip-token`, raw status lines), -0.01em.
+    case mono(CGFloat)
+    /// Azeret Mono 500, tabular digits, no tracking: every clock and countdown.
+    case clock(CGFloat)
+
+    var font: Font {
+        switch self {
+        case .title(let size): FontBook.font("FacultyGlyphic-Regular", size: size)
+        case .body(let size, let medium): FontBook.font("DMSans", size: size, weight: medium ? 500 : 400, optical: true)
+        case .label(let size), .mono(let size), .clock(let size): FontBook.font("AzeretMono", size: size, weight: 500)
+        }
+    }
+
+    var tracking: CGFloat {
+        switch self {
+        case .title(let size): -0.03 * size
+        case .body(let size, _): -0.02 * size
+        case .label(let size), .mono(let size): -0.01 * size
+        case .clock: 0
+        }
+    }
+}
+
+extension View {
+    func typo(_ typo: Typo) -> some View {
+        modifier(TypoModifier(typo: typo))
+    }
+}
+
+private struct TypoModifier: ViewModifier {
+    let typo: Typo
+    func body(content: Content) -> some View {
+        switch typo {
+        case .label: content.font(typo.font).tracking(typo.tracking).textCase(.uppercase)
+        case .clock: content.font(typo.font).monospacedDigit()
+        default: content.font(typo.font).tracking(typo.tracking)
+        }
+    }
+}

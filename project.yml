@@ -1,0 +1,73 @@
+name: VelovCompagnon
+options:
+  bundleIdPrefix: io.github.dailyxplorer
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  developmentLanguage: fr
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: $(DEVELOPMENT_TEAM)
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+packages:
+  VelovCore:
+    path: Packages/VelovCore
+targets:
+  VelovCompagnon:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - Shared
+    dependencies:
+      - package: VelovCore
+      - target: VelovWidgets
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: "Vélo’v"
+        CFBundleDevelopmentRegion: fr
+        UILaunchScreen:
+          UIColorName: ""
+        UIUserInterfaceStyle: Light
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIRequiresFullScreen: true
+        NSLocationWhenInUseUsageDescription: "Votre position sert à trouver les stations autour de vous et à mesurer la distance à une borne."
+        NSSupportsLiveActivities: true
+        ITSAppUsesNonExemptEncryption: false
+        LSApplicationQueriesSchemes: [maps, mailto]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.dailyxplorer.velov
+        PRODUCT_NAME: VelovCompagnon
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_CFBundleDisplayName: "Vélo’v"
+  VelovWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Widgets
+      - Shared
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: "Vélo’v"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.dailyxplorer.velov.widgets
+        PRODUCT_NAME: VelovWidgets
+        TARGETED_DEVICE_FAMILY: "1"
+schemes:
+  VelovCompagnon:
+    build:
+      targets:
+        VelovCompagnon: all
+    run:
+      config: Debug

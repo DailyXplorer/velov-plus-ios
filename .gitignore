@@ -1,0 +1,12 @@
+*.xcodeproj/
+reference/
+build/
+.build/
+DerivedData/
+.swiftpm/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+snapshots/*.log
+# The build brief names the owner's device: kept locally, never committed.
+SPEC.md

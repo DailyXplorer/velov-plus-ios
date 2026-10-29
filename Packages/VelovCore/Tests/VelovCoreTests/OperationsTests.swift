@@ -276,21 +276,53 @@ final class OperationsTests: XCTestCase {
 
         let before = dashboard().profile
         let body = ProfileBody(address: ProfileAddress(name: " 2 place Bellecour ", complement: ""), city: "Lyon ")
-        let intent = profileIntent(before: before, body: body)
+        let intent = profileIntent(body)
         var after = before
         after.address = "2 Place Bellecour"
         XCTAssertEqual(profileCheck(intent, after: after), .applied)
         XCTAssertEqual(profileCheck(intent, after: before), .unchanged)
         after.address = "3 rue Mercière"
-        XCTAssertEqual(profileCheck(intent, after: after), .unknown)
+        XCTAssertEqual(profileCheck(intent, after: after), .unchanged)
         var renamed = before
         renamed.lastName = "LOVELACE-BYRON"
-        XCTAssertEqual(profileCheck(profileIntent(before: before, body: ProfileBody(lastName: "Lovelace-Byron")), after: renamed), .applied)
-        XCTAssertEqual(profileCheck([:], after: renamed), .unknown)
+        XCTAssertEqual(profileCheck(profileIntent(ProfileBody(lastName: "Lovelace-Byron")), after: renamed), .applied)
+        XCTAssertEqual(profileCheck([:], after: renamed), .unchanged)
+        let legacy = ["profile": #"{"before":[null,["Lovelace"],null,null,null,null,null],"wanted":[null,["lovelace-byron"],null,null,null,null,null]}"#]
+        XCTAssertEqual(profileCheck(legacy, after: renamed), .applied)
 
         var edited = before
         edited.city = "Villeurbanne"
-        XCTAssertEqual(profileCheck(intent, after: edited), .unknown, "the stored intent is checked, not a later draft")
+        XCTAssertEqual(profileCheck(intent, after: edited), .unchanged, "the stored intent is checked, not a later draft")
+    }
+
+    func testAProfileThatNeverMatchesTheIntentStopsHoldingTheKeyAfterTheLag() async {
+        let clock = Clock()
+        let operations = store(InMemoryOperationBacking(), clock)
+        let intent = profileIntent(ProfileBody(phoneNumber: "06 98 76 54 32"))
+        XCTAssertEqual(operations.begin(OperationKey.profile, meta: intent), .started)
+        operations.finish(OperationKey.profile, lost)
+        var normalized = dashboard().profile
+        normalized.phoneNumber = "+33698765432"
+        let soon = await operations.settleHeld(OperationKey.profile) { profileCheck($0, after: normalized) }
+        XCTAssertEqual(soon, .uncertain(lost))
+        XCTAssertEqual(operations.begin(OperationKey.profile), .busy)
+        clock.now += Reconcile.historyLag
+        let later = await operations.settleHeld(OperationKey.profile) { profileCheck($0, after: normalized) }
+        guard case .refused(let answer)? = later else { return XCTFail("expected a refusal, got \(String(describing: later))") }
+        XCTAssertEqual(answer.message, Messages.notApplied)
+        XCTAssertNil(operations.get(OperationKey.profile))
+        XCTAssertEqual(operations.begin(OperationKey.profile), .started)
+    }
+
+    func testALegacyProfileEntryWithoutIntentIsReleasedAfterTheLag() async {
+        let clock = Clock()
+        let operations = store(InMemoryOperationBacking(), clock)
+        XCTAssertEqual(operations.begin(OperationKey.profile), .started)
+        operations.finish(OperationKey.profile, lost)
+        clock.now += Reconcile.historyLag
+        let settled = await operations.settleHeld(OperationKey.profile) { profileCheck($0, after: self.dashboard().profile) }
+        guard case .refused? = settled else { return XCTFail("expected a refusal, got \(String(describing: settled))") }
+        XCTAssertEqual(operations.begin(OperationKey.profile), .started)
     }
 
     func testANetBalanceNeverProvesAnInviteWasNotDebited() {

@@ -86,21 +86,17 @@ private func wanted(_ body: ProfileBody) -> [[String]?] {
 }
 
 private struct ProfileChange: Codable {
-    var before: [[String]?]
     var wanted: [[String]?]
 }
 
-public func profileIntent(before: Profile, body: ProfileBody) -> [String: String] {
-    let target = wanted(body)
-    let change = ProfileChange(before: fields(before, target), wanted: target)
+public func profileIntent(_ body: ProfileBody) -> [String: String] {
+    let change = ProfileChange(wanted: wanted(body))
     return ["profile": String(decoding: (try? JSONEncoder().encode(change)) ?? Data(), as: UTF8.self)]
 }
 
 public func profileCheck(_ intent: [String: String], after: Profile) -> Check {
-    guard let raw = intent["profile"], let change = try? JSONDecoder().decode(ProfileChange.self, from: Data(raw.utf8)) else { return .unknown }
-    let now = fields(after, change.wanted)
-    if now == change.wanted { return .applied }
-    return now == change.before ? .unchanged : .unknown
+    guard let raw = intent["profile"], let change = try? JSONDecoder().decode(ProfileChange.self, from: Data(raw.utf8)) else { return .unchanged }
+    return fields(after, change.wanted) == change.wanted ? .applied : .unchanged
 }
 
 public enum DebitCheck: Equatable, Sendable { case debited, notDebited, unknown }

@@ -27,7 +27,7 @@ struct ProfileCoordinates: View {
         }
         .task { if model.snapshot == .accountEdit, draft == nil { draft = ProfileDraft(profile) } }
         .sheet(item: $review) { review in
-            WriteDialog(title: "Enregistrer les modifications ?", key: OperationKey.profile, intent: profileIntent(before: profile, body: review.body), run: {
+            WriteDialog(title: "Enregistrer les modifications ?", key: OperationKey.profile, intent: profileIntent(review.body), run: {
                 let outcome = await attempt { try await model.service.updateProfile(review.body) }
                 if outcome.ok { saved() }
                 return outcome

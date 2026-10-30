@@ -361,14 +361,14 @@ struct BikeDetail: View {
             let expired = mine && left == 0
             VStack(alignment: .leading, spacing: Space.cards) {
                 if mine {
-                    if let endsAt = booking?.endsAt, let left {
+                    if let left {
                         VStack(alignment: .leading, spacing: Space.pair) {
-                            Text(verbatim: "Vélo réservé jusqu’à \(formatDate(endsAt, .time))").typo(.title(.card)).foregroundStyle(Palette.ink)
+                            Text("Vélo réservé").typo(.title(.card)).foregroundStyle(Palette.ink)
                             HStack(spacing: Space.label) {
                                 Icon(.clock, .bold, size: 16)
-                                Text(left > 0 ? "Il reste \(clock(left))" : "Réservation expirée").typo(.caps(.label)).monospacedDigit()
+                                Text(left > 0 ? "Il reste \(clock(left))" : "Réservation expirée").typo(.body(.base)).monospacedDigit()
                             }
-                            .foregroundStyle(Palette.redDeep)
+                            .foregroundStyle(Palette.ink)
                         }
                     } else {
                         Text(verbatim: "Vélo réservé pour \(Rules.bookingMinutes) minutes").typo(.title(.card)).foregroundStyle(Palette.ink)

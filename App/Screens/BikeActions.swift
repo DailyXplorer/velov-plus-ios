@@ -155,7 +155,7 @@ struct BikeActionSheet: View {
             var booking: Booking?
             var ongoing: [Trip]?
             let intent = ["station": String(place.stationNumber), "stand": String(place.standNumber), "bike": String(place.bikeNumber)]
-            let result = await model.operations.runOnce(key, meta: intent) {
+            let result = await model.runOnce(key, meta: intent) {
                 await attempt {
                     switch action {
                     case .book:

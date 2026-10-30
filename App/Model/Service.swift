@@ -3,6 +3,8 @@ import VelovCore
 
 protocol VelovService: Sendable {
     func hasSession() async -> Bool
+    func accountEmail() async -> String?
+    func forgetSession() async
     func signIn(email: String, code: String) async throws
     func logout() async -> Bool
     func dashboard() async throws -> Dashboard
@@ -43,6 +45,8 @@ final class LiveService: VelovService {
     private func writer() async throws -> Identity { try await beforeSending { try await session.identity() } }
 
     func hasSession() async -> Bool { await session.isSignedIn }
+    func accountEmail() async -> String? { await session.email }
+    func forgetSession() async { await session.forget() }
     func signIn(email: String, code: String) async throws { try await session.signIn(email: email, code: code) }
     func logout() async -> Bool { await session.logout() }
     func dashboard() async throws -> Dashboard { try await api.dashboard(try await identity()) }

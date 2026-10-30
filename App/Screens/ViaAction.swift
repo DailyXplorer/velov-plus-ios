@@ -144,7 +144,7 @@ struct ViaSheet: View {
         notice = nil
         let model = model
         Task {
-            let result = await model.operations.runOnce(operationKey, meta: ["number": String(station.number), "name": station.name]) {
+            let result = await model.runOnce(operationKey, meta: ["number": String(station.number), "name": station.name]) {
                 await attempt { try await model.service.requestExtraTime(stationNumber: station.number) }
             }
             switch result {

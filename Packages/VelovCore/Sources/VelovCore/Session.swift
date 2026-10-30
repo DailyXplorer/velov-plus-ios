@@ -108,6 +108,7 @@ public actor SessionManager {
     }
 
     public var isSignedIn: Bool { session != nil }
+    public var email: String? { session.flatMap { try? accountEmail(accessToken: $0.tokens.accessToken) } }
     public var deviceId: String { DeviceIdentity.stable(in: store) }
 
     public func signIn(email: String, code: String) async throws {

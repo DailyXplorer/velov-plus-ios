@@ -92,7 +92,7 @@ struct RateBike: View {
         let bikeNumber = bikeNumber
         let key = key
         Task {
-            let result = await model.operations.runOnce(key) {
+            let result = await model.runOnce(key) {
                 ratingOutcome(await attempt { try await model.service.rate(tripId: trip.id, bikeNumber: bikeNumber, vote: StarRating.vote(stars)) })
             }
             let outcome: Outcome

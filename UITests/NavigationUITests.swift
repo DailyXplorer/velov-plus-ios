@@ -123,6 +123,44 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Continuer sans compte"].waitForExistence(timeout: 10), "Se connecter opens the login screen")
     }
 
+    private func bookingShown(_ app: XCUIApplication) -> Bool {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Vélo réservé")).count > 0 || app.buttons["Déverrouiller"].exists
+    }
+
+    func testAnExpiredSessionLeavesNothingOfTheAccountToTheGuest() {
+        let app = launch("expiredSession")
+        let guest = app.buttons["Continuer sans compte"]
+        XCTAssertTrue(guest.waitForExistence(timeout: 30), "the expired session goes back to the login screen")
+        XCTAssertTrue(visible(app, "Votre session a expiré. Reconnectez-vous."))
+        sleep(2)
+        guest.tap()
+        XCTAssertTrue(visible(app, "Stations", timeout: 10), "Continuer sans compte opens the guest map")
+        sleep(1)
+        XCTAssertFalse(bookingShown(app), "the guest map shows no booking of the expired account")
+        shot("expired-guest")
+        app.terminate()
+        app.launchArguments += ["-VelovRelaunch", "YES"]
+        app.launch()
+        XCTAssertTrue(visible(app, "Stations", timeout: 30), "the relaunch starts as guest")
+        XCTAssertFalse(guest.exists, "the relaunch does not go back to the login screen")
+        sleep(3)
+        XCTAssertEqual(app.state, .runningForeground, "the relaunch sends no account request")
+        XCTAssertFalse(bookingShown(app))
+    }
+
+    func testABookedBikeUnlocksWhileTheAccountIsUnavailable() {
+        let app = launch("bookingWithoutAccount")
+        let unlock = app.buttons["Déverrouiller"]
+        XCTAssertTrue(unlock.waitForExistence(timeout: 30), "the booking banner shows although the account failed")
+        unlock.tap()
+        let confirm = app.buttons["Confirmer"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10))
+        confirm.tap()
+        XCTAssertFalse(visible(app, NSPredicate(format: "label CONTAINS %@", "ne peut pas suivre cette action"), timeout: 3), "the unlock is not refused as unsaved")
+        XCTAssertTrue(confirm.waitForNonExistence(timeout: 10), "the unlock is sent and the sheet closes")
+        shot("booking-without-account")
+    }
+
     func testAnEditedFormAsksBeforeItIsLeft() {
         let app = launch("profilePage")
         XCTAssertTrue(visible(app, "Modifier mes coordonnées", timeout: 30))

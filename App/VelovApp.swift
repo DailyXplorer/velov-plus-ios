@@ -14,7 +14,7 @@ struct VelovApp: App {
         let service: VelovService = sample ? SampleService(screen: snapshot, slow: defaults.bool(forKey: "VelovSlow")) : LiveService()
         let promos: PromoBacking = sample ? InMemoryPromoBacking() : FilePromoBacking(directory: AppModel.promoDirectory())
         let operations: OperationBacking = sample ? InMemoryOperationBacking() : DefaultsOperationBacking()
-        let guest = sample ? SampleData.guestStore(snapshot) : GuestStore(defaults: defaults)
+        let guest = sample ? SampleData.guestStore(snapshot, relaunch: defaults.bool(forKey: "VelovRelaunch")) : GuestStore(defaults: defaults)
         _model = State(initialValue: AppModel(service: service, snapshot: snapshot, promoBacking: promos, operationBacking: operations, guestStore: guest))
     }
 

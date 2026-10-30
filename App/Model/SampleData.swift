@@ -80,10 +80,15 @@ enum SampleData {
 }
 
 extension SampleData {
-    static func guestStore(_ screen: SnapshotScreen?) -> GuestStore {
-        let name = "velov-sample-guest"
-        let defaults = UserDefaults(suiteName: name) ?? .standard
-        defaults.removePersistentDomain(forName: name)
+    static let guestSuite = "velov-sample-guest"
+    static let forgottenKey = "sample.session.forgotten"
+
+    static var sessionForgotten: Bool { UserDefaults(suiteName: guestSuite)?.bool(forKey: forgottenKey) == true }
+
+    static func guestStore(_ screen: SnapshotScreen?, relaunch: Bool = false) -> GuestStore {
+        let defaults = UserDefaults(suiteName: guestSuite) ?? .standard
+        if relaunch { return GuestStore(defaults: defaults) }
+        defaults.removePersistentDomain(forName: guestSuite)
         let store = GuestStore(defaults: defaults)
         if screen?.asGuest == true {
             store.remember(true)
@@ -116,10 +121,11 @@ struct SampleService: VelovService {
     let screen: SnapshotScreen?
     var slow = false
 
-    private var booking: Booking? { screen?.withBooking == true ? SampleData.booking() : nil }
+    private var booking: Booking? { screen?.withBooking == true || screen == .expiredSession || screen == .bookingWithoutAccount ? SampleData.booking() : nil }
     private var riding: Bool { screen?.riding == true }
     func account() {
         precondition(screen?.asGuest != true, "An account request started while browsing without an account")
+        precondition(!SampleData.sessionForgotten, "An account request started after the session was forgotten")
     }
     private func pause() async { if slow { try? await Task.sleep(for: .seconds(8)) } }
     private func lost(_ message: String) -> Outcome {
@@ -128,12 +134,15 @@ struct SampleService: VelovService {
         return lost
     }
 
-    func hasSession() async -> Bool { screen?.signedOut != true }
+    func hasSession() async -> Bool { screen?.signedOut != true && !SampleData.sessionForgotten }
+    func accountEmail() async -> String? { await hasSession() ? SampleData.dashboard.profile.email : nil }
+    func forgetSession() async { UserDefaults(suiteName: SampleData.guestSuite)?.set(true, forKey: SampleData.forgottenKey) }
     func signIn(email: String, code: String) async throws {}
     func logout() async -> Bool { true }
     func dashboard() async throws -> Dashboard {
         account()
-        if screen == .pageFailure { throw NetworkFailure(code: URLError.timedOut.rawValue, elapsed: 30) }
+        if screen == .expiredSession { throw VelovError(.expired, Messages.sessionExpired) }
+        if screen == .pageFailure || screen == .bookingWithoutAccount { throw NetworkFailure(code: URLError.timedOut.rawValue, elapsed: 30) }
         var data = SampleData.dashboard
         if screen == .stationsEmptyFilter { data.profile.favorites = [] }
         if screen == .bigBalance { data.rewards.balance = 128_450; data.rewards.total = 254_300 }

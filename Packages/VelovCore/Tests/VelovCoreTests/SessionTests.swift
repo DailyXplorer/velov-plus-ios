@@ -27,6 +27,32 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(server.calls.count, 0)
     }
 
+    func testTheStoredSessionGivesItsAccountEmailWithoutAnyRequest() async {
+        let store = InMemoryStore()
+        signedIn(store, expires: Date().addingTimeInterval(-10))
+        let server = MockServer()
+        let session = SessionManager(store: store, http: server.transport)
+        let email = await session.email
+        XCTAssertEqual(email, "person@example.com")
+        XCTAssertEqual(server.calls.count, 0)
+        let none = await SessionManager(store: InMemoryStore(), http: server.transport).email
+        XCTAssertNil(none)
+    }
+
+    func testTheGuestChoiceForgetsTheStoredTokensWithoutAnyRequest() async {
+        let store = InMemoryStore()
+        let device = DeviceIdentity.stable(in: store)
+        signedIn(store, expires: Date().addingTimeInterval(600))
+        let server = MockServer()
+        let session = SessionManager(store: store, http: server.transport)
+        await session.forget()
+        XCTAssertNil(store.read("tokens"))
+        XCTAssertEqual(DeviceIdentity.stable(in: store), device)
+        XCTAssertEqual(server.calls.count, 0)
+        let relaunched = await SessionManager(store: store, http: server.transport).isSignedIn
+        XCTAssertEqual(StartMode(hasSession: relaunched, guest: true), .guest)
+    }
+
     func testParallelCallersWithAnExpiredTokenShareASingleRefreshThatIsSaved() async throws {
         let store = InMemoryStore()
         signedIn(store, expires: Date().addingTimeInterval(-10))

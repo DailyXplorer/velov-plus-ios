@@ -155,7 +155,7 @@ struct InviteFriend: View {
         let model = model
         let meta = ["cost": String(cost)]
         Task {
-            let result = await model.operations.runOnce(operationKey, meta: meta) {
+            let result = await model.runOnce(operationKey, meta: meta) {
                 let answer: PromoResult
                 do {
                     answer = try await model.service.consumePromoCode(expectedCost: cost)

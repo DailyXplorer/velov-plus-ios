@@ -49,6 +49,7 @@ enum SnapshotScreen: String {
     case stationsSearch, stationsEmptyFilter, locationError, locationTimeout, pageFailure, bikeListFailure, bikeOwnBooking, bigBalance, dockWhileBikes
     case stats, statsCharts, statsTipFirst, statsTipMiddle, statsTipLast, statsHeatmap, statsHeatTip, statsDonut, statsRecords, statsBike, statsEnd
     case login, loginError, guestStations, guestStationSheet, guestBikeSheet, bikePush
+    case expiredSession, bookingWithoutAccount
 
     var asGuest: Bool { [.guestStations, .guestStationSheet, .guestBikeSheet].contains(self) }
 
@@ -110,8 +111,7 @@ final class AppModel {
                 rides.observed(answer.ongoing, latest: answer.latest)
                 return answer
             case .failure(let error as VelovError) where error.code == .expired:
-                phase = .signedOut("Session expirée. Reconnectez-vous.")
-                dockWatch.stop()
+                expire()
                 throw error
             case .failure(let error):
                 throw error
@@ -180,6 +180,7 @@ final class AppModel {
         if snapshot == nil { rides.launched() }
         switch StartMode(hasSession: await service.hasSession(), guest: guestStore.isOn) {
         case .session:
+            operations.use(account: await service.accountEmail())
             phase = .loading
             refreshAll()
         case .guest:
@@ -191,6 +192,7 @@ final class AppModel {
 
     func continueAsGuest() {
         guestStore.remember(true)
+        Task { await service.forgetSession() }
         browse()
     }
 
@@ -252,8 +254,7 @@ final class AppModel {
             phase = .ready(data)
             watchTrips(data)
         case .failure(let error as VelovError) where error.code == .expired:
-            dockWatch.stop()
-            phase = .signedOut(error.revoked ? error.message : "Votre session a expiré. Reconnectez-vous.")
+            expire()
         case .failure(let error):
             let failure = LoadFailure(error, "Votre compte est momentanément indisponible.")
             if dashboard == nil { phase = .failed(failure) } else { showToast(failure.message) }
@@ -273,11 +274,23 @@ final class AppModel {
 
     func loadBookings(force: Bool = false) async {
         await bookingsFlight.run(force: force) { [self] in
-            guard case .success(let value)? = await session.load({ try await service.bookings() }) else { return }
-            bookings = value
-            if snapshot == nil { activities.sync(value) }
-            if snapshot == .unlockConfirm || snapshot == .unlockUncertain, let first = value.first { sheet = .unlock(first) }
+            switch await session.load({ try await service.bookings() }) {
+            case .success(let value)?:
+                bookings = value
+                if snapshot == nil { activities.sync(value) }
+                if snapshot == .unlockConfirm || snapshot == .unlockUncertain, let first = value.first { sheet = .unlock(first) }
+            case .failure(let error as VelovError)? where error.code == .expired:
+                expire()
+            default:
+                break
+            }
         }
+    }
+
+    func runOnce(_ key: String, meta: [String: String] = [:], _ send: () async throws -> Outcome) async -> Operations.Run {
+        let run = await operations.runOnce(key, meta: meta, send)
+        if case .finished(let outcome) = run, outcome.httpStatus == 401 || outcome.code == "local.expired" { expire() }
+        return run
     }
 
     func statsChanged() {
@@ -434,6 +447,9 @@ final class AppModel {
         endSession()
         try await service.signIn(email: email, code: code)
         guestStore.remember(false)
+        sheet = nil
+        queuedEnded = nil
+        operations.use(account: await service.accountEmail())
         phase = .loading
         refreshAll()
     }
@@ -449,7 +465,16 @@ final class AppModel {
         endSession()
         dockWatch.stop()
         let confirmed = await service.logout()
+        signOut(confirmed ? nil : Messages.remoteLogoutUnconfirmed)
+    }
+
+    func expire() {
+        signOut(Messages.sessionExpired)
+    }
+
+    private func signOut(_ notice: String?) {
         endSession()
+        dockWatch.stop()
         bookings = []
         sheet = nil
         queuedEnded = nil
@@ -460,6 +485,6 @@ final class AppModel {
         rides.endAll()
         operations.use(account: nil)
         page = .overview
-        phase = .signedOut(confirmed ? nil : Messages.remoteLogoutUnconfirmed)
+        phase = .signedOut(notice)
     }
 }

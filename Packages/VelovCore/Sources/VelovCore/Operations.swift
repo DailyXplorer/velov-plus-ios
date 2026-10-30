@@ -69,7 +69,7 @@ public final class Operations {
 
     @ObservationIgnored private let backing: OperationBacking?
     @ObservationIgnored private let now: () -> Date
-    @ObservationIgnored private var running: Set<String> = []
+    @ObservationIgnored private var running: [String: String] = [:]
     @ObservationIgnored private var memory: [String: Entry] = [:]
     public private(set) var digest: String?
     public private(set) var version = 0
@@ -88,10 +88,10 @@ public final class Operations {
         changed()
     }
 
-    private func saved() -> [String: Entry]? {
-        guard let backing, let digest else { return nil }
+    private func saved(_ owner: String? = nil) -> [String: Entry]? {
+        guard let backing, let owner = owner ?? digest else { return nil }
         do {
-            guard let raw = try backing.read("\(Self.storageKey):\(digest)") else { return [:] }
+            guard let raw = try backing.read("\(Self.storageKey):\(owner)") else { return [:] }
             return try JSONDecoder().decode([String: Entry].self, from: raw)
         } catch {
             return nil
@@ -99,7 +99,7 @@ public final class Operations {
     }
 
     private func live(_ key: String, _ entry: Entry?) -> Entry? {
-        guard var entry, entry.status == .sending, !running.contains(key) else { return entry }
+        guard var entry, entry.status == .sending, running[key] == nil else { return entry }
         entry.status = .uncertain
         entry.outcome = entry.outcome ?? noAnswer(Messages.lost)
         return entry
@@ -107,16 +107,18 @@ public final class Operations {
 
     private func changed() { version += 1 }
 
-    private func write(_ key: String, _ entry: Entry?, required: Bool) throws {
+    private func write(_ key: String, _ entry: Entry?, required: Bool, owner: String? = nil) throws {
+        let owner = owner ?? digest
+        let current = owner == digest
         let previous = memory[key]
-        memory[key] = entry
+        if current { memory[key] = entry }
         do {
-            guard let backing, let digest, var all = saved() else { throw CocoaError(.fileWriteUnknown) }
+            guard let backing, let owner, var all = saved(owner) else { throw CocoaError(.fileWriteUnknown) }
             all[key] = entry
-            try backing.write("\(Self.storageKey):\(digest)", all.isEmpty ? nil : try JSONEncoder().encode(all))
+            try backing.write("\(Self.storageKey):\(owner)", all.isEmpty ? nil : try JSONEncoder().encode(all))
         } catch {
             guard required else { return }
-            memory[key] = previous
+            if current { memory[key] = previous }
             throw error
         }
     }
@@ -125,7 +127,7 @@ public final class Operations {
         _ = version
         let all = saved()
         let entry = live(key, all.map { $0[key] } ?? memory[key])
-        if running.contains(key) && entry?.status != .sending {
+        if running[key] != nil && entry?.status != .sending {
             return Entry(status: .sending, at: now(), outcome: nil, meta: [:])
         }
         return entry
@@ -140,22 +142,23 @@ public final class Operations {
 
     public func begin(_ key: String, meta: [String: String] = [:]) -> Began {
         if busy() || get(key) != nil { return .busy }
+        guard let owner = digest else { return .unsaved }
         do { try write(key, Entry(status: .sending, at: now(), outcome: nil, meta: meta), required: true) } catch { return .unsaved }
-        running.insert(key)
+        running[key] = owner
         changed()
         return .started
     }
 
     public func finish(_ key: String, _ outcome: Outcome) {
-        running.remove(key)
-        let entry = memory[key] ?? saved()?[key]
+        let owner = running.removeValue(forKey: key) ?? digest
+        let entry = (owner == digest ? memory[key] : nil) ?? saved(owner)?[key]
         let next = outcome.ok || !outcome.isUncertain ? nil : Entry(status: .uncertain, at: now(), outcome: outcome, meta: entry?.meta ?? [:])
-        try? write(key, next, required: false)
+        try? write(key, next, required: false, owner: owner)
         changed()
     }
 
     public func clear(_ key: String) {
-        guard !running.contains(key) else { return }
+        guard running[key] == nil else { return }
         try? write(key, nil, required: false)
         changed()
     }

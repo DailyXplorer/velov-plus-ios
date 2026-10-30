@@ -116,12 +116,13 @@ final class OperationsTests: XCTestCase {
         XCTAssertEqual(store(backing, clock, account: " PERSON@example.com").get("via:x:t-1")?.status, .uncertain)
         let other = store(backing, clock, account: "other@example.com")
         XCTAssertNil(other.get("via:x:t-1"))
-        XCTAssertEqual(other.begin("via:x:t-1"), .started)
-        other.use(account: "person@example.com")
-        XCTAssertEqual(other.get("via:x:t-1")?.status, .sending, "the running send is still tracked")
-        XCTAssertEqual(other.digest, accountDigest("person@example.com"))
-        other.finish("via:x:t-1", Outcome(ok: true, httpStatus: 200))
-        XCTAssertNil(other.get("via:x:t-1"))
+        XCTAssertEqual(other.begin("contact:x"), .started)
+        other.use(account: "third@example.com")
+        XCTAssertEqual(other.get("contact:x")?.status, .sending, "the running send is still tracked")
+        XCTAssertEqual(other.digest, accountDigest("third@example.com"))
+        other.finish("contact:x", lost)
+        XCTAssertNil(other.get("contact:x"), "the answer is not filed under the account signed in now")
+        XCTAssertEqual(store(backing, clock, account: "other@example.com").get("contact:x")?.outcome, lost, "it stays with the account that sent it")
     }
 
     func testRunOnceSendsOnlyWhenItCanAndTurnsAThrowIntoAnUncertainNoAnswer() async {

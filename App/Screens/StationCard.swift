@@ -56,8 +56,9 @@ struct StationCard: View {
             let key = OperationKey.favorite(station.number)
             let wanted = model.operations.get(key).flatMap { Intent.wanted($0.meta) } ?? !wasFavorite
             WriteDialog(title: !wanted ? "Retirer des favoris\u{a0}?" : "Ajouter aux favoris\u{a0}?", key: key, intent: Intent.wanted(wanted), run: {
+                let owner = model.operations.digest
                 let outcome = await attempt { try await model.service.setFavorite(station: station.number, on: wanted) }
-                if outcome.ok { model.setFavorite(station.number, wanted) }
+                if outcome.ok, model.operations.digest == owner { model.setFavorite(station.number, wanted) }
                 return outcome
             }, check: { intent in
                 favoriteCheck(try await model.service.dashboard(), station: station.number, wanted: Intent.wanted(intent) ?? wanted)

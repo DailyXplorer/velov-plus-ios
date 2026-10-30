@@ -150,6 +150,8 @@ final class TripTests: XCTestCase {
         let plain = { (text: String?) in text?.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ") }
         XCTAssertEqual(plain(fromNow(date("2026-07-14T05:00:00Z"), now: summer)), "il y a 3 h")
         XCTAssertEqual(plain(fromNow(date("2026-07-16T09:00:00Z"), now: summer)), "dans 2 j")
+        XCTAssertEqual(plain(capitalize(fromNow(summer.addingTimeInterval(50 * 86_400), now: summer) ?? "")), "Dans 1 mois")
+        XCTAssertEqual(plain(fromNow(summer.addingTimeInterval(-731 * 86_400), now: summer)), "il y a 2 ans")
         XCTAssertEqual(fromNow(summer, now: summer.addingTimeInterval(20)), "à l’instant")
         XCTAssertEqual(capitalize("à l’instant"), "À l’instant")
         XCTAssertEqual(capitalize(""), "")

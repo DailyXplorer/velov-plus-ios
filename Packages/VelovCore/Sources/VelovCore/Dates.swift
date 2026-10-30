@@ -111,7 +111,7 @@ public func fromNow(_ date: Date?, now: Date = Date()) -> String? {
             components.setValue(value, for: unit)
             let formatter = RelativeDateTimeFormatter()
             formatter.locale = french
-            formatter.unitsStyle = .short
+            formatter.unitsStyle = unit == .month || unit == .year ? .full : .short
             return formatter.localizedString(from: components)
         }
         amount /= size

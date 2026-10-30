@@ -40,6 +40,7 @@ public final class TripActivities {
 
     private let host: TripActivityHost
     private let now: () -> Date
+    private var ended: Set<String> = []
 
     public init(host: TripActivityHost, now: @escaping () -> Date = Date.init) {
         self.host = host
@@ -58,12 +59,13 @@ public final class TripActivities {
 
     public func observed(_ ongoing: [Trip]?, latest: Trip? = nil) {
         guard let ongoing else { return }
-        guard let trip = ongoing.first else { return settle(latest) }
+        guard let trip = ongoing.first(where: { !ended.contains($0.id) }) else { return settle(latest) }
         follow(Ride(trip, now: now()), adoptPending: true, startKnown: trip.startedAt != nil)
     }
 
     public func finished(_ trip: Trip) {
         let endedAt = trip.endedAt ?? now()
+        ended.insert(trip.id)
         for running in host.rides where running.ride.tripId == trip.id || (running.ride.tripId == nil && endedAt > running.ride.startedAt) {
             close(running, endedAt: trip.endedAt)
         }

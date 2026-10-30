@@ -95,6 +95,17 @@ final class TripActivitiesTests: XCTestCase {
         XCTAssertEqual(host.ended.count, 1)
     }
 
+    func testAnOlderAnswerStillListingAFinishedTripStartsNoNewActivity() {
+        activities.observed([ongoing(minutesAgo: 20)])
+        var docked = ongoing(minutesAgo: 20)
+        docked.endedAt = clock
+        activities.finished(docked)
+        XCTAssertEqual(host.ended.count, 1)
+        activities.observed([ongoing(minutesAgo: 20)])
+        XCTAssertEqual(host.started.count, 1, "the trip seen docked is not followed again")
+        XCTAssertTrue(host.rides.isEmpty)
+    }
+
     func testTheTripEndedSheetEndsOnlyTheMatchingActivity() {
         activities.observed([ongoing("t1", minutesAgo: 20)])
         var other = ongoing("t0", minutesAgo: 90)

@@ -418,6 +418,58 @@ final class OperationsTests: XCTestCase {
         XCTAssertEqual(runs.value, 4)
     }
 
+    func testADashboardAskedForDuringALoadRunsOnceMoreAndDropsTheStaleAnswer() async {
+        let load = LatestLoad()
+        let fetches = Counter()
+        let applied = Log()
+        let (started, didStart) = AsyncStream<Void>.makeStream()
+        let (release, doRelease) = AsyncStream<Void>.makeStream()
+        let fetch: @MainActor () async -> String? = {
+            fetches.value += 1
+            let answer = "answer \(fetches.value)"
+            if fetches.value == 1 {
+                didStart.yield()
+                for await _ in release { break }
+            }
+            return answer
+        }
+        let first = Task { await load.run(fetch) { applied.items.append($0) } }
+        for await _ in started { break }
+        XCTAssertTrue(load.running)
+        let second = Task { await load.run(fetch) { applied.items.append($0) } }
+        let third = Task { await load.run(fetch) { applied.items.append($0) } }
+        for _ in 0..<5 { await Task.yield() }
+        doRelease.yield()
+        await second.value
+        XCTAssertEqual(applied.items, ["answer 2"], "a request waits for the load it asked for")
+        await first.value
+        await third.value
+        XCTAssertEqual(fetches.value, 2, "requests during a load cause exactly one more load")
+        XCTAssertEqual(applied.items, ["answer 2"], "the answer started before the request is dropped")
+        XCTAssertFalse(load.running)
+
+        let (patchStarted, didPatchStart) = AsyncStream<Void>.makeStream()
+        let (patchRelease, doPatchRelease) = AsyncStream<Void>.makeStream()
+        let held = Counter()
+        let older = Task {
+            await load.run({ () async -> String? in
+                held.value += 1
+                if held.value == 1 {
+                    didPatchStart.yield()
+                    for await _ in patchRelease { break }
+                    return "older"
+                }
+                return "newer"
+            }) { applied.items.append($0) }
+        }
+        for await _ in patchStarted { break }
+        load.changed()
+        doPatchRelease.yield()
+        await older.value
+        XCTAssertEqual(applied.items.last, "newer", "a local change during a load drops the older answer and loads again")
+        XCTAssertFalse(applied.items.contains("older"))
+    }
+
     func testAnAnswerArrivingAfterLogoutIsDropped() async {
         let generation = SessionGeneration()
         let (started, didStart) = AsyncStream<Void>.makeStream()

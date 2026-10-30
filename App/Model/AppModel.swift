@@ -85,7 +85,6 @@ final class AppModel {
     var page: Page = .overview
     var stations: Resource<StationData> = .loading
     var bookings: [Booking] = []
-    var refreshing = false
     var stationsPending = false
     var sheet: ActiveSheet?
     var paths: [Page: [Route]] = [:]
@@ -103,6 +102,7 @@ final class AppModel {
     private var greeted = false
     @ObservationIgnored private let session = SessionGeneration()
     @ObservationIgnored private let bookingsFlight = SingleFlight()
+    private let dashboardLoad = LatestLoad()
     @ObservationIgnored let statsCache = StatsScreenCache()
     @ObservationIgnored private lazy var dockWatch: DockWatch = DockWatch(
         check: { [unowned self] in
@@ -110,6 +110,7 @@ final class AppModel {
             switch result {
             case .success(let answer):
                 rides.observed(answer.ongoing, latest: answer.latest)
+                if let trip = answer.ongoing?.first, dashboard?.ongoing?.contains(where: { $0.id == trip.id }) == false { Task { await loadDashboard() } }
                 return answer
             case .failure(let error as VelovError) where error.code == .expired:
                 expire()
@@ -243,11 +244,13 @@ final class AppModel {
         _ = await (dashboard, stations, bookings)
     }
 
+    var refreshing: Bool { dashboardLoad.running }
+
     func loadDashboard() async {
-        guard !refreshing else { return }
-        refreshing = true
-        guard let result = await session.load({ try await service.dashboard() }) else { return }
-        refreshing = false
+        await dashboardLoad.run({ [self] in await session.load { try await service.dashboard() } }) { [self] in showDashboard($0) }
+    }
+
+    private func showDashboard(_ result: Result<Dashboard, Error>) {
         switch result {
         case .success(let data):
             if let previous = dashboard?.profile.email, previous != data.profile.email { statsChanged() }
@@ -327,8 +330,9 @@ final class AppModel {
             return
         }
         guard snapshot == nil else { return }
-        if foreground { rides.observed(data.ongoing, latest: data.trips.flatMap(latestFinished)) }
-        if let trip = data.ongoing?.first(where: { !docked.contains($0.id) }) { dockWatch.follow(trip.id) }
+        let ongoing = data.ongoing?.filter { !docked.contains($0.id) }
+        if foreground { rides.observed(ongoing, latest: data.trips.flatMap(latestFinished)) }
+        if let trip = ongoing?.first { dockWatch.follow(trip.id) }
         guard !greeted else { return }
         greeted = true
         if data.ongoing?.isEmpty != false, let trips = data.trips, let recent = tripToGreet(trips, store: UserDefaults.standard) { showEnded(recent) }
@@ -431,6 +435,7 @@ final class AppModel {
         guard case .ready(var data) = phase else { return }
         change(&data)
         phase = .ready(data)
+        dashboardLoad.changed()
     }
 
     func setFavorite(_ number: Int, _ on: Bool) {
@@ -457,7 +462,7 @@ final class AppModel {
 
     private func endSession() {
         session.invalidate()
-        refreshing = false
+        dashboardLoad.reset()
         bookingsFlight.reset()
         statsChanged()
     }

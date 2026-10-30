@@ -20,6 +20,10 @@ extension Station {
     }
 }
 
+public func locateMessage(failure: String?, supplied: Bool) -> String? {
+    failure ?? (supplied ? nil : "Aucune station ouverte ne correspond à ce filtre.")
+}
+
 public struct StationRanking: Equatable, Sendable {
     public var stations: [Station]
     public var query: String

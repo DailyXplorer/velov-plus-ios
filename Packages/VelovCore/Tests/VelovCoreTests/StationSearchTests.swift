@@ -36,6 +36,12 @@ final class StationSearchTests: XCTestCase {
         XCTAssertEqual(ranked(stations, filter: .favorites, favorites: [1]), [1])
     }
 
+    func testAroundMeExplainsAFailedLoadBeforeAnEmptyFilter() {
+        XCTAssertEqual(locateMessage(failure: Messages.stationsUnavailable, supplied: false), Messages.stationsUnavailable)
+        XCTAssertEqual(locateMessage(failure: nil, supplied: false), "Aucune station ouverte ne correspond à ce filtre.")
+        XCTAssertNil(locateMessage(failure: nil, supplied: true))
+    }
+
     func testRankingALyonSizedNetwork() {
         let stations = (0..<430).map { station(20000 + $0, "Station \($0) Rue Émile Zola", lat: 45.70 + Double($0 / 21) * 0.006, lon: 4.78 + Double($0 % 21) * 0.006, open: $0 % 11 != 0) }
         let ranking = StationRanking(stations: stations, query: "", filter: .all, favorites: [20003, 20100], here: nil)

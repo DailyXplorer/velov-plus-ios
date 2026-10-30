@@ -11,6 +11,7 @@ struct StationsPage: View {
     @State private var camera = StationMapView.lyon
     @State private var position: CLLocation?
     @State private var locating = false
+    @State private var awaiting: CLLocation?
     @State private var rankedFilter: StationFilter?
     @Environment(\.accessibilityReduceMotion) private var still
     @Environment(\.tabBarClearance) private var clearance
@@ -45,6 +46,7 @@ struct StationsPage: View {
             }
         }
         .onLeaving(.stations) { searching = false }
+        .onChange(of: model.stationsPending) { resume() }
         .task {
             if model.snapshot == .stationSheet || model.snapshot == .guestStationSheet || model.snapshot?.opensBikes == true {
                 try? await Task.sleep(nanoseconds: 600_000_000)
@@ -210,11 +212,20 @@ struct StationsPage: View {
             defer { locating = false }
             do {
                 let location = try await Locator.shared.locate()
-                located(location)
+                guard case .loading = model.stations else { return located(location) }
+                awaiting = location
+                await model.loadStations()
+                resume()
             } catch {
                 model.showToast(error as? LocationFailure ?? .unavailable)
             }
         }
+    }
+
+    private func resume() {
+        guard !model.stationsPending, let location = awaiting else { return }
+        awaiting = nil
+        located(location)
     }
 
     private func located(_ location: CLLocation) {
@@ -223,10 +234,10 @@ struct StationsPage: View {
         let favorites = favorites
         let open = stations.filter { $0.open && $0.matches(filter, favorites: favorites) }.sorted { haversine(here, $0.point) < haversine(here, $1.point) }
         let supplied = open.filter { filter == .stands ? $0.stands > 0 : $0.bikes > 0 }.prefix(3)
-        guard let nearest = supplied.first else {
-            model.showToast("Aucune station ouverte ne correspond à ce filtre.")
-            return
-        }
+        var failure: String?
+        if case .failed(let reason) = model.stations { failure = reason.message }
+        if let message = locateMessage(failure: failure, supplied: !supplied.isEmpty) { return model.showToast(message) }
+        guard let nearest = supplied.first else { return }
         selectedId = nearest.id
         let points = [here, nearest.point] + supplied.map(\.point)
         var rect = MKMapRect.null

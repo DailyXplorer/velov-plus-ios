@@ -72,8 +72,7 @@ func serverRefusal(_ html: String) -> String? {
         let text = collapse(HTML.text(String(rest[..<end])))
         if !text.isEmpty { return text }
     }
-    let text = collapse(HTML.text(html))
-    return text.isEmpty || text.count > 300 ? nil : text
+    return nil
 }
 
 public func safeIAMURL(_ value: String, relativeTo base: URL? = nil) throws -> URL {

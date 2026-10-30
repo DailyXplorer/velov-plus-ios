@@ -175,7 +175,9 @@ final class AuthTests: XCTestCase {
     func testARefusedDeviceStepShowsTheOneDeviceMessageAndTheLoginIsNotRetried() async {
         for (body, message) in [("<p>Ce compte est déjà en cours d’utilisation sur un autre appareil</p>", Messages.otherDevice),
                                 ("<p>This account is already used on another device.</p>", Messages.otherDevice),
-                                ("", Messages.loginRefused)] {
+                                ("", Messages.loginRefused),
+                                ("<h1>HTTP Status 403 - Forbidden</h1>", Messages.loginRefused),
+                                (#"{"error":"forbidden","status":403}"#, Messages.loginRefused)] {
             let server = realm(TestSigner(), deviceReply: .status(400, body: body))
             do { _ = try await login(email: "person@example.com", code: "123456", deviceId: "device-0123456789abcdef", http: server.transport); XCTFail("no error") }
             catch {

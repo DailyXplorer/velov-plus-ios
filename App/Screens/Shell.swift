@@ -154,7 +154,7 @@ struct PushedPage<Header: View, Content: View>: View {
         }
         .scrollIndicators(.hidden)
         .contentMargins(.bottom, tabBarBand, for: .scrollContent)
-        .fadesUnderTabBar()
+        .hidesUnderBars()
         .background(Palette.white)
         .modifier(Refreshing(refresh: refresh))
         .navigationTitle(title)
@@ -183,28 +183,29 @@ extension PushedPage where Header == PageTitle {
     }
 }
 
-private struct UnderTabBarFade: ViewModifier {
+private struct BarBands: ViewModifier {
     @Environment(\.tabBarBand) private var band
     @Environment(\.tabBarClearance) private var clearance
+    @State private var top: CGFloat = 0
 
     func body(content: Content) -> some View {
-        if band > 0 {
-            content.mask {
+        content
+            .background { Color.clear.onGeometryChange(for: CGFloat.self, of: { $0.safeAreaInsets.top }) { top = $0 } }
+            .overlay {
                 VStack(spacing: 0) {
-                    Color.black
-                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: Space.actions)
-                    Color.clear.frame(height: clearance)
+                    Palette.white.frame(height: top)
+                    Spacer(minLength: 0)
+                    Palette.white.frame(height: band > 0 ? clearance : 0)
                 }
                 .ignoresSafeArea(.container)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
             }
-        } else {
-            content
-        }
     }
 }
 
 extension View {
-    func fadesUnderTabBar() -> some View { modifier(UnderTabBarFade()) }
+    func hidesUnderBars() -> some View { modifier(BarBands()) }
 }
 
 private struct Refreshing: ViewModifier {
@@ -495,7 +496,7 @@ struct PageScaffold: View {
         }
         .scrollIndicators(.hidden)
         .contentMargins(.bottom, tabBarBand, for: .scrollContent)
-        .fadesUnderTabBar()
+        .hidesUnderBars()
         .refreshable { await model.manualRefresh() }
     }
 

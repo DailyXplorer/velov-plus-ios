@@ -2,6 +2,8 @@
 
 Le site sert de référence. Les écarts ci-dessous sont voulus : ils viennent de la plateforme, pas d’un oubli. Toute autre différence de texte ou d’élément est un défaut à corriger des deux côtés.
 
+Chaque report vers l’app est un audit complet, écran par écran, pas seulement une lecture du diff : lister chaque écran et composant du site avec son équivalent dans l’app, et comparer les textes (mot pour mot, typographie française), la mise en page, les polices et la casse, les couleurs (rouge et gris brume, ni noir, ni rose, ni ombre), les confirmations (une seule, pas d’écran de succès), les états de chargement et les règles de sécurité des actions. L’audit rend la liste des différences corrigées. Après un gros lot, comparer aussi, chaîne par chaîne, tous les textes visibles du site et de l’app : chaque différence est corrigée ou ajoutée à ce fichier.
+
 ### Serveur du site
 Le site passe par son propre serveur, l’app parle directement à Vélo’v. Ces messages n’existent donc que sur le site :
 - Les erreurs des routes `/api` (requête invalide) : « Ce déverrouillage n’est pas valide. », « Cette réservation n’est pas valide. », « Cette note n’est pas valide. », « Ce reçu n’est pas valide. », « Ce réglage n’est pas valide. », « Ces coordonnées ne sont pas valides. », « Cet échange n’est pas valide. », « Cette période n’est pas valide. », « Choisissez une station valide. », « Numéro de vélo invalide. », « Numéro de station invalide. », « Ce vélo est introuvable. ».
@@ -68,7 +70,8 @@ Dans l’app, le bandeau du trajet en cours reprend le bandeau rouge de la rése
 
 ### Apparence propre à iOS
 - La barre d’onglets du bas, les boutons Actualiser et Compte de l’en-tête et la barre de recherche des Stations utilisent le matériau Liquid Glass d’iOS. Le site utilise des surfaces blanches avec un filet.
-- Les filtres (Stations, type de vélo des Trajets, période des Statistiques) ouvrent le menu natif d’iOS en Liquid Glass ; les champs de formulaire (Pays, Objet, Trajet, Station pleine) ouvrent un panneau plein écran opaque avec la liste des choix et une coche rouge. Le site garde sa liste blanche maison, choix actuel en rouge.
+- Les filtres (Stations, type de vélo des Trajets, période des Statistiques) ouvrent le menu natif d’iOS en Liquid Glass (`Menu` avec un `Picker` intégré), où iOS coche le choix actuel. Les champs de formulaire (Pays, Objet, Trajet, Station pleine) ouvrent une feuille opaque en détente `.large` avec la liste des choix ; le choix actuel y porte une coche rouge, et son texte reste noir (`App/Design/SelectField.swift`). Le site garde sa liste blanche maison, choix actuel en texte rouge, sans coche.
+- La règle du propriétaire est : pas de coche dans un menu ouvert, le choix actuel est simplement en rouge. L’app ne la suit pas encore, ni dans la feuille ni dans le menu natif ; c’est un écart à corriger, pas une différence voulue.
 - L’app utilise la police des chiffres « Velov Glyphic Timer » pour les comptes à rebours des Live Activities.
 
 ### Diagnostic

@@ -20,7 +20,7 @@ La vue d’ensemble affiche le solde de points, le nombre de trajets, l’abonne
 
 La page Stations montre toutes les stations sur une carte, avec une recherche, des filtres et un bouton « Autour de moi ». En touchant une station, on voit les vélos présents borne par borne. Chaque vélo reçoit une note calculée à partir des avis, de la batterie et de son dernier trajet, ce qui permet de repérer d’un coup d’œil les vélos recommandés et ceux à éviter.
 
-Depuis la fiche d’un vélo, on peut le réserver (10 points pour le garder 15 minutes) ou le déverrouiller. Une réservation en cours apparaît dans un bandeau de l’app, et aussi sur l’écran verrouillé et dans la Dynamic Island grâce à une Activité en direct qui affiche le compte à rebours. Une fois le vélo déverrouillé, une autre Activité en direct affiche le temps écoulé, la station de départ, le numéro et le type du vélo.
+Depuis la fiche d’un vélo, on peut le réserver (10 points pour le garder 15 minutes) ou le déverrouiller. Une réservation en cours apparaît dans un bandeau de l’app, et aussi sur l’écran verrouillé et dans la Dynamic Island grâce à une Activité en direct qui affiche le compte à rebours. Une fois le vélo déverrouillé, une autre Activité en direct affiche le temps écoulé, la station de départ et le numéro du vélo.
 
 Pendant un trajet, l’app surveille le retour du vélo tant qu’elle est ouverte. Quand le vélo est raccroché, une fiche « Trajet terminé » résume le trajet et propose de noter le vélo. Si la station d’arrivée est pleine, « 15 minutes de plus » permet de demander du temps supplémentaire pour rejoindre une autre station.
 
@@ -78,6 +78,10 @@ Lancez `make build && make install` depuis le dossier du projet, dans la session
 
 L’installation fonctionne par câble USB, et aussi en Wi‑Fi une fois que l’iPhone a été appairé et qu’il est connecté au même réseau que le Mac.
 
+Loin de ce réseau, aucune installation à distance ne marche avec un compte gratuit. Xcode et `devicectl` ne trouvent pas l’iPhone à travers un VPN comme Tailscale, car la découverte des appareils passe uniquement par Bonjour : ni l’adresse IP, ni MagicDNS, ni un relais `_remotepairing._tcp` déclaré à la main ne suffisent. Une installation par lien `itms-services` (IPA signée servie par `tailscale serve`) se télécharge, mais iOS la refuse avec « Impossible d’installer… Réessayez ultérieurement », en Debug comme en Release.
+
+Pour lever la limite de 7 jours, il faut un compte développeur payant (un an, avec TestFlight), passer par SideStore ou AltStore, ou réinstaller depuis le Mac tous les 6 jours.
+
 Si Xcode répond « No Accounts » ou « No profiles », ouvrez `VelovCompagnon.xcodeproj`, choisissez votre équipe dans Signing & Capabilities pour les cibles VelovCompagnon et VelovWidgets, puis relancez la commande. Si l’app se ferme dès l’ouverture, c’est que les 7 jours sont écoulés : réinstallez-la.
 
 ## Commandes utiles
@@ -95,6 +99,21 @@ Si Xcode répond « No Accounts » ou « No profiles », ouvrez `VelovCompagnon.
 ## Tests
 
 `make test` lance les tests unitaires du paquet `VelovCore` sur le Mac. Chaque appel réseau passe par un faux `URLProtocol` : les tests couvrent la connexion, le renouvellement de session, les lectures, chaque écriture et ses règles d’envoi unique, sans jamais contacter Vélo’v. `make smoke` se limite à des requêtes GET publiques (la liste des stations et les vélos d’une station) et n’utilise aucun compte.
+
+### Captures d’écran
+
+`make snapshots` produit les captures des écrans principaux. Les images du README, dans `docs/screenshots`, en sont une sélection à demi-résolution (vue d’ensemble avec bandeau, stations, confirmation de réservation, activité du trajet sur l’écran verrouillé, statistiques, trajet terminé) : refaites-les dès que l’interface change visiblement. Les captures des Activités en direct sont posées sur un fond d’écran calme dessiné par le script (ardoise, lumière douce floutée, grain, barre d’état blanche), jamais sur un dégradé voyant ni sur une photo téléchargée.
+
+Les états qui demandent un toucher (menu ouvert, feuille ouverte) se capturent avec XCUITest. Ajoutez un test dans `UITests/` qui touche les éléments et écrit des PNG avec `XCUIScreen.main.screenshot()` dans le dossier donné par `ProcessInfo.processInfo.environment["VELOV_SHOT_DIR"]` (voir `UITests/SelectMenuUITests.swift`), lancez `make project` après avoir ajouté le fichier, puis :
+
+```sh
+TEST_RUNNER_VELOV_SHOT_DIR=/tmp/velov-shots xcodebuild test -project VelovCompagnon.xcodeproj -scheme VelovCompagnon \
+  -destination 'platform=iOS Simulator,id=<UDID du simulateur>' \
+  -derivedDataPath "$HOME/Library/Developer/Xcode/DerivedData/VelovCompagnon-make" \
+  -only-testing:VelovCompagnonUITests/<Classe>
+```
+
+Le préfixe `TEST_RUNNER_` transmet la variable au lanceur de tests. L’app se lance avec `-VelovSample YES -VelovScreen <écran>`, les écrans étant ceux de `SnapshotScreen`. Une exécution prend de 5 à 8 minutes. Désignez un bouton par son libellé d’accessibilité complet : un préfixe comme « Trajet » touche aussi l’onglet Trajets. Écrivez un PNG de diagnostic quand un élément manque, pour voir ce qui était à l’écran. Un état absent des données d’exemple (un trajet en cours pour « 15 minutes de plus ») se prépare par une modification temporaire de `App/Model/SampleData.swift`, annulée avec `git checkout` avant tout commit. Regardez chaque PNG.
 
 ## Liens
 

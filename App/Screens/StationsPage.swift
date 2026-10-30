@@ -163,6 +163,7 @@ struct StationsPage: View {
 
     private var results: some View {
         let shown = Array(filtered.prefix(6))
+        let shape = RoundedRectangle(cornerRadius: floatingRadius, style: .continuous)
         return VStack(spacing: 0) {
             ForEach(shown) { station in
                 Button {
@@ -191,9 +192,8 @@ struct StationsPage: View {
             if shown.isEmpty { Text("Aucune station trouvée.").typo(.body(.small)).foregroundStyle(Palette.inkSoft).frame(maxWidth: .infinity, alignment: .leading).padding(Space.row) }
         }
         .padding(Space.label)
-        .frame(maxWidth: 340)
-        .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .clipShape(shape)
+        .ringed(shape)
     }
 
     private func select(_ id: String) {

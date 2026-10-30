@@ -314,10 +314,7 @@ struct BikeDetail: View {
             }
             dateRow("Dernier trajet", bike.lastTripAt, withAgo: true)
             DetailRow(label: "Prochain contrôle") {
-                HStack(spacing: Space.label) {
-                    if isCheckOverdue(bike) { OutlinePill(text: "En retard") }
-                    dateValue(bike.nextCheckAt, withAgo: true)
-                }
+                if let next = nextCheckText(bike.nextCheckAt) { StackedValue(value: next.value, small: next.detail, caps: true) } else { Text("Non renseigné") }
             }
             DetailRow("Borne", bike.standNumber.map(String.init) ?? "Non renseigné", last: true)
         }

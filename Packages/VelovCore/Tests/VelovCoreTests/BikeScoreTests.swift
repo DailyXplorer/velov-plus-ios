@@ -80,6 +80,17 @@ final class BikeScoreTests: XCTestCase {
         XCTAssertEqual(order, [3, 4, 2, 1])
     }
 
+    func testANextCheckInThePastReadsAsOverdue() {
+        let plain = { (text: String) in text.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ") }
+        let past = nextCheckText(date("2026-10-12T07:25:00Z"), now: now)
+        XCTAssertEqual(past?.value, "En retard")
+        XCTAssertEqual(past.map { plain($0.detail) }, "Prévu le 12 oct. 2026")
+        let soon = nextCheckText(date("2026-10-30T15:47:00Z"), now: now)
+        XCTAssertEqual(soon.map { plain($0.value) }, "Dans 2 j")
+        XCTAssertEqual(soon.map { plain($0.detail) }, "30 oct. 2026, 16:47")
+        XCTAssertNil(nextCheckText(nil, now: now))
+    }
+
     func testABikeAnswerIsNormalisedLeniently() {
         let raw = RawBike(JSON.parse(Data(#"{"id":"b-1","number":20449,"type":"ELECTRICAL","frameId":"0","standNumber":"3","status":"AVAILABLE","isReserved":"no","rating":{"value":81.27,"count":7,"lastRatingDateTime":"2026-10-20T10:00:00"},"battery":{"percentage":104.4},"lastTripDateTime":"2026-10-28T08:00:00"}"#.utf8))!)!
         let bike = normalizeBike(raw)

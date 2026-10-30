@@ -26,6 +26,17 @@ public func isCheckOverdue(_ bike: Bike, now: Date = Date()) -> Bool {
     return now.timeIntervalSince(next) > overdueGrace
 }
 
+public struct StackedText: Equatable, Sendable {
+    public let value: String
+    public let detail: String
+}
+
+public func nextCheckText(_ next: Date?, now: Date = Date()) -> StackedText? {
+    guard let next else { return nil }
+    if next < now { return StackedText(value: "En retard", detail: "Prévu le \(formatDate(next, .dayMonthYear))") }
+    return StackedText(value: capitalize(fromNow(next, now: now) ?? ""), detail: formatDate(next, .dayMonthYearTime))
+}
+
 private func avoidReasons(_ bike: Bike, _ now: Date) -> [String] {
     var reasons: [String] = []
     let idle = hoursSince(bike.lastTripAt, now)

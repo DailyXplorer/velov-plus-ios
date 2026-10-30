@@ -45,7 +45,7 @@ enum SnapshotScreen: String {
     case bookingBanner, unlockConfirm, bookConfirm, unlockUncertain, liveActivityLock, liveActivityIsland, tripActivityLock, tripActivityIsland
     case tripEnded, tripEndedStars
     case ongoingBanner, profilePage, contactPage, journalPage, bikePage, logoutDialog, toggleDialog, choiceSheet
-    case viaPick, viaReview, viaUncertain, inviteDialog, inviteCode, renewalToggle, renewalDialog, contactUncertain
+    case viaPick, viaChoices, viaChosen, viaReview, viaUncertain, inviteDialog, inviteCode, renewalToggle, renewalDialog, contactUncertain
     case stationsSearch, stationsEmptyFilter, locationError, locationTimeout, pageFailure, bikeListFailure, bikeOwnBooking, bigBalance, dockWhileBikes
     case stats, statsCharts, statsTipFirst, statsTipMiddle, statsTipLast, statsHeatmap, statsHeatTip, statsDonut, statsRecords, statsBike, statsEnd
     case login, loginError, guestStations, guestStationSheet, guestBikeSheet, bikePush
@@ -58,7 +58,7 @@ enum SnapshotScreen: String {
 
     var withBooking: Bool { [.bookingBanner, .unlockConfirm, .unlockUncertain, .bikeOwnBooking].contains(self) }
 
-    var riding: Bool { [.ongoingBanner, .viaPick, .viaReview, .viaUncertain].contains(self) }
+    var riding: Bool { [.ongoingBanner, .viaPick, .viaChoices, .viaChosen, .viaReview, .viaUncertain].contains(self) }
 
     var opensBikes: Bool { [.bikeList, .bikePush,.bikeSheet, .bookConfirm, .bikeListFailure, .bikeOwnBooking, .dockWhileBikes, .guestBikeSheet].contains(self) }
 
@@ -144,7 +144,7 @@ final class AppModel {
         }
         paths = Self.snapshotPaths(snapshot)
         if snapshot == .logoutDialog { sheet = .logout }
-        if snapshot == .viaPick || snapshot == .viaReview || snapshot == .viaUncertain { sheet = .via }
+        if snapshot?.riding == true, snapshot != .ongoingBanner { sheet = .via }
     }
 
     private static func snapshotPaths(_ snapshot: SnapshotScreen?) -> [Page: [Route]] {

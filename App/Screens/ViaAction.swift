@@ -44,10 +44,11 @@ struct ViaSheet: View {
             }
         }
         .task {
-            guard model.snapshot == .viaReview || model.snapshot == .viaUncertain else { return }
+            guard [.viaChosen, .viaReview, .viaUncertain].contains(model.snapshot) else { return }
             try? await Task.sleep(for: .seconds(1.5))
             guard let station = choices.first else { return }
             selected = station.number
+            if model.snapshot == .viaChosen { return }
             reviewing = true
             if model.snapshot == .viaUncertain { confirm((station.number, station.name)) }
         }
@@ -100,7 +101,7 @@ struct ViaSheet: View {
                 } else {
                     SelectField(label: "Station pleine", value: $selected, options: [.init(value: nil, label: "Choisir une station")] + choices.map { item in
                         .init(value: item.number, label: "\(item.name) · N°\u{a0}\(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
-                    }, layout: .stacked)
+                    }, layout: .stacked, autoOpen: model.snapshot == .viaChoices)
                 }
             }
             PairedActions {

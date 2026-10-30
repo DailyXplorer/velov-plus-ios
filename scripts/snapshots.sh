@@ -68,6 +68,8 @@ shot toggleDialog 24-toggle-dialog 8
 shot logoutDialog 25-logout-dialog 7
 shot choiceSheet 26-choice-sheet 9
 shot viaPick 27-via-pick 8
+shot viaChoices 27b-via-choices 10
+shot viaChosen 27c-via-chosen 9
 shot viaReview 28-via-review 9
 shot viaUncertain 29-via-uncertain 10
 shot inviteDialog 30-invite-dialog 8

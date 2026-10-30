@@ -398,6 +398,17 @@ struct Header: View {
     private var busy: Bool { model.refreshing || model.stationsPending }
 
     var body: some View {
+        ViewThatFits(in: .horizontal) {
+            bar(wideSignIn: true)
+            bar(wideSignIn: false)
+        }
+        .padding(.horizontal, Layout.margin).padding(.top, Layout.headerTop).padding(.bottom, Layout.headerBottom)
+        .opacity(toastShown ? 0 : 1)
+        .accessibilityHidden(toastShown)
+        .animation(Motion.standard, value: toastShown)
+    }
+
+    private func bar(wideSignIn: Bool) -> some View {
         HStack(spacing: Space.label) {
             Text(title).typo(.title(.page)).foregroundStyle(Palette.ink).lineLimit(1).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
@@ -410,7 +421,9 @@ struct Header: View {
                 .foregroundStyle(Palette.inkSoft)
             }
             .disabled(busy)
-            if model.isGuest {
+            if model.isGuest, !wideSignIn {
+                FloatingCircleButton(label: "Se connecter") { model.leaveGuest() } content: { Icon(.signIn, .light, size: Layout.glyph) }
+            } else if model.isGuest {
                 Button { model.leaveGuest() } label: {
                     HStack(spacing: Space.label) {
                         Icon(.signIn, .light, size: Layout.glyph)
@@ -434,10 +447,6 @@ struct Header: View {
                 }
             }
         }
-        .padding(.horizontal, Layout.margin).padding(.top, Layout.headerTop).padding(.bottom, Layout.headerBottom)
-        .opacity(toastShown ? 0 : 1)
-        .accessibilityHidden(toastShown)
-        .animation(Motion.standard, value: toastShown)
     }
 
     private var toastShown: Bool { model.toasts.current != nil }

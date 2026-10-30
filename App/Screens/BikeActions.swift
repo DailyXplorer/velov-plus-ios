@@ -81,7 +81,10 @@ struct BikeActionSheet: View {
             if action == .book {
                 Text("\(Rules.bookingPoints) points pour garder ce vélo \(Rules.bookingMinutes) minutes.")
             } else {
-                Text("Vous aurez ensuite 60 secondes pour appuyer sur le bouton de la borne \(place.standNumber) et retirer le vélo.")
+                VStack(alignment: .leading, spacing: Space.label) {
+                    Text(verbatim: "\(place.stationName) · Borne \(place.standNumber)").typo(.body(.lead, medium: true))
+                    Text("Vous aurez ensuite 60 secondes pour appuyer sur le bouton de la borne \(place.standNumber) et retirer le vélo.")
+                }
             }
         } extra: {
             if far {

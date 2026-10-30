@@ -89,7 +89,7 @@ private struct ToastWindowAnchor: UIViewRepresentable {
 
         override func didMoveToWindow() {
             super.didMoveToWindow()
-            guard overlay == nil, let scene = window?.windowScene else { return }
+            guard overlay == nil, model.snapshot?.isLiveActivity != true, let scene = window?.windowScene else { return }
             let overlay = PassthroughWindow(windowScene: scene)
             let layer = ToastLayer { [weak overlay] in overlay?.active = $0 }.environment(model)
             let host = UIHostingController(rootView: layer)

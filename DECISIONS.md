@@ -6,9 +6,11 @@ Ce document rassemble les règles que le code respecte et les raisons de quelque
 
 Toute requête qui modifie le compte part exactement une fois par confirmation de l’utilisateur. Elle ne passe jamais par le client de lecture, qui sait réessayer, et n’est jamais renvoyée, quelle que soit la réponse. Pour un déverrouillage, la borne a pu s’ouvrir sans que la réponse arrive ; pour une réservation, des points ont pu être débités.
 
+Chaque écriture part sur une connexion neuve : l’app crée une session `URLSession` pour cette seule requête, puis la ferme (`FreshConnectionTransport`, `Packages/VelovCore/Sources/VelovCore/HTTP.swift`). Le jeton de l’application, la connexion et l’actualisation de la session, qui sont aussi des POST, passent par le même chemin. Une connexion restée ouverte entre deux lectures peut mourir sans que le téléphone le sache. URLSession relance alors seul une lecture, mais jamais un POST : le déverrouillage échouait ainsi en « Connexion perdue après 0 s » (-1005) alors que toutes les lectures passaient. Les lectures gardent la session partagée. Même sur une connexion neuve, une connexion perdue ou un délai dépassé reste incertain.
+
 Un échec est classé comme refus certain ou comme résultat incertain, à la manière de `isUncertain` côté web. Sont des refus certains les erreurs détectées sur le téléphone avant tout envoi (codes `local.`), les erreurs 4xx accompagnées d’un code et les états d’échec explicites du déverrouillage. Tout le reste est incertain : absence de réponse, délai dépassé, erreur 5xx ou page de passerelle, réponse 2xx illisible, erreur 4xx sans code, redirection, et l’état `TIME_OUT` d’un déverrouillage. Une écriture ne suit jamais de redirection. Une réservation n’est réussie que si la réponse décrit la réservation demandée ; un 2xx vide ou étranger reste incertain. Après un résultat incertain, la feuille ne propose plus que « Fermer » ou « Vérifier ». Le succès d’une écriture se lit dans `transactionState`, jamais dans le seul statut HTTP.
 
-Un résultat incertain n’expire jamais avec le temps : il garde sa cible et la valeur voulue jusqu’à une vérification ciblée. Le déverrouillage est confirmé par un trajet du même vélo, et infirmé seulement sans trajet passé 2 minutes ; la réservation par la liste des réservations ; la note, le profil, les favoris, l’utilisation automatique et le renouvellement par une relecture comparée à la valeur voulue au moment de l’envoi. Un état inchangé ne vaut refus qu’après 2 minutes, le temps que Vélo’v l’affiche.
+Un résultat incertain n’expire jamais avec le temps : il garde sa cible et la valeur voulue jusqu’à une vérification ciblée. Le déverrouillage est confirmé par un trajet du même vélo, et infirmé seulement sans trajet passé 2 minutes ; la réservation par la liste des réservations ; la note, le profil, les favoris, l’utilisation automatique et le renouvellement par une relecture comparée à la valeur voulue au moment de l’envoi. Un état inchangé ne vaut refus qu’après 2 minutes, le temps que Vélo’v l’affiche. Après un déverrouillage incertain, la feuille vérifie seule, sans attendre « Vérifier » : elle relit les trajets en cours pendant environ 70 secondes, le temps de retirer le vélo, puis vérifie de nouveau 2 minutes après l’envoi, tant qu’elle reste ouverte. Ce ne sont que des lectures : la requête n’est jamais renvoyée, et « Fermer » reste possible pendant ce temps.
 
 Une réponse arrivée après une déconnexion ou un changement de compte est ignorée, et un jeton actualisé à ce moment n’est jamais enregistré.
 
@@ -104,6 +106,8 @@ Chaque onglet est créé à sa première visite puis gardé en vie, masqué quan
 ## Diagnostic
 
 Quand une action échoue dans l’app alors qu’elle marche sur le site, comparer d’abord les deux requêtes (adresse, corps, en-têtes, délai) pour écarter la requête elle-même, puis demander le Journal technique au lieu de deviner une cause.
+
+Le Journal technique range à part les écritures et les lectures faites pour une action : les 100 dernières, gardées 14 jours, en plus des 50 dernières autres lectures. Chaque ligne note aussi le protocole, si la connexion était neuve ou réutilisée et les octets envoyés : après un échec, on voit si la requête est partie sur une vieille connexion.
 
 ## Règles produit
 

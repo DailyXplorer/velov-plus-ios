@@ -4,9 +4,11 @@ import VelovCore
 struct JournalLink: View {
     @Environment(AppModel.self) private var model
 
+    static let caption = "Les \(TechnicalJournal.capacity) dernières lectures et les \(TechnicalJournal.writeCapacity) dernières actions (gardées \(TechnicalJournal.writeRetentionDays) jours) envoyées à Vélo’v, sans jeton ni donnée personnelle."
+
     var body: some View {
         VStack(alignment: .leading, spacing: Space.titleToContent) {
-            Text("Les \(TechnicalJournal.capacity) dernières requêtes envoyées à Vélo’v, sans jeton ni donnée personnelle.")
+            Text(Self.caption)
                 .typo(.body(.base)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
             PillButton(variant: .secondary, action: { model.push(.journal, on: .account) }) { ButtonIcon(.file); Text("Ouvrir le journal") }
         }

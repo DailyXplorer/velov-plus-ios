@@ -56,6 +56,9 @@ public struct JournalEntry: Codable, Equatable, Sendable {
     public var error: Int?
     public var duration: TimeInterval
     public var operation: String?
+    public var connection: String?
+
+    var isWrite: Bool { method != "GET" || operation != nil }
 
     public var result: String {
         if let status { return "HTTP \(status)" }
@@ -91,36 +94,48 @@ public func redactedOperation(_ key: String) -> String {
 
 public final class TechnicalJournal: @unchecked Sendable {
     public static let capacity = 50
+    public static let writeCapacity = 100
+    public static let writeRetentionDays = 14
+    public static let writeRetention = TimeInterval(writeRetentionDays * 24 * 3600)
     public static let shared = TechnicalJournal()
     @TaskLocal public static var operation: String?
+    @TaskLocal static var connection: ConnectionNote?
 
     private let defaults: UserDefaults
     private let key: String
+    private let writesKey: String
     private let lock = NSLock()
 
     public init(defaults: UserDefaults = .standard, key: String = "velov:journal:v1") {
         self.defaults = defaults
         self.key = key
+        writesKey = "\(key):writes"
     }
 
-    private func stored() -> [JournalEntry] {
+    private func stored(_ key: String) -> [JournalEntry] {
         defaults.data(forKey: key).flatMap { try? JSONDecoder().decode([JournalEntry].self, from: $0) } ?? []
     }
 
-    public var entries: [JournalEntry] { lock.withLock { stored() } }
+    public var entries: [JournalEntry] { lock.withLock { (stored(key) + stored(writesKey)).sorted { $0.at > $1.at } } }
 
-    public func record(_ request: URLRequest, status: Int?, error: Int?, duration: TimeInterval, at: Date) {
+    public func record(_ request: URLRequest, status: Int?, error: Int?, duration: TimeInterval, at: Date, connection: String? = nil) {
         guard let url = request.url, url.host?.hasSuffix("cyclocity.fr") == true else { return }
         let entry = JournalEntry(at: at, method: (request.httpMethod ?? "GET").uppercased(), path: redactedPath(url), status: status,
-                                 error: status == nil ? error ?? -1 : nil, duration: max(0, duration), operation: Self.operation.map(redactedOperation))
+                                 error: status == nil ? error ?? -1 : nil, duration: max(0, duration), operation: Self.operation.map(redactedOperation),
+                                 connection: connection)
         lock.withLock {
-            let next = Array(([entry] + stored()).prefix(Self.capacity))
-            defaults.set(try? JSONEncoder().encode(next), forKey: key)
+            let ring = entry.isWrite ? writesKey : key
+            var next = [entry] + stored(ring)
+            if entry.isWrite { next = next.filter { at.timeIntervalSince($0.at) < Self.writeRetention } }
+            defaults.set(try? JSONEncoder().encode(Array(next.prefix(entry.isWrite ? Self.writeCapacity : Self.capacity))), forKey: ring)
         }
     }
 
     public func clear() {
-        lock.withLock { defaults.removeObject(forKey: key) }
+        lock.withLock {
+            defaults.removeObject(forKey: key)
+            defaults.removeObject(forKey: writesKey)
+        }
     }
 
     public func export(timeZone: TimeZone = .current) -> String {
@@ -129,9 +144,19 @@ public final class TechnicalJournal: @unchecked Sendable {
         formatter.timeZone = timeZone
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let lines = entries.map { entry in
-            ([formatter.string(from: entry.at), "\(entry.method) \(entry.path)", entry.result, entry.milliseconds] + [entry.operation].compactMap { $0 }).joined(separator: " · ")
+            ([formatter.string(from: entry.at), "\(entry.method) \(entry.path)", entry.result, entry.milliseconds] + [entry.operation, entry.connection].compactMap { $0 })
+                .joined(separator: " · ")
         }
         return (["Journal technique Vélo’v+"] + lines).joined(separator: "\n")
+    }
+}
+
+final class ConnectionNote: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: String?
+    var line: String? {
+        get { lock.withLock { value } }
+        set { lock.withLock { value = newValue } }
     }
 }
 
@@ -148,14 +173,15 @@ public struct JournalTransport: HTTPTransport {
 
     public func send(_ request: URLRequest, followRedirects: Bool) async throws -> HTTPResponse {
         let start = clock()
+        let note = ConnectionNote()
         do {
-            let response = try await base.send(request, followRedirects: followRedirects)
-            journal.record(request, status: response.status, error: nil, duration: clock().timeIntervalSince(start), at: start)
+            let response = try await TechnicalJournal.$connection.withValue(note) { try await base.send(request, followRedirects: followRedirects) }
+            journal.record(request, status: response.status, error: nil, duration: clock().timeIntervalSince(start), at: start, connection: note.line)
             return response
         } catch {
             let elapsed = clock().timeIntervalSince(start)
             let code = (error as? URLError)?.code.rawValue
-            journal.record(request, status: nil, error: code ?? -1, duration: elapsed, at: start)
+            journal.record(request, status: nil, error: code ?? -1, duration: elapsed, at: start, connection: note.line)
             guard let code else { throw error }
             throw NetworkFailure(code: code, elapsed: elapsed)
         }

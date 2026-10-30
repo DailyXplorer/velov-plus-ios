@@ -24,15 +24,15 @@ struct AccountPage: View {
         let person = data.profile
         let name = formatName("\(person.firstName) \(person.lastName)")
         return AccountSection(title: "Profil") {
-            Text(name.isEmpty ? "Compte Vélo’v" : name).typo(.title(.card)).foregroundStyle(Palette.ink).padding(.top, 18)
-            Text(person.email).typo(.body(.base)).foregroundStyle(Palette.inkSoft).padding(.top, 6)
+            Text(name.isEmpty ? "Compte Vélo’v" : name).typo(.title(.card)).foregroundStyle(Palette.ink).padding(.top, Space.titleToContent)
+            Text(person.email).typo(.body(.base)).foregroundStyle(Palette.inkSoft).padding(.top, Space.pair)
             if person.locked || !person.complete || data.paymentValid == false {
                 VStack(spacing: 0) {
                     if person.locked { DetailRow("Compte", "À vérifier") }
                     if !person.complete { DetailRow("Profil", "À compléter") }
                     if data.paymentValid == false { DetailRow("Paiement", "À vérifier") }
                 }
-                .padding(.top, 26)
+                .padding(.top, Space.actions)
             }
             ProfileCoordinates(profile: person).padding(.top, Space.label)
         }
@@ -41,7 +41,7 @@ struct AccountPage: View {
     private var subscription: some View {
         let current = data.subscription.subscription
         return AccountSection(title: "Abonnement") {
-            Text(data.subscription == .unavailable ? Messages.missing : current?.title ?? "Aucun abonnement").typo(.title(.card)).foregroundStyle(Palette.ink).padding(.top, 18)
+            Text(data.subscription == .unavailable ? Messages.missing : current?.title ?? "Aucun abonnement").typo(.title(.card)).foregroundStyle(Palette.ink).padding(.top, Space.titleToContent)
             if let current {
                 if let line = current.validUntil.map({ "Jusqu’au \(formatDate($0, .dayLongMonthYear))" }) ?? (current.active ? nil : "Inactif") {
                     Text(line).typo(.body(.base)).foregroundStyle(Palette.inkSoft).padding(.top, Space.label)
@@ -53,7 +53,7 @@ struct AccountPage: View {
                     ReceiptsTitle()
                     ForEach(receipts) { ReceiptRow(receipt: $0) }
                 }
-                .padding(.top, 24)
+                .padding(.top, Space.actions)
             }
             ManageLink { if let url = URL(string: "https://velov.grandlyon.com/") { openURL(url) } }
         }
@@ -85,13 +85,13 @@ private struct SectionGhost: ViewModifier {
 }
 
 private struct ReceiptsTitle: View {
-    var body: some View { Text("Reçus").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).padding(.bottom, 8) }
+    var body: some View { Text("Reçus").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).padding(.bottom, Space.label) }
 }
 
 private struct ManageLink: View {
     let action: () -> Void
     var body: some View {
-        TextLink(title: "Gérer sur Vélo’v", trailing: .external, hint: "Ouvre le site Vélo’v", action: action).padding(.top, 16)
+        TextLink(title: "Gérer sur Vélo’v", trailing: .external, hint: "Ouvre le site Vélo’v", action: action).padding(.top, Space.titleToContent)
     }
 }
 
@@ -109,8 +109,8 @@ struct AccountSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.cards) {
             AccountSection(title: "Profil", ghost: true) {
-                Text(verbatim: "Prénom Nom").typo(.title(.card)).padding(.top, 18)
-                Text(verbatim: "prenom.nom@exemple.fr").typo(.body(.base)).padding(.top, 6)
+                Text(verbatim: "Prénom Nom").typo(.title(.card)).padding(.top, Space.titleToContent)
+                Text(verbatim: "prenom.nom@exemple.fr").typo(.body(.base)).padding(.top, Space.pair)
                 VStack(alignment: .leading, spacing: 0) {
                     DetailRow(label: "Adresse") { StackedValue(value: "1 rue de la République", small: "69002 Lyon · France") }
                     DetailRow("Téléphone", "06 00 00 00 00", last: true)
@@ -119,25 +119,25 @@ struct AccountSkeleton: View {
                 .padding(.top, Space.label)
             }
             AccountSection(title: "Abonnement", ghost: true) {
-                Text(verbatim: "Vélo’v Plus 1 an Jeunes – paiement comptant").typo(.title(.card)).padding(.top, 18)
-                Text(verbatim: "Jusqu’au 1 janvier 2027").typo(.body(.base)).padding(.top, 10)
+                Text(verbatim: "Vélo’v Plus 1 an Jeunes – paiement comptant").typo(.title(.card)).padding(.top, Space.titleToContent)
+                Text(verbatim: "Jusqu’au 1 janvier 2027").typo(.body(.base)).padding(.top, Space.label)
                 SettingRow(label: "Renouvellement automatique", value: "Désactivé", surface: false) {
                     ConfirmToggle(label: "Renouvellement automatique", on: false) {}
                 }
-                .padding(.top, 20)
+                .padding(.top, Space.card)
                 VStack(alignment: .leading, spacing: 0) {
                     ReceiptsTitle()
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: Space.cards) {
+                        VStack(alignment: .leading, spacing: Space.pair) {
                             Text(verbatim: "Vélo’v Plus 1 an Jeunes").typo(.body(.base, medium: true))
                             Text(verbatim: "Du 1 janv. 2026 au 1 janv. 2027").typo(.body(.meta))
                         }
                         Spacer()
                         PillButton(variant: .secondary, action: {}) { ButtonIcon(.downloadSimple); Text("Reçu") }
                     }
-                    .padding(.vertical, 12)
+                    .padding(.vertical, Space.cards)
                 }
-                .padding(.top, 24)
+                .padding(.top, Space.actions)
                 ManageLink {}
             }
             AccountSection(title: "Service client", ghost: true) {
@@ -150,7 +150,7 @@ struct AccountSkeleton: View {
                 }
                 .padding(.top, Space.titleToContent)
             }
-            LogoutButton {}.skeleton(Layout.largeControl / 2).padding(.top, Space.section - Space.cards)
+            LogoutButton {}.skeleton(Radius.capsule).padding(.top, Space.section - Space.cards)
         }
         .accessibilityLabel("Chargement du compte")
     }

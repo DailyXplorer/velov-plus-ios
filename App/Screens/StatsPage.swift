@@ -9,7 +9,7 @@ extension SnapshotScreen {
 struct StatsLink: View {
     var body: some View {
         NavigationLink(value: Route.stats) {
-            HStack(spacing: 10) {
+            HStack(spacing: Layout.iconGap) {
                 Icon(.chart, .light, size: 18)
                 Text("Statistiques").typo(.body(.lead))
                 Spacer(minLength: 0)
@@ -109,25 +109,26 @@ struct StatsPage: View {
 
     private var skeleton: some View {
         VStack(alignment: .leading, spacing: gap) {
-            SelectField(label: "Période", hideLabel: true, value: .constant(StatsPeriod.months12), options: StatsView.periods).skeleton(Layout.control / 2).padding(.bottom, 6)
+            SelectField(label: "Période", hideLabel: true, value: .constant(StatsPeriod.months12), options: StatsView.periods).skeleton(Radius.capsule).padding(.bottom, Space.pair)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: gap), GridItem(.flexible(), spacing: gap)], spacing: gap) {
                 ForEach(headlines, id: \.label) { card in
                     StatCard(icon: card.icon, label: card.label, value: card.value, unit: card.unit, detail: "—").skeleton()
                 }
             }
-            Panel(title: "Temps à vélo par mois", chart: true, tips: true) { Skeleton(height: 220) }
-            Panel(title: "Horaires de départ", chart: true, tips: true) { HeatmapSkeleton() }
-            Panel(title: "Répartition par type de vélo", chart: true) {
-                VStack(spacing: 20) {
-                    Shimmer(radius: 76).frame(width: 152, height: 152).mask(Circle().strokeBorder(.black, lineWidth: 22)).accessibilityHidden(true)
-                    VStack(spacing: 8) {
+            Panel(title: "Temps à vélo par mois", tips: true) { Skeleton(height: 220) }
+            Panel(title: "Horaires de départ", tips: true) { HeatmapSkeleton() }
+            Panel(title: "Répartition par type de vélo") {
+                VStack(spacing: Space.card) {
+                    Shimmer(radius: Radius.capsule).frame(width: 152, height: 152).mask(Circle().strokeBorder(.black, lineWidth: 22)).accessibilityHidden(true)
+                    VStack(spacing: 0) {
                         ForEach(["Électrique", "Mécanique"], id: \.self) { label in
-                            HStack(spacing: 10) {
-                                Circle().frame(width: 10, height: 10).skeleton(5)
+                            HStack(spacing: Space.label) {
+                                Circle().frame(width: 10, height: 10).skeleton(Radius.capsule)
                                 Text(label).typo(.body(.small)).ghost()
                                 Spacer(minLength: 0)
                                 Text(verbatim: "50\u{a0}%").typo(.label(.small)).ghost()
                             }
+                            .frame(minHeight: Layout.hit)
                         }
                     }
                 }
@@ -180,15 +181,15 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: gap) {
             SelectField(label: "Période", hideLabel: true, value: $period, options: Self.periods)
                 .zIndex(2)
-                .padding(.bottom, 6)
-            if !stats.complete { Text("Historique partiel").typo(.body(.meta)).foregroundStyle(Palette.inkSoft).padding(.top, 4) }
+                .padding(.bottom, Space.pair)
+            if !stats.complete { Text("Historique partiel").typo(.body(.meta)).foregroundStyle(Palette.inkSoft).padding(.top, Space.pair) }
             Headline(data: data, balance: stats.balance)
             if data.trips == 0 {
                 StateView(stats.all.trips > 0 ? "Aucun trajet sur cette période." : "Vos statistiques apparaîtront après votre premier trajet.")
             } else {
-                Panel(title: data.unit == .day ? "Temps à vélo par jour" : "Temps à vélo par mois", chart: true, tips: true) { MinutesChart(data: data, focus: $focus) }.id("panel-charts")
-                Panel(title: "Horaires de départ", chart: true, tips: true) { Heatmap(data: data, focus: $focus) }.id("panel-heatmap")
-                Panel(title: "Répartition par type de vélo", chart: true) { BikeTypes(data: data, focus: $focus) }.id("panel-donut")
+                Panel(title: data.unit == .day ? "Temps à vélo par jour" : "Temps à vélo par mois", tips: true) { MinutesChart(data: data, focus: $focus) }.id("panel-charts")
+                Panel(title: "Horaires de départ", tips: true) { Heatmap(data: data, focus: $focus) }.id("panel-heatmap")
+                Panel(title: "Répartition par type de vélo") { BikeTypes(data: data, focus: $focus) }.id("panel-donut")
                 Panel(title: "Records") { Records(records: data.records) }.id("panel-records")
                 if !data.stations.isEmpty { Panel(title: "Stations les plus utilisées") { Ranking(items: data.stations) } }
             }
@@ -244,8 +245,8 @@ private struct StatCard: View {
         VStack(alignment: .leading, spacing: 0) {
             CardTag(icon: icon, text: label, size: .stat)
             (Text(value.glyphic) + Text(unit.map { "\u{a0}\($0)" } ?? "").font(Typo.title(.unit).font))
-                .typo(.title(.figureS)).foregroundStyle(Palette.white).lineLimit(1).minimumScaleFactor(0.5).padding(.top, 18)
-            Spacer(minLength: 18)
+                .typo(.title(.figureS)).foregroundStyle(Palette.white).lineLimit(1).minimumScaleFactor(0.5).padding(.top, Space.titleToContent)
+            Spacer(minLength: Space.titleToContent)
             if let detail { Text(detail).typo(.body(.micro)).foregroundStyle(Palette.white).lineLimit(2).fixedSize(horizontal: false, vertical: true) }
         }
         .frame(maxWidth: .infinity, minHeight: 132 - 2 * Space.cardCompact, alignment: .topLeading)
@@ -256,12 +257,11 @@ private struct StatCard: View {
 
 private struct Panel<Content: View>: View {
     let title: String
-    var chart = false
     var tips = false
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: tips ? Space.titleToContent + tipBand : chart ? Space.section : Space.titleToContent) {
+        VStack(alignment: .leading, spacing: tips ? Space.titleToContent + tipBand : Space.titleToContent) {
             Text(title).typo(.title(.card)).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
             content()
         }
@@ -283,12 +283,12 @@ private struct ChartTip: View {
     let title: String
     let detail: String
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Space.pair) {
             Text(title).typo(.body(.meta, medium: true)).foregroundStyle(Palette.ink)
             Text(detail).typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
         }
-        .padding(.horizontal, 11).padding(.vertical, 8)
-        .ringed(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, Space.cards).padding(.vertical, Space.label)
+        .ringed(RoundedRectangle(cornerRadius: Radius.inner, style: .continuous))
         .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -514,7 +514,7 @@ private struct BikeTypes: View {
         let share = { (count: Int) in "\(Int((Double(count) / Double(total) * 100).rounded()))\u{a0}%" }
         let size: CGFloat = 152
         let thickness: CGFloat = 22
-        VStack(spacing: 20) {
+        VStack(spacing: Space.card) {
             ZStack {
                 Chart(parts) { part in
                     SectorMark(angle: .value("Trajets", part.count), innerRadius: .fixed(size / 2 - thickness), outerRadius: .fixed(size / 2), angularInset: parts.count > 1 ? 1 : 0)
@@ -522,7 +522,7 @@ private struct BikeTypes: View {
                 }
                 .chartLegend(.hidden)
                 if let part = parts.first(where: { $0.key == selected }) {
-                    VStack(spacing: 2) {
+                    VStack(spacing: Space.pair) {
                         Text(part.label).typo(.body(.meta, medium: true)).foregroundStyle(Palette.ink)
                         Text("\(plural(part.count, "trajet")), soit \(share(part.count))").typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
                     }
@@ -535,15 +535,16 @@ private struct BikeTypes: View {
             .onTapGesture { focus = (selected == nil ? parts.first?.key : parts.firstIndex { $0.key == selected }.flatMap { $0 + 1 < parts.count ? parts[$0 + 1].key : nil }).map(ChartFocus.part) }
             .accessibilityLabel("Trajets \(parts.map { "\($0.spoken) à \(share($0.count))" }.joined(separator: ", "))")
             .accessibilityChartDescriptor(BikeTypesDescriptor(parts: parts.map { ($0.label, $0.count) }))
-            VStack(spacing: 8) {
+            VStack(spacing: 0) {
                 ForEach(parts) { part in
                     Button { focus = selected == part.key ? nil : .part(part.key) } label: {
-                        HStack(spacing: 10) {
+                        HStack(spacing: Space.label) {
                             Circle().fill(part.color).frame(width: 10, height: 10).overlay(Circle().strokeBorder(part.key == "unknown" ? Palette.inkLine : .clear, lineWidth: 1))
                             Text(part.label).typo(.body(.small)).foregroundStyle(Palette.ink)
                             Spacer(minLength: 0)
                             Text(share(part.count)).typo(.label(.small)).foregroundStyle(Palette.ink)
                         }
+                        .frame(minHeight: Layout.hit)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.press)
@@ -568,7 +569,7 @@ private struct Records: View {
     }
 
     private var grid: some View {
-        Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 22) {
+        Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: Space.card) {
             GridRow {
                 tile("Plus long trajet", first: true) { value(records.map { $0.longestMinutes.map(hours) }) }
                 tile("Jour record", first: false) { value(records.map { $0.busiestDayTrips.map { plural($0, "trajet") } }) }
@@ -607,7 +608,7 @@ private struct Records: View {
             content()
         }
         .accessibilityElement(children: .combine)
-        .padding(.leading, first ? 0 : 14).padding(.vertical, 4)
+        .padding(.leading, first ? 0 : Space.row).padding(.vertical, Space.pair)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .leading) { if !first { Rectangle().fill(Palette.line).frame(width: 1) } }
     }
@@ -621,13 +622,13 @@ private struct Ranking: View {
         VStack(spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                 if index > 0 { Hairline() }
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                HStack(alignment: .firstTextBaseline, spacing: Space.cards) {
                     Text("\(index + 1)").typo(.label(.small)).foregroundStyle(Palette.inkSoft).frame(width: 18, alignment: .leading)
                     Text(item.name).typo(.body(.lead)).foregroundStyle(Palette.ink).lineLimit(1).truncationMode(.tail).ghost(ghost)
                     Spacer(minLength: 0)
                     Text(number(item.count)).typo(.label(.small)).foregroundStyle(Palette.ink).ghost(ghost).accessibilityLabel("\(number(item.count)) passages")
                 }
-                .padding(.top, index > 0 ? 13 : 0).padding(.bottom, index < items.count - 1 ? 13 : 0)
+                .padding(.top, index > 0 ? Space.cards : 0).padding(.bottom, index < items.count - 1 ? Space.cards : 0)
             }
         }
     }

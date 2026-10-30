@@ -24,12 +24,15 @@ enum Layout {
     static let largeControl: CGFloat = 48
     static let hit: CGFloat = 44
     static let glyph: CGFloat = 20
+    static let iconGap: CGFloat = 10
     static let bleed: CGFloat = -(hit - glyph) / 2
 }
 
 enum Radius {
     static let card = Palette.radius
     static let inner: CGFloat = 12
+    static let text: CGFloat = 6
+    static let capsule = CGFloat.infinity
 }
 
 enum Motion {
@@ -80,5 +83,5 @@ extension ButtonStyle where Self == RowPressStyle {
 }
 
 extension View {
-    func bleed(_ edges: Edge.Set) -> some View { padding(edges, Layout.bleed) }
+    func bleed(_ edges: Edge.Set, visible: CGFloat = Layout.glyph) -> some View { padding(edges, -(Layout.hit - visible) / 2) }
 }

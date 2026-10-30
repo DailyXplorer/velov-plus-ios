@@ -6,7 +6,7 @@ extension View {
     }
 
     func fieldPill() -> some View {
-        padding(.leading, 18).padding(.trailing, 8).frame(minHeight: Layout.control).ringed(Capsule())
+        padding(.leading, 18).padding(.trailing, Space.label).frame(minHeight: Layout.control).ringed(Capsule())
     }
 }
 
@@ -48,28 +48,40 @@ struct PillButton<Label: View>: View {
     var fullWidth = false
     let action: () -> Void
     @ViewBuilder let label: () -> Label
+
+    var body: some View {
+        Button(role: variant == .destructive ? .destructive : nil, action: action) {
+            PillLabel(variant: variant, pending: pending, large: large, fullWidth: fullWidth, label: label)
+        }
+        .buttonStyle(.press)
+        .disabled(pending)
+    }
+}
+
+struct PillLabel<Label: View>: View {
+    var variant: ButtonVariant = .primary
+    var pending = false
+    var large = false
+    var fullWidth = false
+    @ViewBuilder let label: () -> Label
     @Environment(\.isEnabled) private var enabled
     @Environment(\.onMist) private var onMist
 
     var body: some View {
-        Button(role: variant == .destructive ? .destructive : nil, action: action) {
-            ZStack {
-                HStack(spacing: 10) { label() }.opacity(pending ? 0 : 1)
-                if pending { Spinner() }
-            }
-            .typo(.caps(.button))
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-            .padding(.horizontal, 16)
-            .frame(minHeight: large ? Layout.largeControl : Layout.control)
-            .frame(maxWidth: fullWidth ? .infinity : nil)
-            .foregroundStyle(foreground)
-            .background(Capsule().fill(background))
-            .overlay(Capsule().strokeBorder(ring, lineWidth: 1))
-            .contentShape(Capsule())
+        ZStack {
+            HStack(spacing: Layout.iconGap) { label() }.opacity(pending ? 0 : 1)
+            if pending { Spinner() }
         }
-        .buttonStyle(.press)
-        .disabled(pending)
+        .typo(.caps(.button))
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+        .padding(.horizontal, Space.row)
+        .frame(minHeight: large ? Layout.largeControl : Layout.control)
+        .frame(maxWidth: fullWidth ? .infinity : nil)
+        .foregroundStyle(foreground)
+        .background(Capsule().fill(background))
+        .overlay(Capsule().strokeBorder(ring, lineWidth: 1))
+        .contentShape(Capsule())
     }
 
     private var muted: Bool { !enabled && !pending }
@@ -141,7 +153,7 @@ struct Eyebrow: View {
     let text: String
     var surface = Surface.white
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Layout.iconGap) {
             Icon(icon, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
             Text(text).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
         }
@@ -203,9 +215,9 @@ struct SummaryCard<Value: View>: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
                 CardTag(icon: tag.0, text: tag.1)
-                value().foregroundStyle(Palette.white).lineLimit(1).minimumScaleFactor(0.5).padding(.top, 20)
-                Spacer(minLength: 18)
-                HStack(spacing: 4) {
+                value().foregroundStyle(Palette.white).lineLimit(1).minimumScaleFactor(0.5).padding(.top, Space.card)
+                Spacer(minLength: Space.titleToContent)
+                HStack(spacing: Space.pair) {
                     Text(detail).typo(.body(.micro)).lineLimit(2).multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
                     CircleArrow(style: .onCard, size: 24)
@@ -223,7 +235,7 @@ struct SectionHeading<Trailing: View>: View {
     let title: String
     @ViewBuilder var trailing: () -> Trailing
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
+        HStack(alignment: .firstTextBaseline, spacing: Space.titleToContent) {
             Text(title).typo(.title(.section)).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
             trailing()
@@ -275,15 +287,18 @@ struct IconButton: View {
     var weight: IconWeight = .light
     var size: CGFloat = Layout.glyph
     var color: Color = Palette.inkSoft
+    var pending = false
     let label: String
     let action: () -> Void
     @Environment(\.isEnabled) private var enabled
     var body: some View {
         Button(action: action) {
-            Icon(icon, weight, size: size).foregroundStyle(enabled ? color : Palette.disabledInk)
+            Group { if pending { Spinner(size: size) } else { Icon(icon, weight, size: size) } }
+                .foregroundStyle(enabled || pending ? color : Palette.disabledInk)
                 .frame(width: Layout.hit, height: Layout.hit).contentShape(Rectangle())
         }
         .buttonStyle(.press)
+        .disabled(pending)
         .accessibilityLabel(label)
     }
 }
@@ -360,7 +375,7 @@ struct Shimmer: View {
     @State private var phase: CGFloat = -1
     var body: some View {
         GeometryReader { geometry in
-            let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+            let shape = RoundedRectangle(cornerRadius: min(radius, min(geometry.size.width, geometry.size.height) / 2), style: .continuous)
             shape.fill(Palette.mist)
                 .overlay(alignment: .leading) {
                     if !still {
@@ -388,7 +403,7 @@ extension View {
         opacity(0).background(Shimmer(radius: radius)).accessibilityHidden(true).allowsHitTesting(false)
     }
 
-    func ghost() -> some View { skeleton(6) }
+    func ghost() -> some View { skeleton(Radius.text) }
 
     func ghost(_ on: Bool) -> some View { modifier(Ghosted(on: on)) }
 }
@@ -406,7 +421,7 @@ struct DetailRow<Value: View>: View {
     @ViewBuilder let value: () -> Value
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 16) {
+            HStack(alignment: .firstTextBaseline, spacing: Space.titleToContent) {
                 Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize()
                 Spacer(minLength: 0)
                 value().typo(.body(.base)).foregroundStyle(Palette.ink).multilineTextAlignment(.trailing)
@@ -428,7 +443,7 @@ struct StackedValue: View {
     let small: String?
     var caps = false
     var body: some View {
-        VStack(alignment: .trailing, spacing: 3) {
+        VStack(alignment: .trailing, spacing: Space.pair) {
             Text(value)
             if let small, !small.isEmpty { Text(small).typo(caps ? .caps(.tag) : .body(.meta)).foregroundStyle(Palette.inkSoft) }
         }
@@ -456,12 +471,12 @@ struct OnRedPill: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                Icon(icon, .light, size: 15).foregroundStyle(Palette.white)
+            HStack(spacing: Layout.iconGap) {
+                Icon(icon, .light, size: 16).foregroundStyle(Palette.white)
                     .frame(width: 32, height: 32).background(Circle().fill(Palette.red))
                 Text(title).typo(.caps(.button)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.85)
             }
-            .padding(.leading, 6).padding(.trailing, 18)
+            .padding(.leading, (Layout.control - 32) / 2).padding(.trailing, Space.card)
             .frame(minHeight: Layout.control)
             .background(Capsule().fill(Palette.white))
             .contentShape(Capsule())
@@ -469,6 +484,33 @@ struct OnRedPill: View {
         .buttonStyle(.press)
         .fixedSize(horizontal: false, vertical: true)
         .layoutPriority(1)
+    }
+}
+
+struct RedBanner<Trailing: View>: View {
+    let icon: IconName
+    let value: String?
+    let label: String
+    var valueWidth: CGFloat = 0
+    @ViewBuilder let trailing: () -> Trailing
+    private let inset: CGFloat = 6
+
+    var body: some View {
+        HStack(spacing: Space.cards) {
+            HStack(spacing: Space.label) {
+                Icon(icon, .light, size: 18)
+                    .frame(width: 34, height: 34)
+                    .overlay(Circle().strokeBorder(Palette.white, lineWidth: 1.5))
+                if let value { Text(value).typo(.countdown).fixedSize().frame(minWidth: valueWidth, alignment: .leading) }
+            }
+            .foregroundStyle(Palette.white)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(label)
+            Spacer(minLength: 0)
+            trailing()
+        }
+        .padding(.leading, Space.row).padding(.trailing, inset).padding(.vertical, inset)
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).fill(Palette.red))
     }
 }
 

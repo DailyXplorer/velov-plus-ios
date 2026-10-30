@@ -51,6 +51,10 @@ public func formatMinutes(_ minutes: Double) -> String {
     return "\(formatNumber(whole / 60))\u{00A0}h\u{00A0}\(whole % 60)\u{00A0}min"
 }
 
+public func frenchSpaced(_ text: String) -> String {
+    text.replacingOccurrences(of: " (?=[?!:;%])", with: "\u{00A0}", options: .regularExpression)
+}
+
 public func capitalize(_ text: String) -> String {
     guard let first = text.first else { return text }
     return String(first).uppercased(with: french) + text.dropFirst()

@@ -24,11 +24,11 @@ struct SelectField<Value: Hashable>: View {
 
     var body: some View {
         switch layout {
-        case .row: HStack(spacing: 12) { title; trigger }.onChange(of: value) { Haptics.selection() }
+        case .row: HStack(spacing: Space.cards) { title; trigger }.onChange(of: value) { Haptics.selection() }
         case .stacked: VStack(alignment: .leading, spacing: Space.label) { title; trigger }.onChange(of: value) { Haptics.selection() }
         case .inline:
             HStack(spacing: 0) {
-                Rectangle().fill(Palette.inkLine).frame(width: 1, height: 22).padding(.leading, 8)
+                Rectangle().fill(Palette.inkLine).frame(width: 1, height: 22).padding(.leading, Space.label)
                 trigger
             }
             .onChange(of: value) { Haptics.selection() }
@@ -53,9 +53,7 @@ struct SelectField<Value: Hashable>: View {
                 }
                 .sheet(isPresented: $choosing) {
                     ChoiceList(title: label, value: $value, options: options)
-                        .presentationDetents([.large])
-                        .sheetCorners()
-                        .modifier(SheetPresence())
+                        .velovSheet(.large)
                 }
         } else {
             Menu {
@@ -70,17 +68,17 @@ struct SelectField<Value: Hashable>: View {
                 pill(chevron: 90)
             }
             .menuOrder(.fixed)
-            .buttonStyle(.plain)
+            .buttonStyle(.press)
             .accessibilityLabel("\(label), \(selected?.label ?? "")")
         }
     }
 
     private func pill(chevron: Double) -> some View {
-        HStack(spacing: inline ? 8 : 12) {
+        HStack(spacing: inline ? Space.label : Space.cards) {
             shown.frame(maxWidth: layout == .stacked ? .infinity : nil, alignment: .leading)
             FieldArrow(turn: chevron)
         }
-        .padding(.leading, inline ? 10 : 18).padding(.trailing, inline ? 0 : 8)
+        .padding(.leading, inline ? Layout.iconGap : 18).padding(.trailing, inline ? 0 : Space.label)
         .frame(height: Layout.control)
         .background { if !inline { Capsule().fill(Palette.white) } }
         .overlay { if !inline { Capsule().strokeBorder(Palette.inkLine, lineWidth: 1) } }
@@ -124,7 +122,7 @@ private struct ChoiceList<Value: Hashable>: View {
                         value = option.value
                         dismiss()
                     } label: {
-                        HStack(spacing: 12) {
+                        HStack(spacing: Space.cards) {
                             Text(option.label).typo(.body(.input)).foregroundStyle(Palette.ink)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             if option.value == value {
@@ -133,7 +131,6 @@ private struct ChoiceList<Value: Hashable>: View {
                         }
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
                     .accessibilityAddTraits(option.value == value ? .isSelected : [])
                 }
             }

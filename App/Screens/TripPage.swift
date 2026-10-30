@@ -121,9 +121,9 @@ struct TripPage: View {
                     if rated { DetailRow("Note du vélo", "Déjà noté") }
                     if let token = trip.token {
                         DetailRow(label: "Code du trajet") {
-                            HStack(spacing: 2) {
+                            HStack(spacing: Space.pair) {
                                 Text(token).typo(.label(.small))
-                                IconButton(icon: copied ? .check : .copy, weight: copied ? .bold : .light, size: 16, label: copied ? "Code copié" : "Copier le code du trajet") {
+                                IconButton(icon: copied ? .check : .copy, weight: copied ? .bold : .light, label: copied ? "Code copié" : "Copier le code du trajet") {
                                     UIPasteboard.general.string = token
                                     Haptics.success()
                                     withAnimation(Motion.standard) { copied = true }

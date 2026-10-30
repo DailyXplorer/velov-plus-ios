@@ -34,7 +34,7 @@ struct StationsPage: View {
         VStack(alignment: .leading, spacing: 0) {
             Header(title: "Stations")
             Group {
-                BookingBanners(bottom: 12)
+                BookingBanners(bottom: Space.cards)
                 if !locationError.isEmpty {
                     VStack(alignment: .leading, spacing: Space.pair) {
                         FormError(locationError)
@@ -50,7 +50,7 @@ struct StationsPage: View {
                 }
                 if case .failed(let failure) = model.stations {
                     ErrorNotice(failure: failure, pending: model.stationsPending) { Task { await model.loadStations() } }
-                        .padding(.bottom, 12)
+                        .padding(.bottom, Space.cards)
                 }
             }
             .padding(.horizontal, Layout.margin)
@@ -79,10 +79,10 @@ struct StationsPage: View {
     }
 
     private var toolbar: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Space.label) {
             HStack(spacing: 0) {
-                HStack(spacing: 10) {
-                    Icon(.magnifyingGlass, .light, size: 19).foregroundStyle(Palette.ink)
+                HStack(spacing: Layout.iconGap) {
+                    Icon(.magnifyingGlass, .light, size: 18).foregroundStyle(Palette.ink)
                     TextField("", text: $query, prompt: Text("Rechercher").foregroundStyle(Palette.inkSoft))
                         .typo(.body(.input)).foregroundStyle(Palette.ink).focused($searching).submitLabel(.search)
                         .onSubmit { searching = false }
@@ -93,7 +93,7 @@ struct StationsPage: View {
                                 .frame(width: Layout.hit, height: Layout.hit).contentShape(Rectangle())
                         }
                         .buttonStyle(.press).accessibilityLabel("Effacer la recherche")
-                        .padding(.horizontal, -8)
+                        .bleed(.horizontal, visible: 28)
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: Layout.control)
@@ -105,10 +105,10 @@ struct StationsPage: View {
                 ], layout: .inline)
                 .fixedSize()
             }
-            .padding(.leading, 18).padding(.trailing, 8)
+            .padding(.leading, 18).padding(.trailing, Space.label)
             .floatingGlass(Capsule())
             FloatingCircleButton(label: "Stations autour de moi", value: locating ? "Localisation en cours" : nil) { locate() } content: {
-                if locating { Spinner() } else { Icon(.navigationArrow, .light, size: 18) }
+                if locating { Spinner() } else { Icon(.navigationArrow, .light, size: Layout.glyph) }
             }
             .disabled(locating)
         }
@@ -122,9 +122,9 @@ struct StationsPage: View {
             }
                 .safeAreaPadding(.top, toolbarBand)
                 .safeAreaPadding(.bottom, barBand + (selected == nil ? 0 : cardHeight + Concentric.gap))
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Space.cards) {
                 toolbar
-                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { toolbarBand = $0 + 12 }
+                    .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { toolbarBand = $0 + Space.cards }
                     .zIndex(1)
                 if !query.isEmpty, model.stations.value != nil { results }
                 if query.isEmpty, filter != .all, rankedFilter == filter, filtered.isEmpty, model.stations.value != nil { emptyFilter }
@@ -168,27 +168,27 @@ struct StationsPage: View {
                     searching = false
                     select(station.id)
                 } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: Space.pair) {
+                        HStack(spacing: Space.label) {
                             Text(station.name).typo(.body(.base, medium: true)).foregroundStyle(Palette.ink).lineLimit(1)
-                            if favorites.contains(station.number) { Icon(.star, .fill, size: 14).foregroundStyle(Palette.red) }
+                            if favorites.contains(station.number) { Icon(.star, .fill, size: 16).foregroundStyle(Palette.red) }
                             Spacer(minLength: 0)
                             Icon(.caretRight, .light, size: 16).foregroundStyle(Palette.inkSoft)
                         }
                         HStack(spacing: Space.label) {
                             Text(verbatim: "\(here.map { "\(formatDistance(haversine($0, station.point))) · " } ?? "")N°\u{a0}\(station.number)")
                                 .typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
-                            if !station.open { Text("Fermée").typo(.caps(.tag)).foregroundStyle(Palette.inkSoft) }
+                            if !station.open { Text("Fermée").typo(.caps(.label)).foregroundStyle(Palette.inkSoft) }
                         }
                     }
-                    .padding(.horizontal, 15).padding(.vertical, 16)
+                    .padding(.horizontal, Space.row).padding(.vertical, Space.row)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.row(bleed: 0))
             }
             if shown.isEmpty { Text("Aucune station trouvée.").typo(.body(.small)).foregroundStyle(Palette.inkSoft).frame(maxWidth: .infinity, alignment: .leading).padding(Space.row) }
         }
-        .padding(6)
+        .padding(Space.label)
         .frame(maxWidth: 340)
         .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -28,7 +28,7 @@ struct OverviewPage: View {
                 SummaryCard(tag: (.starFour, "Points"), detail: data.rewards.total.map { "\(formatNumber($0)) gagnés au total" } ?? Messages.missing, action: { model.page = .points }) {
                     Text(data.rewards.balance.map { formatNumber($0).glyphic } ?? "—").typo(.title(.figure))
                 }
-                SummaryCard(tag: (.personSimpleBike, "Trajets"), detail: data.trips == nil ? Messages.missing : minutes >= 60 ? "\(formatNumber(minutes / 60)) h \(minutes % 60) min" : "\(minutes) min", action: { model.page = .trips }) {
+                SummaryCard(tag: (.personSimpleBike, "Trajets"), detail: data.trips == nil ? Messages.missing : formatMinutes(Double(minutes)), action: { model.page = .trips }) {
                     Text(data.trips.map { formatNumber($0.count).glyphic } ?? "—").typo(.title(.figure))
                 }
             }
@@ -58,7 +58,7 @@ struct OverviewPage: View {
                 Button { model.page = .stations } label: {
                     Color.clear.contentShape(MapTapArea())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.press)
                 .accessibilityLabel("Explorer les stations")
             }
         }
@@ -126,18 +126,10 @@ struct OngoingBanner: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let elapsed = trip.startedAt.map { max(0, Int(context.date.timeIntervalSince($0).rounded())) }
-            HStack(spacing: Space.cards) {
-                Group {
-                    if let elapsed { Text(elapsedClock(elapsed)).typo(.countdown).fixedSize() }
-                }
-                .foregroundStyle(Palette.white)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(elapsed.map { "Trajet en cours depuis \(max(1, $0 / 60)) min" } ?? "Trajet en cours")
-                Spacer(minLength: 0)
+            RedBanner(icon: .personSimpleBike, value: elapsed.map(elapsedClock),
+                      label: elapsed.map { "Trajet en cours depuis \(max(1, $0 / 60))\u{a0}min" } ?? "Trajet en cours") {
                 OnRedPill(icon: .timer, title: "15 minutes de plus") { model.sheet = .via }
             }
-            .padding(.leading, Space.row).padding(.trailing, 6).padding(.vertical, 6)
-            .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).fill(Palette.red))
             .padding(.bottom, Layout.margin)
         }
     }

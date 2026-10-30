@@ -49,20 +49,25 @@ struct InviteFriend: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .card(.mist)
-            codeList.padding(.top, 16)
-            if !asking, let warning { FormError(warning).padding(.top, 10) }
+            codeList.padding(.top, Space.titleToContent)
+            if !asking, let warning { FormError(warning).padding(.top, Space.cards) }
         }
         .task(id: account) { load() }
+        .task(id: copied) {
+            guard copied != nil else { return }
+            try? await Task.sleep(for: .seconds(2))
+            withAnimation(Motion.standard) { copied = nil }
+        }
         .sheet(isPresented: $asking, onDismiss: closed) { sheet }
     }
 
     @ViewBuilder
     private var codeList: some View {
         if !codes.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: Space.label) {
                 Text("Code à transmettre à votre ami").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                 ForEach(codes, id: \.code) { entry in
-                    HStack(spacing: 12) {
+                    HStack(spacing: Space.cards) {
                         Text(entry.code).typo(.label(.lead)).foregroundStyle(Palette.ink).textSelection(.enabled)
                         Spacer(minLength: 0)
                         PillButton(variant: .secondary, action: { copy(entry.code) }) { ButtonIcon(.copy); Text(copied == entry.code ? "Copié" : "Copier") }
@@ -218,7 +223,7 @@ struct InviteFriend: View {
 
     private func copy(_ code: String) {
         UIPasteboard.general.string = code
-        copied = code
+        withAnimation(Motion.standard) { copied = code }
         Haptics.success()
     }
 }

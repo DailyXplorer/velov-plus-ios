@@ -67,17 +67,17 @@ struct StationNumbers: View {
     let station: Station
     var compact = false
     var body: some View {
-        HStack(alignment: .top, spacing: compact ? 18 : 24) {
+        HStack(alignment: .top, spacing: compact ? Space.titleToContent : Space.actions) {
             count(.personSimpleBike, station.mechanical, "Mécaniques", size: 18)
-            count(.lightning, station.electrical, "Électriques", size: 17)
+            count(.lightning, station.electrical, "Électriques", size: 18)
             count(.letterCircleP, station.stands, "Places", size: 18)
         }
         .fixedSize()
     }
 
     private func count(_ icon: IconName, _ value: Int, _ label: String, size: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: Space.pair) {
+            HStack(spacing: Space.pair) {
                 Icon(icon, .light, size: compact ? 16 : size).foregroundStyle(Palette.inkSoft)
                 Text(verbatim: "\(value)").typo(.body(compact ? .small : .lead, medium: !compact)).foregroundStyle(Palette.ink)
             }

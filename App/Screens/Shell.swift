@@ -425,20 +425,20 @@ struct DataNotice: View {
     var body: some View {
         if !warnings.isEmpty {
             Disclosure(title: "Certaines informations sont indisponibles", icon: .warningCircle) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Space.pair) {
                     ForEach(warnings, id: \.self) { Text(verbatim: "• \($0)").typo(.body(.small)) }
                 }
                 .foregroundStyle(Palette.inkSoft)
-                .padding(.leading, 8)
+                .padding(.leading, Space.label)
             }
             .foregroundStyle(Palette.inkSoft)
-            .padding(.bottom, 24)
+            .padding(.bottom, Space.actions)
         }
     }
 }
 
 struct BookingBanners: View {
-    var bottom: CGFloat = 24
+    var bottom = Space.actions
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -446,21 +446,9 @@ struct BookingBanners: View {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let left = booking.endsAt.map { max(0, Int($0.timeIntervalSince(context.date).rounded())) }
                 if left != 0 {
-                    HStack(spacing: 12) {
-                        HStack(spacing: 8) {
-                            Icon(.clock, .light, size: 17)
-                                .frame(width: 34, height: 34)
-                                .overlay(Circle().strokeBorder(Palette.white, lineWidth: 1.5))
-                            if let left { Text(clock(left)).typo(.countdown).fixedSize().frame(width: 78, alignment: .leading) }
-                        }
-                        .foregroundStyle(Palette.white)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(left.map { "Vélo réservé, \(max(1, $0 / 60)) min restantes" } ?? "Vélo réservé")
-                        Spacer(minLength: 0)
+                    RedBanner(icon: .clock, value: left.map(clock), label: left.map { "Vélo réservé, \(max(1, $0 / 60))\u{a0}min restantes" } ?? "Vélo réservé", valueWidth: 78) {
                         if Place(booking) != nil { unlock(booking) }
                     }
-                    .padding(.leading, 16).padding(.trailing, 6).padding(.vertical, 6)
-                    .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.red))
                     .padding(.bottom, bottom)
                 }
             }
@@ -485,6 +473,7 @@ struct LogoutSheet: View {
         } actions: {
             PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(pending)
             PillButton(variant: .destructive, pending: pending, fullWidth: true, action: {
+                Haptics.confirm()
                 pending = true
                 Task {
                     await model.logout()

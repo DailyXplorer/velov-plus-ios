@@ -28,7 +28,7 @@ struct TripsPage: View {
                 TripsList(trips: Array(trips.prefix(limit)),
                           emptyText: filter == .all ? "Aucun trajet." : "Aucun trajet pour ce type de vélo.")
                 if trips.count > limit {
-                    PillButton("Voir plus", variant: .secondary) { limit += 10 }.frame(maxWidth: .infinity).padding(.vertical, 24)
+                    PillButton("Voir plus", variant: .secondary) { limit += 10 }.frame(maxWidth: .infinity).padding(.vertical, Space.actions)
                 }
             }
         } else {
@@ -56,14 +56,14 @@ struct TripsFilterLine<Select: View, Count: View>: View {
 struct TripsSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            StatsLink().skeleton(Layout.control / 2).padding(.bottom, Space.cards)
+            StatsLink().skeleton(Radius.capsule).padding(.bottom, Space.cards)
             TripsFilterLine {
-                SelectField(label: "Type de vélo", hideLabel: true, value: .constant(TripFilter.all), options: tripFilters).skeleton(Layout.control / 2)
+                SelectField(label: "Type de vélo", hideLabel: true, value: .constant(TripFilter.all), options: tripFilters).skeleton(Radius.capsule)
             } count: {
                 Text(verbatim: "10 trajets").ghost()
             }
             GhostTrips(rows: 10)
-            PillButton("Voir plus", variant: .secondary) {}.skeleton(Layout.control / 2).frame(maxWidth: .infinity).padding(.vertical, 24)
+            PillButton("Voir plus", variant: .secondary) {}.skeleton(Radius.capsule).frame(maxWidth: .infinity).padding(.vertical, Space.actions)
         }
         .accessibilityLabel("Chargement des trajets")
     }
@@ -143,21 +143,21 @@ struct TripRowLayout: View {
     let ghost: Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 10) {
-                    if ghost { Color.clear.frame(width: 32, height: 32).skeleton(16) } else { TripIcon(electrical: electrical) }
-                    VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .top, spacing: Space.cards) {
+            VStack(alignment: .leading, spacing: Space.pair) {
+                HStack(spacing: Space.cards) {
+                    if ghost { Color.clear.frame(width: 32, height: 32).skeleton(Radius.capsule) } else { TripIcon(electrical: electrical) }
+                    VStack(alignment: .leading, spacing: Space.pair) {
                         Text(start).typo(.body(.small, medium: true)).foregroundStyle(Palette.ink).lineLimit(1).ghost(ghost)
                         Text(end).typo(.body(.micro)).foregroundStyle(Palette.inkSoft).lineLimit(1).ghost(ghost)
                     }
                 }
-                HStack(spacing: 5) {
+                HStack(spacing: Space.pair) {
                     Text(date).typo(.body(.micro)).ghost(ghost)
                     Text(time).typo(.body(.micro)).ghost(ghost)
                 }
                 .foregroundStyle(Palette.inkSoft)
-                .padding(.leading, 42)
+                .padding(.leading, 32 + Space.cards)
             }
             Spacer(minLength: 0)
             Text(duration).typo(.body(.micro)).foregroundStyle(Palette.inkSoft).ghost(ghost).frame(width: 43, alignment: .trailing)

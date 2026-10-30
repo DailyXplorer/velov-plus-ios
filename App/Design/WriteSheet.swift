@@ -47,7 +47,7 @@ struct FailureBlock: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             FormError(message)
-            RawStatus(line: raw).padding(.top, Space.pair)
+            if !raw.isEmpty { RawStatus(line: raw).padding(.top, Space.pair) }
             if uncertain { UncertainNote(unlock: unlock).padding(.top, Space.label) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -73,7 +73,7 @@ struct SheetHeading<Accessory: View>: View {
             if let back {
                 IconButton(icon: .arrowLeft, color: Palette.ink, label: "Retour", action: back).bleed(.leading).disabled(closeDisabled)
             }
-            Text(title).typo(.title(.section)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
+            Text(frenchSpaced(title)).typo(.title(.section)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: Space.label)
             accessory()

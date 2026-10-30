@@ -1,5 +1,4 @@
 import MapKit
-import MapKit
 import SwiftUI
 import VelovCore
 
@@ -29,7 +28,7 @@ struct StationCard: View {
                 if !station.open { Text("Fermée").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).fixedSize() }
                 IconButton(icon: .x, label: "Fermer", action: close).bleed(.trailing)
             }
-            HStack(spacing: 18) {
+            HStack(spacing: Space.titleToContent) {
                 StationNumbers(station: station, compact: true)
                 if let distance { Text(formatDistance(distance)).typo(.body(.small)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize() }
                 Spacer(minLength: 0)
@@ -50,7 +49,7 @@ struct StationCard: View {
         .sheet(isPresented: $favoriteOpen) {
             let key = OperationKey.favorite(station.number)
             let wanted = model.operations.get(key).flatMap { Intent.wanted($0.meta) } ?? !wasFavorite
-            WriteDialog(title: !wanted ? "Retirer des favoris ?" : "Ajouter aux favoris ?", key: key, intent: Intent.wanted(wanted), run: {
+            WriteDialog(title: !wanted ? "Retirer des favoris\u{a0}?" : "Ajouter aux favoris\u{a0}?", key: key, intent: Intent.wanted(wanted), run: {
                 let outcome = await attempt { try await model.service.setFavorite(station: station.number, on: wanted) }
                 if outcome.ok { model.setFavorite(station.number, wanted) }
                 return outcome

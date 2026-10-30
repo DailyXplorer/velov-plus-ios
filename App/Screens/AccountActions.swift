@@ -143,7 +143,7 @@ struct AutoRenewalSetting: View {
                 ConfirmToggle(label: "Renouvellement automatique", on: actual) { asking = true }
             }
         }
-        .padding(.top, 20)
+        .padding(.top, Space.card)
         .onChange(of: subscription) { saved = nil }
         .sheet(isPresented: $asking) { dialog }
     }
@@ -181,27 +181,32 @@ struct ReceiptRow: View {
     @Environment(AppModel.self) private var model
     @State private var pending = false
     @State private var failed: Outcome?
-    @State private var file: SharedFile?
+    @State private var file: URL?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Space.label) {
+            HStack(spacing: Space.cards) {
+                VStack(alignment: .leading, spacing: Space.pair) {
                     Text(receipt.title).typo(.body(.base, medium: true)).foregroundStyle(Palette.ink)
                     Text(periodLabel(receipt)).typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
                 }
                 Spacer()
-                PillButton(variant: .secondary, pending: pending, action: download) { ButtonIcon(.downloadSimple); Text("Reçu") }
-                    .accessibilityLabel("Télécharger le reçu, \(periodLabel(receipt))")
+                if let file {
+                    ShareLink(item: file) { PillLabel(variant: .secondary) { ButtonIcon(.share); Text("Partager") } }
+                        .buttonStyle(.press)
+                        .accessibilityLabel("Partager le reçu, \(periodLabel(receipt))")
+                } else {
+                    PillButton(variant: .secondary, pending: pending, action: download) { ButtonIcon(.downloadSimple); Text("Reçu") }
+                        .accessibilityLabel("Télécharger le reçu, \(periodLabel(receipt))")
+                }
             }
             if let failed {
                 FormError(failed.message ?? "Le reçu n’a pas pu être téléchargé.")
                 RawStatus(outcome: failed)
             }
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, Space.cards)
         .overlay(alignment: .bottom) { Hairline() }
-        .sheet(item: $file) { ShareSheet(url: $0.url).presentationDetents([.medium, .large]).sheetCorners() }
     }
 
     private func download() {
@@ -220,7 +225,7 @@ struct ReceiptRow: View {
             let url = FileManager.default.temporaryDirectory.appending(path: name ?? "recu-velov.pdf")
             do {
                 try pdf.write(to: url, options: .atomic)
-                file = SharedFile(url: url)
+                file = url
             } catch {
                 failed = Outcome(ok: false, httpStatus: outcome.httpStatus, code: "local.receipt.file", message: "Le reçu n’a pas pu être enregistré sur ce téléphone.")
             }
@@ -235,19 +240,6 @@ func periodLabel(_ receipt: Receipt) -> String {
     case let (nil, end?): "Jusqu’au \(formatDate(end, .dayMonthYear))"
     default: "Dates inconnues"
     }
-}
-
-struct SharedFile: Identifiable {
-    let url: URL
-    var id: URL { url }
-}
-
-struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-    init(url: URL) { items = [url] }
-    init(items: [Any]) { self.items = items }
-    func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: items, applicationActivities: nil) }
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
 private let subjects: [SelectOption<String>] = zip(Guesses.mailComplaintTypes, ["Un trajet", "Mon abonnement", "Mes paiements", "Un parking"]).map { .init(value: $0, label: $1) }

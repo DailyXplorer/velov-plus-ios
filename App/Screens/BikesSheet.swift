@@ -37,11 +37,7 @@ struct BikesSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     SheetHeading(title: station.name, closeDisabled: model.operations.sending) { dismiss() } accessory: {
-                        Button { Task { await load() } } label: {
-                            Group { if refreshing { Spinner(size: Layout.glyph) } else { Icon(.arrowClockwise, .light, size: Layout.glyph) } }
-                                .foregroundStyle(Palette.inkSoft).frame(width: Layout.hit, height: Layout.hit).contentShape(Rectangle())
-                        }
-                        .buttonStyle(.press).disabled(refreshing).accessibilityLabel("Actualiser les vélos")
+                        IconButton(icon: .arrowClockwise, pending: refreshing, label: "Actualiser les vélos") { Task { await load() } }
                     }
                     .padding(.top, Layout.headerTop - Space.titleToContent)
                     if let subtitle {
@@ -111,9 +107,9 @@ struct BikeRow: View {
         let bike = item.bike
         BikeRowLayout(number: "\(bike.number)", stand: bike.standNumber.map { "Borne \($0)" } ?? "Borne non renseignée",
                       reserved: bike.isReserved || mine, recommended: item.verdict == .recommended, electrical: bike.type == .electrical, ghost: false) {
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: .trailing, spacing: Space.pair) {
                 if let rating = bike.rating {
-                    HStack(spacing: 5) { Icon(.star, .fill, size: 15).foregroundStyle(item.verdict == .avoid ? Palette.inkSoft : Palette.red); Text(outOfFive(rating.value)) }
+                    HStack(spacing: Space.pair) { Icon(.star, .fill, size: 16).foregroundStyle(item.verdict == .avoid ? Palette.inkSoft : Palette.red); Text(outOfFive(rating.value)) }
                 }
                 if let battery = bike.batteryPercent { BatteryLevel(percent: battery) }
             }
@@ -136,27 +132,27 @@ struct BikeRowLayout<Facts: View>: View {
     @ViewBuilder let facts: () -> Facts
 
     var body: some View {
-        HStack(spacing: 14) {
-            if ghost { Color.clear.frame(width: 36, height: 36).skeleton(18) } else { TripIcon(electrical: electrical, size: 36) }
+        HStack(spacing: Space.cards) {
+            if ghost { Color.clear.frame(width: 36, height: 36).skeleton(Radius.capsule) } else { TripIcon(electrical: electrical, size: 36) }
             VStack(alignment: .leading, spacing: 0) {
                 Text(verbatim: number).typo(.title(.section)).foregroundStyle(Palette.ink).ghost(ghost)
-                HStack(spacing: 8) {
+                HStack(spacing: Space.label) {
                     Text(stand).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).ghost(ghost)
                     if reserved { OutlinePill(text: "Réservé") }
                 }
-                .padding(.top, 5)
+                .padding(.top, Space.pair)
                 if recommended {
                     Group {
-                        if ghost { CardTag(icon: .thumbsUp, text: "Recommandé", size: .pick).skeleton(13) } else { CardTag(icon: .thumbsUp, text: "Recommandé", size: .pick) }
+                        if ghost { CardTag(icon: .thumbsUp, text: "Recommandé", size: .pick).skeleton(Radius.capsule) } else { CardTag(icon: .thumbsUp, text: "Recommandé", size: .pick) }
                     }
-                    .padding(.top, 8)
+                    .padding(.top, Space.label)
                 }
             }
             Spacer(minLength: 0)
             facts()
             if ghost { Color.clear.frame(width: 16) } else { Icon(.caretRight, .light, size: 16).foregroundStyle(Palette.inkSoft) }
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, Space.row)
         .frame(minHeight: 76)
         .contentShape(Rectangle())
     }
@@ -187,11 +183,11 @@ struct BatteryLevel: View {
     let percent: Int
     var body: some View {
         let icon: IconName = percent >= 90 ? .batteryFull : percent >= 60 ? .batteryHigh : percent >= 30 ? .batteryMedium : percent >= 10 ? .batteryLow : .batteryEmpty
-        HStack(spacing: 5) {
+        HStack(spacing: Space.pair) {
             Icon(icon, .light, size: 18).foregroundStyle(Palette.inkSoft)
-            Text(verbatim: "\(percent) %")
+            Text(verbatim: "\(percent)\u{a0}%")
         }
-        .accessibilityLabel("Batterie \(percent) %")
+        .accessibilityLabel("Batterie \(percent)\u{a0}%")
     }
 }
 
@@ -296,8 +292,8 @@ struct BikeDetail: View {
         VStack(spacing: 0) {
             DetailRow(label: "Note") {
                 if let rating = bike.rating {
-                    VStack(alignment: .trailing, spacing: 3) {
-                        HStack(spacing: 8) {
+                    VStack(alignment: .trailing, spacing: Space.pair) {
+                        HStack(spacing: Space.label) {
                             Stars(value: rating.value / 20)
                             Text(outOfFive(rating.value)) + Text("/5").foregroundStyle(Palette.inkSoft)
                         }
@@ -312,14 +308,14 @@ struct BikeDetail: View {
             }
             dateRow("Dernier trajet", bike.lastTripAt, withAgo: true)
             DetailRow(label: "Prochain contrôle") {
-                HStack(spacing: 8) {
+                HStack(spacing: Space.label) {
                     if isCheckOverdue(bike) { OutlinePill(text: "En retard") }
                     dateValue(bike.nextCheckAt, withAgo: true)
                 }
             }
             DetailRow("Borne", bike.standNumber.map(String.init) ?? "Non renseigné", last: true)
         }
-        .padding(.top, 12)
+        .padding(.top, Space.cards)
         Disclosure {
             VStack(spacing: 0) {
                 dateRow("Dernier contrôle", bike.lastControlAt, withAgo: true)
@@ -355,7 +351,7 @@ struct BikeDetail: View {
                     if let endsAt = booking?.endsAt, let left {
                         VStack(alignment: .leading, spacing: Space.pair) {
                             Text(verbatim: "Vélo réservé jusqu’à \(formatDate(endsAt, .time))").typo(.title(.card)).foregroundStyle(Palette.ink)
-                            HStack(spacing: 6) {
+                            HStack(spacing: Space.label) {
                                 Icon(.clock, .bold, size: 16)
                                 Text(left > 0 ? "Il reste \(clock(left))" : "Réservation expirée").typo(.caps(.label)).monospacedDigit()
                             }
@@ -392,11 +388,11 @@ struct BikeDetail: View {
 struct BikeSheetSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Eyebrow(icon: .personSimpleBike, text: "Mécanique").skeleton(17)
+            Eyebrow(icon: .personSimpleBike, text: "Mécanique").skeleton(Radius.capsule)
             VStack(spacing: 0) {
                 DetailRow(label: "Note") {
-                    VStack(alignment: .trailing, spacing: 3) {
-                        HStack(spacing: 8) { Stars(value: 4.5); Text(verbatim: "4,5/5") }.ghost()
+                    VStack(alignment: .trailing, spacing: Space.pair) {
+                        HStack(spacing: Space.label) { Stars(value: 4.5); Text(verbatim: "4,5/5") }.ghost()
                         Text(verbatim: "12 avis · Dernier avis il y a 3 j").typo(.caps(.tag)).ghost()
                     }
                 }
@@ -404,14 +400,14 @@ struct BikeSheetSkeleton: View {
                 DetailRow(label: "Prochain contrôle") { ghostDate }
                 DetailRow(label: "Borne", last: true) { Text(verbatim: "12").ghost() }
             }
-            .padding(.top, 12)
+            .padding(.top, Space.cards)
             Disclosure { EmptyView() }.disabled(true)
         }
         .accessibilityLabel("Chargement du vélo")
     }
 
     private var ghostDate: some View {
-        VStack(alignment: .trailing, spacing: 3) {
+        VStack(alignment: .trailing, spacing: Space.pair) {
             Text(verbatim: "Il y a 2 h").ghost()
             Text(verbatim: "12 oct. 2026, 08:42").typo(.caps(.tag)).ghost()
         }

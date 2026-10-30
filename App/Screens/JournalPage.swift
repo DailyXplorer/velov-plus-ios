@@ -33,11 +33,7 @@ struct JournalPage: View {
                 PillButton("Effacer", variant: .ghost, fullWidth: true) { clearing = true }
                     .disabled(entries.isEmpty)
                 ShareLink(item: journal.export()) {
-                    HStack(spacing: 10) { ButtonIcon(.share); Text("Partager") }
-                        .typo(.caps(.button)).foregroundStyle(entries.isEmpty ? Palette.inkSoft : Palette.white)
-                        .frame(maxWidth: .infinity, minHeight: Layout.control)
-                        .background(Capsule().fill(entries.isEmpty ? Palette.mist : Palette.red))
-                        .contentShape(Capsule())
+                    PillLabel(fullWidth: true) { ButtonIcon(.share); Text("Partager") }
                 }
                 .buttonStyle(.press)
                 .disabled(entries.isEmpty)

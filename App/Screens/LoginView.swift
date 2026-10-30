@@ -16,7 +16,7 @@ struct LoginView: View {
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
                 (Text("Vélo’v").foregroundStyle(Palette.ink) + Text("+").foregroundStyle(Palette.red)).typo(.title(.display))
-                VStack(spacing: 12) {
+                VStack(spacing: Space.cards) {
                     field {
                         TextField("", text: $email, prompt: Text("Adresse e-mail").foregroundStyle(Palette.inkSoft))
                             .textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -34,22 +34,22 @@ struct LoginView: View {
                     }
                     PillButton("Se connecter", pending: pending, fullWidth: true) { submit() }
                         .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty || code.count != 6)
-                        .padding(.top, 6)
+                        .padding(.top, Space.pair)
                     VStack(alignment: .leading, spacing: Space.pair) {
                         if let failure {
                             FormError(failure.message)
-                            RawStatus(line: failure.raw)
+                            if !failure.raw.isEmpty { RawStatus(line: failure.raw) }
                         }
                     }
-                    .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, minHeight: Space.state, alignment: .topLeading)
                 }
-                .padding(.top, 36)
+                .padding(.top, Space.section)
             }
             .frame(maxWidth: 340)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Layout.margin)
             .frame(maxHeight: .infinity)
             if let notice {
-                Text(notice).typo(.body(.small)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center).padding(.horizontal, 24).padding(.top, 24)
+                Text(notice).typo(.body(.small)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center).padding(.horizontal, Layout.margin).padding(.top, Layout.headerTop)
             }
         }
         .background(Palette.white)

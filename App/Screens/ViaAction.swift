@@ -33,38 +33,36 @@ struct ViaSheet: View {
     private var blocked: Bool { model.operations.sending }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: "15 minutes de plus", closeDisabled: blocked) { close() }
-            Group {
-                if reviewing || held != nil, let target { review(target) } else { pick }
+        if reviewing || held != nil, let target {
+            review(target)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                SheetHeading(title: "15 minutes de plus", closeDisabled: blocked) { close() }
+                pick.padding(.top, Space.titleToContent)
             }
-            .padding(.top, Space.titleToContent)
+            .padding(Layout.dialog)
+            .velovSheet(.fit, closeDisabled: blocked)
         }
-        .padding(Layout.dialog)
-        .velovSheet(.fit, closeDisabled: blocked)
     }
 
     private func review(_ station: (number: Int, name: String)) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            (Text("La station ") + Text(verbatim: "\(station.name) (n°\u{a0}\(station.number))").fontWeight(.semibold)
-             + Text(" est pleine. Demander 15 minutes de plus pour rejoindre une autre station\u{a0}?"))
-                .typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
+        ConfirmScaffold(title: "15 minutes de plus", closeDisabled: blocked, close: { close() }) {
+            Text("La station ") + Text(verbatim: "\(station.name) (n°\u{a0}\(station.number))").fontWeight(.semibold)
+                + Text(" est pleine. Demander 15 minutes de plus pour rejoindre une autre station\u{a0}?")
+        } extra: {
             if let failure {
                 FailureBlock(message: failure.message ?? "Les 15 minutes supplémentaires n’ont pas été accordées.",
                              raw: messageLine(failure), uncertain: failure.isUncertain)
-                    .padding(.top, Space.titleToContent)
             }
-            if failure?.isUncertain == true { TextLink(title: "Écrire au service client", action: contact).padding(.top, Space.label) }
-            if let notice { FormError(notice).padding(.top, Space.cards) }
-            PairedActions {
-                if failure?.isUncertain == true {
-                    PillButton("Fermer", variant: .ghost, fullWidth: true) { close() }
-                } else {
-                    PillButton("Retour", variant: .ghost, fullWidth: true) { refused = nil; notice = nil; reviewing = false }.disabled(pending)
-                    PillButton("Confirmer", pending: pending, fullWidth: true) { confirm(station) }.disabled(operationKey == nil)
-                }
+            if failure?.isUncertain == true { TextLink(title: "Écrire au service client", action: contact) }
+            if let notice { FormError(notice) }
+        } actions: {
+            if failure?.isUncertain == true {
+                PillButton("Fermer", variant: .ghost, fullWidth: true) { close() }.disabled(blocked)
+            } else {
+                PillButton("Retour", variant: .ghost, fullWidth: true) { refused = nil; notice = nil; reviewing = false }.disabled(pending)
+                PillButton("Confirmer", pending: pending, fullWidth: true) { confirm(station) }.disabled(operationKey == nil)
             }
-            .padding(.top, Space.actions)
         }
     }
 
@@ -88,7 +86,7 @@ struct ViaSheet: View {
                     Text("Station pleine").typo(.caps(.label))
                     Capsule().frame(height: Layout.control)
                 }
-                .skeleton(Layout.control / 2)
+                .skeleton(Radius.capsule)
             case .failed(let failure):
                 ErrorNotice(failure: failure, pending: model.stationsPending) { Task { await model.loadStations() } }
             case .ready:
@@ -134,6 +132,7 @@ struct ViaSheet: View {
                 locationRaw = error.raw
             } catch {
                 locationError = LocationFailure.unavailable.message
+                locationRaw = ""
             }
         }
     }

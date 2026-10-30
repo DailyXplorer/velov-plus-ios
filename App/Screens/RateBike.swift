@@ -58,16 +58,16 @@ struct RateBike: View {
                 stars = next
                 refused = nil
             }
-            .padding(.top, 8)
+            .padding(.top, Space.label)
             Text(stars.flatMap { StarRating.labels[$0] } ?? "Touchez une étoile")
                 .typo(.body(.lead)).foregroundStyle(stars == nil ? Palette.inkSoft : Palette.ink)
-                .frame(minHeight: 22).padding(.top, 2)
+                .frame(minHeight: 22).padding(.top, Space.pair)
             if let failure {
                 FailureBlock(message: failure.message ?? Messages.ratingUnconfirmed, raw: ratingLine(failure), uncertain: uncertain != nil)
                     .padding(.top, Space.label)
             }
-            if let notice { FormError(notice).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8) }
-            VStack(spacing: 2) {
+            if let notice { FormError(notice).frame(maxWidth: .infinity, alignment: .leading).padding(.top, Space.label) }
+            VStack(spacing: Space.pair) {
                 if uncertain != nil {
                     PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify() }
                     TextLink(title: "Plus tard", action: onLater).disabled(checking)
@@ -150,15 +150,15 @@ struct TripEndedSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: "Trajet terminé", closeDisabled: rating) { dismiss() }
-            tripTimes(trip).padding(.top, 4)
+            tripTimes(trip).padding(.top, Space.pair)
             VStack(alignment: .leading, spacing: Space.pair) {
                 Text("Arrivée").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: Space.label) {
                     Text(trip.endStation ?? "Non renseignée").typo(.body(.lead)).foregroundStyle(Palette.ink)
                     if let stand = trip.endStand { Text(verbatim: "Borne \(stand)").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).fixedSize() }
                 }
             }
-            .padding(.top, 20)
+            .padding(.top, Space.card)
             VStack(spacing: 0) {
                 Hairline()
                 HStack(alignment: .top, spacing: Space.cards) {
@@ -168,11 +168,11 @@ struct TripEndedSheet: View {
                 .padding(.vertical, Space.row)
                 Hairline()
             }
-            .padding(.top, 18)
+            .padding(.top, Space.titleToContent)
             if rateable ?? isRateable, let bike = trip.bikeNumber {
                 RateBike(trip: trip, bikeNumber: bike, onRated: { dismiss() }, onLater: { dismiss() }).padding(.top, Space.titleToContent)
             } else {
-                PillButton("Fermer", variant: .secondary, fullWidth: true) { dismiss() }.padding(.top, 22)
+                PillButton("Fermer", variant: .secondary, fullWidth: true) { dismiss() }.padding(.top, Space.actions)
             }
         }
         .padding(Layout.dialog)

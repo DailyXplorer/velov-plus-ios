@@ -39,7 +39,7 @@ struct PointsPage: View {
                 }
                 if rewards.movements.isEmpty { StateView("Aucun mouvement de points.") }
                 if rewards.movements.count > limit {
-                    PillButton("Voir plus", variant: .secondary) { limit += 12 }.frame(maxWidth: .infinity).padding(.vertical, 24)
+                    PillButton("Voir plus", variant: .secondary) { limit += 12 }.frame(maxWidth: .infinity).padding(.vertical, Space.actions)
                 }
             }
         }
@@ -53,7 +53,7 @@ struct PointsFigure: View {
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Space.titleToContent) {
             Eyebrow(icon: icon, text: label, surface: .mist)
             Text(value.glyphic).typo(.title(.figure)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.5)
         }
@@ -96,7 +96,7 @@ struct PointsSkeleton: View {
                     MovementRow(label: ghostMovements[index % ghostMovements.count], date: "12 octobre 2026", amount: "+5", credit: false, ghost: true)
                     Hairline()
                 }
-                PillButton("Voir plus", variant: .secondary) {}.skeleton(Layout.control / 2).frame(maxWidth: .infinity).padding(.vertical, 24)
+                PillButton("Voir plus", variant: .secondary) {}.skeleton(Radius.capsule).frame(maxWidth: .infinity).padding(.vertical, Space.actions)
             }
         }
         .accessibilityLabel("Chargement des points")
@@ -110,7 +110,7 @@ struct SettingRow<Control: View>: View {
     @ViewBuilder let control: () -> Control
 
     var body: some View {
-        let row = HStack(spacing: 16) {
+        let row = HStack(spacing: Space.row) {
             VStack(alignment: .leading, spacing: Space.label) {
                 Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                 Text(value).typo(.title(.card)).foregroundStyle(Palette.ink)
@@ -126,7 +126,7 @@ struct EarnRule: View {
     let label: String
     let points: String
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: Space.row) {
             Text(label).typo(.body(.small)).foregroundStyle(Palette.inkSoft)
             Spacer()
             Text(verbatim: points.glyphic).typo(.title(.section)).foregroundStyle(Palette.ink)
@@ -144,8 +144,8 @@ struct MovementRow: View {
     let credit: Bool
     var ghost = false
     var body: some View {
-        HStack(spacing: 20) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: Space.card) {
+            VStack(alignment: .leading, spacing: Space.pair) {
                 Text(label).typo(.body(.small, medium: true)).foregroundStyle(Palette.ink).ghost(ghost)
                 Text(date).typo(.body(.micro)).foregroundStyle(Palette.inkSoft).ghost(ghost)
             }

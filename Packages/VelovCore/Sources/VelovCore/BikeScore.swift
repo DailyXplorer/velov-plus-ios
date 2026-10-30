@@ -28,12 +28,13 @@ public func isCheckOverdue(_ bike: Bike, now: Date = Date()) -> Bool {
 
 public struct StackedText: Equatable, Sendable {
     public let value: String
-    public let detail: String
+    public let detail: String?
 }
 
-public func nextCheckText(_ next: Date?, now: Date = Date()) -> StackedText? {
+public func upcomingText(_ next: Date?, relative: Bool = true, now: Date = Date()) -> StackedText? {
     guard let next else { return nil }
     if next < now { return StackedText(value: "En retard", detail: "Prévu le \(formatDate(next, .dayMonthYear))") }
+    guard relative else { return StackedText(value: formatDate(next, .dayMonthYear), detail: nil) }
     return StackedText(value: capitalize(fromNow(next, now: now) ?? ""), detail: formatDate(next, .dayMonthYearTime))
 }
 

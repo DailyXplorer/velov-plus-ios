@@ -313,9 +313,7 @@ struct BikeDetail: View {
                 DetailRow(label: "Batterie") { if let battery = bike.batteryPercent { BatteryLevel(percent: battery) } else { Text("Non renseigné") } }
             }
             dateRow("Dernier trajet", bike.lastTripAt, withAgo: true)
-            DetailRow(label: "Prochain contrôle") {
-                if let next = nextCheckText(bike.nextCheckAt) { StackedValue(value: next.value, small: next.detail, caps: true) } else { Text("Non renseigné") }
-            }
+            upcomingRow("Prochain contrôle", bike.nextCheckAt, relative: true)
             DetailRow("Borne", bike.standNumber.map(String.init) ?? "Non renseigné", last: true)
         }
         .padding(.top, Space.cards)
@@ -323,9 +321,15 @@ struct BikeDetail: View {
             VStack(spacing: 0) {
                 dateRow("Dernier contrôle", bike.lastControlAt, withAgo: true)
                 dateRow("Dernier signal", bike.lastSignalAt, withAgo: true)
-                dateRow("Prochaine révision", bike.nextReviewAt, withAgo: false)
+                upcomingRow("Prochaine révision", bike.nextReviewAt, relative: false)
                 DetailRow("Cadre", bike.frameId ?? "Non renseigné", last: true)
             }
+        }
+    }
+
+    private func upcomingRow(_ label: String, _ date: Date?, relative: Bool) -> some View {
+        DetailRow(label: label) {
+            if let next = upcomingText(date, relative: relative) { StackedValue(value: next.value, small: next.detail, caps: true) } else { Text("Non renseigné") }
         }
     }
 

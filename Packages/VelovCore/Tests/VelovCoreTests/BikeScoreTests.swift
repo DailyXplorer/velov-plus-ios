@@ -80,15 +80,19 @@ final class BikeScoreTests: XCTestCase {
         XCTAssertEqual(order, [3, 4, 2, 1])
     }
 
-    func testANextCheckInThePastReadsAsOverdue() {
-        let plain = { (text: String) in text.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ") }
-        let past = nextCheckText(date("2026-10-12T07:25:00Z"), now: now)
+    func testAnUpcomingDateInThePastReadsAsOverdue() {
+        let plain = { (text: String?) in text?.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ") }
+        let past = upcomingText(date("2026-10-12T07:25:00Z"), now: now)
         XCTAssertEqual(past?.value, "En retard")
-        XCTAssertEqual(past.map { plain($0.detail) }, "Prévu le 12 oct. 2026")
-        let soon = nextCheckText(date("2026-10-30T15:47:00Z"), now: now)
-        XCTAssertEqual(soon.map { plain($0.value) }, "Dans 2 j")
-        XCTAssertEqual(soon.map { plain($0.detail) }, "30 oct. 2026, 16:47")
-        XCTAssertNil(nextCheckText(nil, now: now))
+        XCTAssertEqual(plain(past?.detail), "Prévu le 12 oct. 2026")
+        XCTAssertEqual(upcomingText(date("2026-10-12T07:25:00Z"), relative: false, now: now), past)
+        let soon = upcomingText(date("2026-10-30T15:47:00Z"), now: now)
+        XCTAssertEqual(plain(soon?.value), "Dans 2 j")
+        XCTAssertEqual(plain(soon?.detail), "30 oct. 2026, 16:47")
+        let review = upcomingText(date("2026-12-03T10:00:00Z"), relative: false, now: now)
+        XCTAssertEqual(plain(review?.value), "3 déc. 2026")
+        XCTAssertNil(review?.detail)
+        XCTAssertNil(upcomingText(nil, now: now))
     }
 
     func testABikeAnswerIsNormalisedLeniently() {

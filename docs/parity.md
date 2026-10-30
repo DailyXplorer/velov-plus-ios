@@ -48,6 +48,12 @@ Les réglages à ouvrir ne sont pas les mêmes :
 - Seul le site a le lien clavier « Aller au contenu », la barre latérale sur ordinateur (icône du compte et bouton de déconnexion) et la réserve de place pour la barre de défilement.
 - Seul le site masque le bouton « Se déconnecter » de la page Compte sur ordinateur : la barre latérale l’affiche déjà.
 
+### Sans compte
+- Le site garde le choix « Continuer sans compte » dans le cookie `vv_guest` et les favoris sans compte dans le stockage du navigateur. L’app garde les deux sur le téléphone (`UserDefaults`), sans identifiant ni jeton.
+- Sur téléphone, le site sans compte n’a pas de barre d’onglets. L’app non plus : elle n’affiche que la page Stations, sans barre d’onglets, et la carte d’une station flotte à la place de la barre, à 24 pt des bords.
+- « Se connecter » est un bouton gris brume sur le site, une capsule Liquid Glass avec l’icône de connexion à côté d’« Actualiser » dans l’app.
+- Le lien « Se connecter pour réserver ou déverrouiller » de la fiche d’un vélo a le même texte des deux côtés ; l’app l’écrit en capitales, comme ses autres liens.
+
 ### Présentation des confirmations
 - Dans la fiche d’un vélo, le site affiche « Réserver ce vélo ? » ou « Déverrouiller ce vélo ? » dans un encadré gris, dans la fiche elle-même. L’app ouvre une feuille par-dessus, dont le titre est la question avec le vélo (« Réserver le vélo 20449 ? », « Déverrouiller le vélo 20449 ? »), puis la phrase et Annuler / Confirmer. Le texte, les boutons, l’avertissement à plus de 200 m et les états d’erreur sont les mêmes.
 - Le site écrit « Réserver » et « Déverrouiller » en minuscules, côte à côte. L’app les écrit en capitales, qui ne tiennent pas côte à côte avec leurs icônes sur un iPhone : les deux boutons s’empilent alors sur toute la largeur, à la même taille, plutôt que de réduire « DÉVERROUILLER ».

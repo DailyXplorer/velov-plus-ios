@@ -28,6 +28,10 @@ La page Trajets liste l’historique avec le détail de chaque trajet, et la pag
 
 La page Compte permet de modifier ses coordonnées, de gérer le renouvellement automatique de l’abonnement, de télécharger ses justificatifs en PDF, d’écrire au service client et d’échanger des points contre un code d’invitation à offrir.
 
+## Sans compte
+
+Le bouton « Continuer sans compte », sous le formulaire de connexion, ouvre l’app sans compte Vélo’v. On y garde la carte des stations, la recherche, les filtres, « Autour de moi », la liste des vélos de chaque station avec leur fiche, et « Itinéraire ». Les favoris restent possibles, mais ils sont enregistrés sur le téléphone et non sur le compte. La réservation, le déverrouillage, les trajets, les statistiques, les points et la page Compte n’existent pas dans ce mode, et l’app n’y suit aucun trajet : ni surveillance du retour du vélo, ni Activité en direct, ni fiche « Trajet terminé ». Le bouton « Se connecter » reste toujours visible en haut de la page Stations, et la fiche d’un vélo propose un lien vers la connexion à la place des actions. Ce choix est mémorisé sur le téléphone, sans identifiant ni jeton. Les stations viennent des flux publics de Vélo’v et les vélos se lisent avec le jeton de l’application, qui ne demande aucun compte ; le détail des fonctions publiques se trouve dans `docs/guest-mode.md` du dépôt web.
+
 ## Règles de sécurité des actions
 
 Une action qui modifie le compte (réserver, déverrouiller, noter, modifier son profil…) passe toujours par une feuille de confirmation, et une confirmation envoie exactement une requête. L’app ne renvoie jamais une écriture automatiquement, même quand la réponse se perd : une réponse absente peut cacher une réservation ou un déverrouillage qui a bien eu lieu.

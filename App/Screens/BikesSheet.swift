@@ -252,7 +252,7 @@ struct BikeDetail: View {
             } else if case .failed(let failure) = loaded {
                 StateView(failure, pending: retrying) { Task { await load() } }
             } else {
-                BikeSheetSkeleton()
+                BikeSheetSkeleton(stand: route.station != nil)
             }
         }
         .task { if preloaded == nil { await load() } }
@@ -310,8 +310,10 @@ struct BikeDetail: View {
                 DetailRow(label: "Batterie") { if let battery = bike.batteryPercent { BatteryLevel(percent: battery) } else { Text("Non renseigné") } }
             }
             dateRow("Dernier trajet", bike.lastTripAt, withAgo: true)
-            upcomingRow("Prochain contrôle", bike.nextCheckAt, relative: true)
-            DetailRow("Borne", bike.standNumber.map(String.init) ?? "Non renseigné", last: true)
+            upcomingRow("Prochain contrôle", bike.nextCheckAt, relative: true, last: route.station == nil)
+            if route.station != nil {
+                DetailRow("Borne", bike.standNumber.map(String.init) ?? "Non renseigné", last: true)
+            }
         }
         .padding(.top, Space.cards)
         Disclosure {
@@ -324,8 +326,8 @@ struct BikeDetail: View {
         }
     }
 
-    private func upcomingRow(_ label: String, _ date: Date?, relative: Bool) -> some View {
-        DetailRow(label: label) {
+    private func upcomingRow(_ label: String, _ date: Date?, relative: Bool, last: Bool = false) -> some View {
+        DetailRow(label: label, last: last) {
             if let next = upcomingText(date, relative: relative) { StackedValue(value: next.value, small: next.detail, caps: true) } else { Text("Non renseigné") }
         }
     }
@@ -397,6 +399,7 @@ struct BikeDetail: View {
 }
 
 struct BikeSheetSkeleton: View {
+    let stand: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Eyebrow(icon: .personSimpleBike, text: "Mécanique").skeleton(Radius.capsule)
@@ -408,8 +411,8 @@ struct BikeSheetSkeleton: View {
                     }
                 }
                 DetailRow(label: "Dernier trajet") { ghostDate }
-                DetailRow(label: "Prochain contrôle") { ghostDate }
-                DetailRow(label: "Borne", last: true) { Text(verbatim: "12").ghost() }
+                DetailRow(label: "Prochain contrôle", last: !stand) { ghostDate }
+                if stand { DetailRow(label: "Borne", last: true) { Text(verbatim: "12").ghost() } }
             }
             .padding(.top, Space.cards)
             Disclosure { EmptyView() }.disabled(true)

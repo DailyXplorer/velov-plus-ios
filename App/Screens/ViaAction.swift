@@ -5,7 +5,7 @@ struct ViaAction: View {
     @State private var open = false
 
     var body: some View {
-        PillButton(variant: .secondary, action: { open = true }) { Icon(.timer, .light, size: 17); Text("15 minutes de plus") }
+        PillButton(variant: .secondary, action: { open = true }) { ButtonIcon(.timer); Text("15 minutes de plus") }
         .sheet(isPresented: $open) { ViaSheet() }
     }
 }

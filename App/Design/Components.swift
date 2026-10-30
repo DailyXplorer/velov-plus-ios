@@ -14,6 +14,31 @@ extension EnvironmentValues {
     @Entry var onMist = false
 }
 
+enum CardStyle { case mist, ringed, red }
+
+extension View {
+    func card(_ style: CardStyle, compact: Bool = false) -> some View {
+        modifier(CardSurface(style: style, padding: compact ? Space.cardCompact : Space.card))
+    }
+}
+
+private struct CardSurface: ViewModifier {
+    let style: CardStyle
+    let padding: CGFloat
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
+        switch style {
+        case .mist:
+            content.padding(padding).environment(\.onMist, true).background(shape.fill(Palette.mist))
+        case .ringed:
+            content.padding(padding).ringed(shape)
+        case .red:
+            content.padding(padding).background(ZStack { Palette.red; DottedTexture() }).clipShape(shape)
+        }
+    }
+}
+
 enum ButtonVariant { case primary, secondary, ghost, destructive }
 
 struct PillButton<Label: View>: View {
@@ -111,15 +136,17 @@ struct CircleArrow: View {
 }
 
 struct Eyebrow: View {
+    enum Surface { case white, mist }
     let icon: IconName
     let text: String
+    var surface = Surface.white
     var body: some View {
         HStack(spacing: 10) {
             Icon(icon, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
             Text(text).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
         }
         .padding(.leading, 4).padding(.trailing, 14).padding(.vertical, 4)
-        .background(Capsule().fill(Palette.mist))
+        .background(Capsule().fill(surface == .white ? Palette.mist : Palette.white))
     }
 }
 
@@ -176,7 +203,7 @@ struct SummaryCard<Value: View>: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
                 CardTag(icon: tag.0, text: tag.1)
-                value().foregroundStyle(Palette.white).padding(.top, 20)
+                value().foregroundStyle(Palette.white).lineLimit(1).minimumScaleFactor(0.5).padding(.top, 20)
                 Spacer(minLength: 18)
                 HStack(spacing: 4) {
                     Text(detail).typo(.body(.micro)).lineLimit(2).multilineTextAlignment(.leading)
@@ -185,10 +212,8 @@ struct SummaryCard<Value: View>: View {
                 }
                 .foregroundStyle(Palette.white)
             }
-            .padding(.horizontal, 14).padding(.top, 14).padding(.bottom, 16)
-            .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .topLeading)
-            .background(ZStack { Palette.red; DottedTexture() })
-            .clipShape(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
+            .frame(maxWidth: .infinity, minHeight: minHeight - 2 * Space.cardCompact, alignment: .topLeading)
+            .card(.red, compact: true)
         }
         .buttonStyle(.press)
     }
@@ -199,11 +224,11 @@ struct SectionHeading<Trailing: View>: View {
     @ViewBuilder var trailing: () -> Trailing
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 16) {
-            Text(title).typo(.title(.section)).foregroundStyle(Palette.ink)
+            Text(title).typo(.title(.section)).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
             trailing()
         }
-        .padding(.bottom, 18)
+        .padding(.bottom, Space.titleToContent)
     }
 }
 
@@ -362,7 +387,7 @@ struct DetailRow<Value: View>: View {
                 Spacer(minLength: 0)
                 value().typo(.body(.base)).foregroundStyle(Palette.ink).multilineTextAlignment(.trailing)
             }
-            .padding(.vertical, 14)
+            .padding(.vertical, Space.row)
             if !last { Hairline() }
         }
     }

@@ -363,14 +363,13 @@ struct BikeDetail: View {
             PairedActions {
                 if !mine {
                     PillButton(variant: .secondary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: nil, action: .book) }) {
-                        Icon(.timer, .light, size: 17); Text("Réserver")
+                        ButtonIcon(.timer); Text("Réserver")
                     }
                 }
-                PillButton(variant: .primary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: booking?.id, action: .unlock) }) { Icon(.lockOpen, .light, size: 17); Text("Déverrouiller") }
+                PillButton(variant: .primary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: booking?.id, action: .unlock) }) { ButtonIcon(.lockOpen); Text("Déverrouiller") }
             }
         }
-        .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 16)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
+        .card(.mist)
         .padding(.top, 18)
         .task {
             guard model.snapshot == .bookConfirm, !mine else { return }

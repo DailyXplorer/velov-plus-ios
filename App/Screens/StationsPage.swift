@@ -43,7 +43,7 @@ struct StationsPage: View {
                         .padding(.bottom, 12)
                 }
             }
-            .padding(.horizontal, 22)
+            .padding(.horizontal, Layout.margin)
             map
         }
         .task(id: ranking) {
@@ -110,8 +110,8 @@ struct StationsPage: View {
                     .zIndex(1)
                 if !query.isEmpty, model.stations.value != nil { results }
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 12)
+            .padding(.horizontal, Layout.margin)
+            .padding(.top, Space.cards)
         }
         .ignoresSafeArea(.keyboard)
         .ignoresSafeArea(.container, edges: .bottom)

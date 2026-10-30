@@ -73,8 +73,7 @@ struct RateBike: View {
             }
             .padding(.top, 14)
         }
-        .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 8)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
+        .card(.mist, compact: true)
         .padding(.top, 14)
         .task { if model.snapshot == .tripEndedStars { stars = 4 } }
     }

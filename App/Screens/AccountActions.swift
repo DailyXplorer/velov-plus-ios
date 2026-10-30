@@ -107,12 +107,7 @@ struct AutoRenewalSetting: View {
     private var next: Bool { !(actual ?? false) }
 
     var body: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Renouvellement automatique").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
-                Text(actual == nil ? "Indisponible pour le moment" : actual! ? "Activé" : "Désactivé").typo(.title(.card)).foregroundStyle(Palette.ink)
-            }
-            Spacer(minLength: 0)
+        SettingRow(label: "Renouvellement automatique", value: actual == nil ? "Indisponible pour le moment" : actual! ? "Activé" : "Désactivé", surface: false) {
             if canChange, subscription.id != nil, let actual {
                 ConfirmToggle(label: "Renouvellement automatique", on: actual) { asking = true }
             }
@@ -165,7 +160,7 @@ struct ReceiptRow: View {
                     Text(periodLabel(receipt)).typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
                 }
                 Spacer()
-                PillButton(variant: .secondary, pending: pending, action: download) { Icon(.downloadSimple, .light, size: 17); Text("Reçu") }
+                PillButton(variant: .secondary, pending: pending, action: download) { ButtonIcon(.downloadSimple); Text("Reçu") }
                     .accessibilityLabel("Télécharger le reçu, \(periodLabel(receipt))")
             }
             if let failed {
@@ -244,7 +239,7 @@ struct ContactSupport: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if !open {
-                PillButton(variant: .secondary, action: start) { Icon(.envelopeSimple, .light, size: 18); Text("Écrire au service client") }
+                PillButton(variant: .secondary, action: start) { ButtonIcon(.envelopeSimple); Text("Écrire au service client") }
             } else {
                 form
             }

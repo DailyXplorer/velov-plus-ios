@@ -298,8 +298,8 @@ struct PageScaffold: View {
                         PageSkeleton(page: page)
                     }
                 }
-                .padding(.horizontal, 22)
-                .padding(.bottom, 40)
+                .padding(.horizontal, Layout.margin)
+                .padding(.bottom, Space.state)
                 Color.clear.frame(height: 0).id("page-end")
             }
         }

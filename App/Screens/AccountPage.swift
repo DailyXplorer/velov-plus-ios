@@ -7,7 +7,7 @@ struct AccountPage: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Space.cards) {
             profile
             subscription
             AccountSection(title: "Service client") {
@@ -16,7 +16,7 @@ struct AccountPage: View {
             AccountSection(title: "Journal technique") {
                 JournalLink().padding(.top, 16)
             }
-            LogoutButton(action: onLogout).padding(.top, 28)
+            LogoutButton(action: onLogout).padding(.top, Space.section - Space.cards)
         }
     }
 
@@ -66,12 +66,12 @@ struct AccountSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(title).typo(.title(.section)).foregroundStyle(Palette.ink)
+            Text(title).typo(.title(.section)).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
             content()
         }
-        .padding(.horizontal, 22).padding(.vertical, 28)
+        .padding(.vertical, Space.actions - Space.card)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
+        .card(.mist)
         .modifier(SectionGhost(on: ghost))
     }
 }
@@ -98,7 +98,7 @@ private struct LogoutButton: View {
     let action: () -> Void
     var body: some View {
         PillButton(variant: .destructive, large: true, fullWidth: true, action: action) {
-            Icon(.signOut, .light, size: 19)
+            ButtonIcon(.signOut)
             Text("Se déconnecter")
         }
     }
@@ -106,7 +106,7 @@ private struct LogoutButton: View {
 
 struct AccountSkeleton: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Space.cards) {
             AccountSection(title: "Profil", ghost: true) {
                 Text(verbatim: "Prénom Nom").typo(.title(.card)).padding(.top, 18)
                 Text(verbatim: "prenom.nom@exemple.fr").typo(.body(.base)).padding(.top, 6)
@@ -120,12 +120,7 @@ struct AccountSkeleton: View {
             AccountSection(title: "Abonnement", ghost: true) {
                 Text(verbatim: "Vélo’v Plus 1 an Jeunes – paiement comptant").typo(.title(.card)).padding(.top, 18)
                 Text(verbatim: "Jusqu’au 1 janvier 2027").typo(.body(.base)).padding(.top, 10)
-                HStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Renouvellement automatique").typo(.caps(.label))
-                        Text("Désactivé").typo(.title(.card))
-                    }
-                    Spacer(minLength: 0)
+                SettingRow(label: "Renouvellement automatique", value: "Désactivé", surface: false) {
                     ConfirmToggle(label: "Renouvellement automatique", on: false) {}
                 }
                 .padding(.top, 20)
@@ -137,7 +132,7 @@ struct AccountSkeleton: View {
                             Text(verbatim: "Du 1 janv. 2026 au 1 janv. 2027").typo(.body(.meta))
                         }
                         Spacer()
-                        PillButton(variant: .secondary, action: {}) { Icon(.downloadSimple, .light, size: 17); Text("Reçu") }
+                        PillButton(variant: .secondary, action: {}) { ButtonIcon(.downloadSimple); Text("Reçu") }
                     }
                     .padding(.vertical, 12)
                 }
@@ -145,12 +140,12 @@ struct AccountSkeleton: View {
                 ManageLink {}
             }
             AccountSection(title: "Service client", ghost: true) {
-                PillButton(variant: .secondary, action: {}) { Icon(.envelopeSimple, .light, size: 18); Text("Écrire au service client") }.padding(.top, 16)
+                PillButton(variant: .secondary, action: {}) { ButtonIcon(.envelopeSimple); Text("Écrire au service client") }.padding(.top, 16)
             }
             AccountSection(title: "Journal technique", ghost: true) {
                 PillButton("Ouvrir le journal", variant: .secondary) {}.padding(.top, 16)
             }
-            LogoutButton {}.skeleton(24).padding(.top, 28)
+            LogoutButton {}.skeleton(Layout.largeControl / 2).padding(.top, Space.section - Space.cards)
         }
         .accessibilityLabel("Chargement du compte")
     }

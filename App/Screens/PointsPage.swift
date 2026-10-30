@@ -12,25 +12,25 @@ struct PointsPage: View {
         let rules = Array(rewards.rules.filter { $0.kind == .earn }.prefix(3))
         let invite = rewards.rules.first { $0.name == "PROMOCODE" }
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 10) {
+            HStack(alignment: .top, spacing: Space.cards) {
                 PointsFigure(icon: .starFour, label: "Solde actuel", value: rewards.balance.map { formatNumber($0) } ?? "—")
                 PointsFigure(icon: .trendUp, label: "Total gagné", value: rewards.total.map { formatNumber($0) } ?? "—")
             }
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.bottom, 16)
+            .padding(.bottom, Space.cards)
             AutoSpendSetting(value: rewards.autoSpend)
             InviteFriend(cost: invite.map { Int($0.points) }, balance: rewards.balance.map { Int($0) }, account: data.profile.email)
                 .id(data.profile.email)
-                .padding(.top, 12)
+                .padding(.top, Space.cards)
             if !rules.isEmpty {
-                SectionHeading("Gagner des points").padding(.top, 40)
-                VStack(spacing: 8) {
+                SectionHeading("Gagner des points").padding(.top, Space.section)
+                VStack(spacing: Space.group) {
                     ForEach(rules, id: \.name) { rule in
                         EarnRule(label: rule.label == "Vélo évalué" ? "Évaluation d’un vélo après un trajet" : rule.label, points: "+\(formatNumber(rule.points))")
                     }
                 }
             }
-            SectionHeading("Historique").padding(.top, 40)
+            SectionHeading("Historique").padding(.top, Space.section)
             VStack(spacing: 0) {
                 ForEach(rewards.movements.prefix(limit)) { movement in
                     MovementRow(label: rewardLabel(movement.label), date: formatDate(movement.date, .dayLongMonthYear),
@@ -54,12 +54,13 @@ struct PointsFigure: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Eyebrow(icon: icon, text: label)
+            Eyebrow(icon: icon, text: label, surface: .mist)
             Text(value.glyphic).typo(.title(.figure)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.5)
         }
-        .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
+        .card(.mist, compact: true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label), \(value == "—" ? "indisponible" : "\(value) points")")
     }
 }
 
@@ -69,30 +70,29 @@ private let ghostMovements = ["Bonus de trajet", "Évaluation", "Arrivée dans u
 struct PointsSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 10) {
+            HStack(alignment: .top, spacing: Space.cards) {
                 PointsFigure(icon: .starFour, label: "Solde actuel", value: "0").skeleton()
                 PointsFigure(icon: .trendUp, label: "Total gagné", value: "0").skeleton()
             }
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.bottom, 16)
+            .padding(.bottom, Space.cards)
             SettingRow(label: "Utilisation automatique", value: "Activée") { ConfirmToggle(label: "Utilisation automatique", on: true) {} }.skeleton()
             HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Space.label) {
                     Text("Inviter un ami").typo(.caps(.label))
                     Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(.small))
-                    SoonNote(text: "Il vous manque 255 points.")
                 }
                 Spacer(minLength: 0)
-                PillButton("Obtenir un code", variant: .secondary) {}
+                PillButton(variant: .secondary, action: {}) { ButtonIcon(.ticket); Text("Obtenir un code") }
             }
-            .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
+            .card(.mist)
             .skeleton()
-            .padding(.top, 12)
-            SectionHeading("Gagner des points").padding(.top, 40)
-            VStack(spacing: 8) {
+            .padding(.top, Space.cards)
+            SectionHeading("Gagner des points").padding(.top, Space.section)
+            VStack(spacing: Space.group) {
                 ForEach(ghostRules, id: \.self) { EarnRule(label: $0, points: "+5").skeleton() }
             }
-            SectionHeading("Historique").padding(.top, 40)
+            SectionHeading("Historique").padding(.top, Space.section)
             VStack(spacing: 0) {
                 ForEach(0..<8, id: \.self) { index in
                     MovementRow(label: ghostMovements[index % ghostMovements.count], date: "12 octobre 2026", amount: "+5", credit: false, ghost: true)
@@ -108,19 +108,19 @@ struct PointsSkeleton: View {
 struct SettingRow<Control: View>: View {
     let label: String
     let value: String
+    var surface = true
     @ViewBuilder let control: () -> Control
 
     var body: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
+        let row = HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: Space.label) {
                 Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                 Text(value).typo(.title(.card)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
             control()
         }
-        .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
+        if surface { row.card(.mist) } else { row }
     }
 }
 
@@ -131,10 +131,11 @@ struct EarnRule: View {
         HStack(spacing: 16) {
             Text(label).typo(.body(.small)).foregroundStyle(Palette.inkSoft)
             Spacer()
-            Text(verbatim: points.glyphic).typo(.title(.section)).foregroundStyle(Palette.red)
+            Text(verbatim: points.glyphic).typo(.title(.section)).foregroundStyle(Palette.ink)
         }
-        .padding(.horizontal, 18).padding(.vertical, 16).frame(minHeight: 64)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
+        .frame(minHeight: 64 - 2 * Space.card)
+        .card(.mist)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -151,9 +152,10 @@ struct MovementRow: View {
                 Text(date).typo(.body(.micro)).foregroundStyle(Palette.inkSoft).ghost(ghost)
             }
             Spacer()
-            Text(verbatim: amount).typo(.body(.lead, medium: true)).foregroundStyle(credit ? Palette.red : Palette.ink).ghost(ghost)
+            Text(verbatim: amount).typo(.body(.lead, medium: true)).foregroundStyle(Palette.ink).ghost(ghost)
         }
-        .padding(.vertical, 16).frame(minHeight: 76)
+        .padding(.vertical, Space.row).frame(minHeight: 76)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -164,18 +166,11 @@ struct AutoSpendSetting: View {
     @State private var next = false
 
     var body: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Utilisation automatique").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
-                Text(value == nil ? Messages.missing : value! ? "Activée" : "Désactivée").typo(.title(.card)).foregroundStyle(Palette.ink)
-            }
-            Spacer(minLength: 0)
+        SettingRow(label: "Utilisation automatique", value: value == nil ? Messages.missing : value! ? "Activée" : "Désactivée") {
             if let value {
                 ConfirmToggle(label: "Utilisation automatique des points", on: value) { next = !value; asking = true }
             }
         }
-        .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
-        .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
         .sheet(isPresented: $asking) {
             let next = model.operations.get(OperationKey.autoSpend).flatMap { Intent.wanted($0.meta) } ?? self.next
             WriteDialog(title: next ? "Activer l’utilisation automatique ?" : "Désactiver l’utilisation automatique ?", key: OperationKey.autoSpend, intent: Intent.wanted(next), run: {

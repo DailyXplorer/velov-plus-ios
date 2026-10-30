@@ -13,8 +13,8 @@ struct OverviewPage: View {
         VStack(alignment: .leading, spacing: 0) {
             if let ongoing = data.ongoing?.first { OngoingBanner(trip: ongoing) }
             summary
-            section("Stations", padding: 32) { mapCard }
-            section("Derniers trajets", padding: 32, link: .trips) {
+            section("Stations", padding: Space.section) { mapCard }
+            section("Derniers trajets", padding: Space.section, link: .trips) {
                 if let trips = data.trips { TripsList(trips: Array(trips.prefix(4))) } else { EmptyState("\(Messages.missing).") }
             }
         }
@@ -23,8 +23,8 @@ struct OverviewPage: View {
     private var summary: some View {
         let subscription = data.subscription.subscription
         let missing = data.subscription == .unavailable
-        return VStack(spacing: 10) {
-            HStack(spacing: 10) {
+        return VStack(spacing: Space.cards) {
+            HStack(spacing: Space.cards) {
                 SummaryCard(tag: (.starFour, "Points"), detail: data.rewards.total.map { "\(formatNumber($0)) gagnés au total" } ?? Messages.missing, action: { model.page = .points }) {
                     Text(data.rewards.balance.map { formatNumber($0).glyphic } ?? "—").typo(.title(.figure))
                 }
@@ -90,17 +90,17 @@ struct OverviewSection<Content: View>: View {
 struct OverviewSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(spacing: 10) {
-                HStack(spacing: 10) {
+            VStack(spacing: Space.cards) {
+                HStack(spacing: Space.cards) {
                     SummaryCard(tag: (.starFour, "Points"), detail: "1 380 gagnés au total", action: {}) { Text(verbatim: "0").typo(.title(.figure)) }.skeleton()
                     SummaryCard(tag: (.personSimpleBike, "Trajets"), detail: "12 h 40 min", action: {}) { Text(verbatim: "0").typo(.title(.figure)) }.skeleton()
                 }
                 SummaryCard(tag: (.ticket, "Abonnement"), detail: "Jusqu’au 1 mars 2027", minHeight: 150, action: {}) { Text(verbatim: "Plus 1 an").typo(.title(.card)).lineLimit(2) }.skeleton()
             }
-            OverviewSection(title: "Stations", padding: 32, ghost: true, link: {}) {
+            OverviewSection(title: "Stations", padding: Space.section, ghost: true, link: {}) {
                 Skeleton(height: overviewMapHeight).padding(.bottom, Concentric.gap)
             }
-            OverviewSection(title: "Derniers trajets", padding: 32, ghost: true, link: {}) { GhostTrips(rows: 4) }
+            OverviewSection(title: "Derniers trajets", padding: Space.section, ghost: true, link: {}) { GhostTrips(rows: 4) }
         }
         .accessibilityLabel("Chargement du compte")
     }

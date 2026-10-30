@@ -92,7 +92,7 @@ private func axisText(_ text: String) -> some View {
     Text(text).typo(.body(.micro)).foregroundStyle(Palette.inkSoft).fixedSize()
 }
 
-private let gap: CGFloat = 10
+private let gap = Space.cards
 
 struct StatsPage: View {
     private static let unavailable = "Vos statistiques sont momentanément indisponibles."
@@ -114,7 +114,7 @@ struct StatsPage: View {
                         Text("Statistiques").typo(.title(.page)).foregroundStyle(Palette.ink).lineLimit(1)
                         Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, 22).padding(.top, 24).padding(.bottom, 28)
+                    .padding(.horizontal, Layout.margin).padding(.top, Layout.headerTop).padding(.bottom, Layout.headerBottom)
                     VStack(alignment: .leading, spacing: 0) {
                         BookingBanners()
                         switch state {
@@ -128,7 +128,7 @@ struct StatsPage: View {
                         case .ready(let stats): StatsView(stats: stats)
                         }
                     }
-                    .padding(.horizontal, 22).padding(.bottom, 40)
+                    .padding(.horizontal, Layout.margin).padding(.bottom, Space.state)
                 }
             }
             .scrollPosition($position)
@@ -282,15 +282,13 @@ private struct StatCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             CardTag(icon: icon, text: label, size: .stat)
-            (Text(value.glyphic) + Text(unit.map { " \($0)" } ?? "").font(Typo.title(.unit).font))
+            (Text(value.glyphic) + Text(unit.map { "\u{a0}\($0)" } ?? "").font(Typo.title(.unit).font))
                 .typo(.title(.figureS)).foregroundStyle(Palette.white).lineLimit(1).minimumScaleFactor(0.5).padding(.top, 18)
             Spacer(minLength: 18)
             if let detail { Text(detail).typo(.body(.micro)).foregroundStyle(Palette.white).lineLimit(2).fixedSize(horizontal: false, vertical: true) }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
-        .background(ZStack { Palette.red; DottedTexture() })
-        .clipShape(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
+        .frame(maxWidth: .infinity, minHeight: 132 - 2 * Space.cardCompact, alignment: .topLeading)
+        .card(.red, compact: true)
         .accessibilityElement(children: .combine)
     }
 }
@@ -302,13 +300,12 @@ private struct Panel<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: tips ? 34 + tipBand : chart ? 34 : 18) {
-            Text(title).typo(.title(.card)).foregroundStyle(Palette.ink)
+        VStack(alignment: .leading, spacing: tips ? Space.titleToContent + tipBand : chart ? Space.section : Space.titleToContent) {
+            Text(title).typo(.title(.card)).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
             content()
         }
-        .padding(.horizontal, 16).padding(.top, 18).padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
+        .card(.ringed, compact: true)
     }
 }
 

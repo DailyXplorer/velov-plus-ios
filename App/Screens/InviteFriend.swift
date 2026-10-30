@@ -36,7 +36,7 @@ struct InviteFriend: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Space.label) {
                     Text("Inviter un ami").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                     Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(.small)).foregroundStyle(Palette.inkSoft)
                     if cost == nil {
@@ -46,11 +46,10 @@ struct InviteFriend: View {
                     }
                 }
                 Spacer(minLength: 0)
-                PillButton(codes.isEmpty ? "Obtenir un code" : "Obtenir un autre code", variant: .secondary) { open() }
+                PillButton(variant: .secondary, action: open) { ButtonIcon(.ticket); Text(codes.isEmpty ? "Obtenir un code" : "Obtenir un autre code") }
                     .disabled(operation == nil && !canObtain)
             }
-            .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)
-            .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
+            .card(.mist)
             codeList.padding(.top, 16)
             if !asking, let warning { FormError(warning).padding(.top, 10) }
         }
@@ -67,7 +66,7 @@ struct InviteFriend: View {
                     HStack(spacing: 12) {
                         Text(entry.code).typo(.label(.lead)).foregroundStyle(Palette.ink).textSelection(.enabled)
                         Spacer(minLength: 0)
-                        PillButton(variant: .secondary, action: { copy(entry.code) }) { Icon(.copy, .light, size: 16); Text(copied == entry.code ? "Copié" : "Copier") }
+                        PillButton(variant: .secondary, action: { copy(entry.code) }) { ButtonIcon(.copy); Text(copied == entry.code ? "Copié" : "Copier") }
                     }
                 }
                 SoonNote(text: "Enregistré sur ce téléphone.")

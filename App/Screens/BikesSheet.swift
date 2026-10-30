@@ -80,6 +80,10 @@ struct BikesSheet: View {
         .task {
             await load()
             if model.snapshot?.pushesBike == true, let first = assessed?.first { path = [BikeRoute(number: first.bike.number, station: station)] }
+            if model.snapshot == .bikePush, let first = assessed?.first {
+                try? await Task.sleep(for: .seconds(4))
+                path = [BikeRoute(number: first.bike.number, station: station)]
+            }
             if model.snapshot == .dockWhileBikes {
                 try? await Task.sleep(for: .seconds(5))
                 dismiss()

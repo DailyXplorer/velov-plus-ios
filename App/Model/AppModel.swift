@@ -48,7 +48,7 @@ enum SnapshotScreen: String {
     case viaPick, viaReview, viaUncertain, inviteDialog, inviteCode, renewalToggle, renewalDialog, contactUncertain
     case stationsSearch, stationsEmptyFilter, locationError, locationTimeout, pageFailure, bikeListFailure, bikeOwnBooking, bigBalance, dockWhileBikes
     case stats, statsCharts, statsTipFirst, statsTipMiddle, statsTipLast, statsHeatmap, statsHeatTip, statsDonut, statsRecords, statsBike, statsEnd
-    case login, loginError, guestStations, guestStationSheet, guestBikeSheet
+    case login, loginError, guestStations, guestStationSheet, guestBikeSheet, bikePush
 
     var asGuest: Bool { [.guestStations, .guestStationSheet, .guestBikeSheet].contains(self) }
 
@@ -60,7 +60,7 @@ enum SnapshotScreen: String {
 
     var riding: Bool { [.ongoingBanner, .viaPick, .viaReview, .viaUncertain].contains(self) }
 
-    var opensBikes: Bool { [.bikeList, .bikeSheet, .bookConfirm, .bikeListFailure, .bikeOwnBooking, .dockWhileBikes, .guestBikeSheet].contains(self) }
+    var opensBikes: Bool { [.bikeList, .bikePush,.bikeSheet, .bookConfirm, .bikeListFailure, .bikeOwnBooking, .dockWhileBikes, .guestBikeSheet].contains(self) }
 
     var pushesBike: Bool { [.bikeSheet, .bookConfirm, .bikeOwnBooking, .guestBikeSheet].contains(self) }
 }
@@ -137,7 +137,7 @@ final class AppModel {
         case .stats?, .statsCharts?, .statsTipFirst?, .statsTipMiddle?, .statsTipLast?, .statsHeatmap?, .statsHeatTip?, .statsDonut?, .statsRecords?, .statsBike?, .statsEnd?: page = .trips
         case .points?, .toggleDialog?, .inviteDialog?, .inviteCode?: page = .points
         case .stations?, .stationSheet?, .stationSheetLong?, .bikeList?, .bikeSheet?, .bookConfirm?, .stationsSearch?, .stationsEmptyFilter?, .locationError?, .locationTimeout?,
-             .bikeListFailure?, .bikeOwnBooking?, .dockWhileBikes?: page = .stations
+             .bikeListFailure?, .bikeOwnBooking?, .dockWhileBikes?, .bikePush?: page = .stations
         case .account?, .accountEnd?, .accountEdit?, .profilePage?, .contactPage?, .journalPage?, .logoutDialog?, .choiceSheet?, .renewalToggle?, .renewalDialog?,
              .contactUncertain?: page = .account
         default: break

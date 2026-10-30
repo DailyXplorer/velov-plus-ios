@@ -137,6 +137,9 @@ private struct ChoiceList<Value: Hashable>: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(title).typo(.title(.section)).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: { Icon(.x, .light, size: Layout.glyph).foregroundStyle(Palette.ink) }
                         .tint(Palette.ink)

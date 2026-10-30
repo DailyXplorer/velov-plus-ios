@@ -276,7 +276,7 @@ private enum ChartFocus: Equatable {
     case part(String)
 }
 
-private let tipBand: CGFloat = 40
+private let tipBand: CGFloat = 56
 private let tipGap: CGFloat = 10
 
 private struct ChartTip: View {

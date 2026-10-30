@@ -353,6 +353,7 @@ struct Header: View {
 struct PageScaffold: View {
     let page: Page
     @Environment(AppModel.self) private var model
+    @Environment(\.tabBarBand) private var tabBarBand
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -390,6 +391,7 @@ struct PageScaffold: View {
             }
         }
         .scrollIndicators(.hidden)
+        .contentMargins(.bottom, tabBarBand, for: .scrollContent)
         .refreshable { await model.manualRefresh() }
     }
 

@@ -127,6 +127,11 @@ Ces règles du propriétaire valent pour l’app comme pour le site, où elles s
 - Remplacer un élément maison par un élément natif seulement avec l’accord du propriétaire.
 - Fiche vélo : RÉSERVER et DÉVERROUILLER sont empilés, en pleine largeur et à la même taille de texte ; aucun des deux n’est rétréci (validé par le propriétaire).
 - Tout changement de texte ou d’apparence d’un côté est reporté de l’autre dans le même lot, sans attendre qu’on le redemande ; seuls Liquid Glass et les widgets sont propres à l’app.
+- Dans tout menu, liste de choix ou sélecteur, le fond d’une ligne touchée ou choisie a la même marge à gauche et à droite, ou va d’un bord à l’autre. Les menus et feuilles natifs d’iOS le font d’eux-mêmes ; les lignes maison (`.row`) débordent du même côté des deux côtés.
+- Aucun code, statut HTTP, nom d’erreur ni ligne technique à l’écran. Une erreur passagère (localisation refusée, trop lente ou introuvable, actualisation ratée, action ratée sur un écran qui reste utilisable) s’affiche dans un petit bandeau en haut, au centre : un seul à la fois, fermé par X ou au bout de 5 secondes, lu par VoiceOver (`App/Design/Toast.swift`). Un écran qui ne peut rien afficher garde un message simple et « Réessayer ». Une feuille de confirmation garde son message et l’avertissement d’incertitude. Le détail technique ne va que dans le Journal technique.
+- Chaque échec de localisation a son message : refus « Autorisez la localisation dans Réglages pour trouver les stations autour de vous. » (avec « Ouvrir Réglages »), délai « La localisation a pris trop de temps. Réessayez. », position introuvable « Position introuvable pour le moment. ».
+- Aucune icône dans un bouton « Itinéraire ». Les autres boutons d’action gardent leur icône, sauf une flèche de lien externe.
+- Écran de connexion : « Continuer sans compte » juste sous « Se connecter », avec l’écart normal. Aucune place n’est réservée à l’erreur, qui s’affiche dans le bandeau du haut.
 
 ## Dépôt
 

@@ -26,11 +26,11 @@ Même phrase, seul l’objet change :
 
 ### Localisation
 Les réglages à ouvrir ne sont pas les mêmes :
-- Refus : site « Localisation refusée. Autorisez-la pour ce site dans votre navigateur, puis dans les réglages de localisation de votre appareil. » / app « Localisation refusée. Autorisez-la dans Réglages › Vélo’v+ › Position. », avec un bouton « Ouvrir Réglages » sous le message (aussi quand le service de localisation est coupé)
-- Service coupé : site « Votre appareil ne trouve pas votre position. Vérifiez que le service de localisation est activé pour ce navigateur. » / app « Le service de localisation est désactivé sur ce téléphone. »
+- Refus : site « Autorisez la localisation dans votre navigateur pour trouver les stations autour de vous. » / app « Autorisez la localisation dans Réglages pour trouver les stations autour de vous. », avec un lien « Ouvrir Réglages » dans le bandeau (aussi quand le service de localisation est coupé)
+- Seule l’app sait que le service de localisation est coupé : « Le service de localisation est désactivé sur ce téléphone. »
 - Seul le site a « Localisation indisponible sur cette page. Recherchez une station par son nom. » (page non sécurisée) et « Ce navigateur ne permet pas la localisation. Recherchez une station par son nom. ».
-- La ligne technique change de forme : site « Code · message · navigateur/système · Permission … », app « CLError … · auth … · services on/off ».
-- Les messages communs sont identiques : « La localisation a pris trop de temps. Réessayez. », « Impossible de vous localiser pour le moment. », « Aucune station ouverte ne correspond à ce filtre. ».
+- Les messages communs sont identiques : « La localisation a pris trop de temps. Réessayez. », « Position introuvable pour le moment. », « Aucune station ouverte ne correspond à ce filtre. ».
+- Ces messages s’affichent dans le bandeau d’erreur : en haut à droite sur ordinateur, en haut au centre sur téléphone et dans l’app.
 
 ### Cartes
 - Le site utilise Leaflet et les tuiles OpenStreetMap en couleur, l’app MapKit (Plans). Sur le site, la carte des Stations est dans une carte arrondie, avec ses boutons + et −. Dans l’app, elle occupe tout l’écran, sous une barre de recherche et un bouton de localisation flottants (Liquid Glass).
@@ -82,5 +82,6 @@ Dans l’app, le bandeau du trajet en cours reprend le bandeau rouge de la rése
 - L’app utilise la police des chiffres « Velov Glyphic Timer » pour les comptes à rebours des Live Activities.
 
 ### Diagnostic
-- La ligne technique d’une panne réseau garde le code exact et la durée. App : « Délai dépassé après 30 s · NSURLErrorTimedOut (-1001) », « Connexion perdue après 2 s · NSURLErrorNetworkConnectionLost (-1005) », « Pas de réseau après 0 s · NSURLErrorNotConnectedToInternet (-1009) ». Site : nom de l’erreur du navigateur (TypeError, AbortError) et durée, quand le navigateur les donne.
+- Ni le site ni l’app n’affichent de ligne technique sous une erreur.
+- Le bandeau d’erreur de l’app est dessiné dans sa propre fenêtre, au-dessus des feuilles : une erreur passagère reste visible quand une feuille est ouverte.
 - Seule l’app a le Journal technique (page Compte) : les 50 dernières requêtes envoyées à Vélo’v (heure, méthode, chemin aux identifiants masqués sauf numéros de station et de vélo, statut HTTP ou code d’erreur, durée, action), sans jeton, en-tête, contenu, nom, e-mail ni téléphone, avec « Partager » et « Effacer ».

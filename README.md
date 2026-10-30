@@ -36,7 +36,7 @@ Le bouton « Continuer sans compte », sous le formulaire de connexion, ouvre l�
 
 Une action qui modifie le compte (réserver, déverrouiller, noter, modifier son profil…) passe toujours par une feuille de confirmation, et une confirmation envoie exactement une requête. L’app ne renvoie jamais une écriture automatiquement, même quand la réponse se perd : une réponse absente peut cacher une réservation ou un déverrouillage qui a bien eu lieu.
 
-Quand le résultat est incertain (pas de réponse, délai dépassé, erreur 5xx, erreur sans code), la feuille n’offre plus que « Fermer » et affiche la ligne brute renvoyée par le serveur, pour qu’on vérifie l’état réel avant de recommencer. Seul un refus certain permet de confirmer à nouveau.
+Quand le résultat est incertain (pas de réponse, délai dépassé, erreur 5xx, erreur sans code), la feuille n’offre plus que « Fermer » et prévient que le résultat est incertain, pour qu’on vérifie l’état réel avant de recommencer. Le statut et le code renvoyés par le serveur ne s’affichent pas : ils restent dans le Journal technique de la page Compte. Seul un refus certain permet de confirmer à nouveau.
 
 Les lectures, elles, sont réessayées au plus trois fois et seulement sur les erreurs 502, 503 et 504 de la passerelle, jamais après un délai dépassé. Un code d’invitation obtenu contre des points est enregistré sur le téléphone avant toute autre chose, car il est la seule preuve du débit.
 

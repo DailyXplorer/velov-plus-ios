@@ -3,83 +3,82 @@ import VelovCore
 
 struct Shell: View {
     @Environment(AppModel.self) private var model
-    @State private var homeIndicator: CGFloat = 0
-    @State private var radius = Concentric.fallback
-    @State private var tabBarBand: CGFloat = 0
     @State private var visited: Set<Page> = []
 
     var body: some View {
         @Bindable var model = model
-        ZStack {
-            ForEach(Page.allCases) { page in
-                if page == model.page || visited.contains(page) {
-                    let active = page == model.page
-                    screen(page)
-                        .opacity(active ? 1 : 0)
-                        .allowsHitTesting(active)
-                        .accessibilityHidden(!active)
+        FloatingHost(tabBar: true) {
+            ZStack {
+                ForEach(Page.allCases) { page in
+                    if page == model.page || visited.contains(page) {
+                        let active = page == model.page
+                        TabStack(page: page)
+                            .opacity(active ? 1 : 0)
+                            .allowsHitTesting(active)
+                            .accessibilityHidden(!active)
+                    }
                 }
             }
-        }
-        .onChange(of: model.page, initial: true) { _, page in visited.insert(page) }
-        .frame(maxHeight: .infinity)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            TabBar(radius: radius)
-                .onGeometryChange(for: CGFloat.self, of: { Concentric.radius($0) }) { radius = $0 }
-                .padding(.horizontal, Concentric.inset).padding(.bottom, Concentric.inset - homeIndicator)
-                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { tabBarBand = $0 }
-        }
-        .background(Palette.white)
-        .background {
-            Color.clear.ignoresSafeArea(.keyboard).onGeometryChange(for: CGFloat.self, of: { $0.safeAreaInsets.bottom }) { homeIndicator = $0 }
-        }
-        .sheet(item: $model.sheet) { sheet in
-            switch sheet {
-            case .logout: LogoutSheet()
-            case .unlock(let booking): if let place = Place(booking) { BikeActionSheet(place: place, bookingId: booking.id, action: .unlock) }
-            case .ended(let trip): TripEndedSheet(trip: trip)
-            case .via: ViaSheet()
+            .onChange(of: model.page, initial: true) { _, page in visited.insert(page) }
+            .sheet(item: $model.sheet) { sheet in
+                switch sheet {
+                case .logout: LogoutSheet()
+                case .unlock(let booking): if let place = Place(booking) { BikeActionSheet(place: place, bookingId: booking.id, action: .unlock) }
+                case .ended(let trip): TripEndedSheet(trip: trip)
+                case .via: ViaSheet()
+                }
+            }
+            .background {
+                Color.clear
+                    .alert("Ignorer les modifications\u{a0}?", isPresented: Binding(get: { model.leaving != nil }, set: { if !$0 { model.leaving = nil } }),
+                           presenting: model.leaving) { intent in
+                        Button("Ignorer", role: .destructive) { model.discard(intent) }
+                        Button("Continuer la saisie", role: .cancel) {}
+                    }
+                    .tint(Palette.ink)
             }
         }
-        .background {
-            Color.clear
-                .alert("Ignorer les modifications\u{a0}?", isPresented: Binding(get: { model.leaving != nil }, set: { if !$0 { model.leaving = nil } }),
-                       presenting: model.leaving) { intent in
-                    Button("Ignorer", role: .destructive) { model.discard(intent) }
-                    Button("Continuer la saisie", role: .cancel) {}
-                }
-                .tint(Palette.ink)
-        }
-        .environment(\.floatingRadius, radius)
-        .environment(\.tabBarBand, tabBarBand)
-        .environment(\.tabBarClearance, homeIndicator + tabBarBand)
-        .environment(\.floatingFloor, homeIndicator + tabBarBand + Concentric.gap)
-    }
-
-    private func screen(_ page: Page) -> some View {
-        TabStack(page: page)
     }
 }
 
 struct GuestShell: View {
+    var body: some View {
+        FloatingHost(tabBar: false) { StationsPage() }
+    }
+}
+
+struct FloatingHost<Content: View>: View {
+    let tabBar: Bool
+    @ViewBuilder let content: () -> Content
     @State private var homeIndicator: CGFloat = 0
     @State private var radius = Concentric.fallback
+    @State private var measuredBand: CGFloat = 0
 
     var body: some View {
-        StationsPage()
+        let band = tabBar ? measuredBand : 0
+        content()
+            .frame(maxHeight: .infinity)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if tabBar {
+                    TabBar(radius: radius)
+                        .padding(.horizontal, Concentric.inset).padding(.bottom, Concentric.inset - homeIndicator)
+                        .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { measuredBand = $0 }
+                }
+            }
             .background(Palette.white)
             .background {
                 Color.clear.ignoresSafeArea(.keyboard).onGeometryChange(for: CGFloat.self, of: { $0.safeAreaInsets.bottom }) { homeIndicator = $0 }
             }
             .background(alignment: .bottom) {
-                Color.clear.frame(height: 1)
+                Color.clear.frame(height: 2 * Concentric.fallback)
                     .onGeometryChange(for: CGFloat.self, of: { Concentric.radius($0) }) { radius = $0 }
                     .padding(.horizontal, Concentric.inset).padding(.bottom, Concentric.inset)
                     .ignoresSafeArea()
             }
             .environment(\.floatingRadius, radius)
-            .environment(\.tabBarClearance, homeIndicator)
-            .environment(\.floatingFloor, Concentric.inset)
+            .environment(\.tabBarBand, band)
+            .environment(\.tabBarClearance, homeIndicator + band)
+            .environment(\.floatingFloor, homeIndicator + band + Concentric.gap)
     }
 }
 
@@ -193,7 +192,7 @@ private struct UnderTabBarFade: ViewModifier {
                     LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: Space.actions)
                     Color.clear.frame(height: clearance)
                 }
-                .ignoresSafeArea()
+                .ignoresSafeArea(.container, edges: .bottom)
             }
         } else {
             content

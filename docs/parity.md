@@ -21,7 +21,7 @@ Même phrase, seul l’objet change :
 - Site « Impossible de lire les codes enregistrés sur ce navigateur. » / app « Impossible de lire les codes enregistrés sur ce téléphone. »
 - Site « Enregistré sur ce navigateur. » / app « Enregistré sur ce téléphone. »
 - Site « La page a été fermée avant la réponse. L’action a peut-être abouti. » / app « L’app a été fermée avant la réponse. L’action a peut-être abouti. »
-- « Actualisez la page » sur le site devient « actualisez » dans l’app : site « Vélo’v ne répond pas. Le vélo est peut-être réservé : actualisez la page avant de réessayer. » / app « Vélo’v ne répond pas. Le vélo est peut-être réservé : actualisez avant de réessayer. ». De même pour « La modification a peut-être été prise en compte » et pour « L’offre a changé. Actualisez la page avant de confirmer. » / « L’offre a changé. Actualisez avant de confirmer. ».
+- « Actualisez la page » sur le site devient « actualisez » dans l’app : site « L’offre a changé. Actualisez la page avant de confirmer. » / app « L’offre a changé. Actualisez avant de confirmer. ». Les messages d’un résultat incertain ne donnent que la cause et sont identiques des deux côtés (« Vélo’v ne répond pas. Le vélo est peut-être réservé. ») : la consigne n’apparaît qu’une fois, dans « Le résultat est incertain : vérifiez avant de réessayer. ».
 - Seul le site a « Ce navigateur ne peut pas empêcher un double envoi depuis un autre onglet. Rien n’a été envoyé. » : l’app n’a pas d’onglets.
 
 ### Localisation

@@ -188,7 +188,7 @@ public final class Operations {
         }
         let outcome: Outcome
         do { outcome = try await TechnicalJournal.$operation.withValue(key) { try await send() } } catch {
-            var lost = noAnswer("Le serveur ne répond pas.")
+            var lost = noAnswer(Messages.noReply)
             lost.detail = networkLine(error)
             outcome = lost
         }

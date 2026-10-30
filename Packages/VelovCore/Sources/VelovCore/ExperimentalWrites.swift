@@ -18,15 +18,16 @@ extension Writes {
         case .number(let number): stationId = number
         case .uuid(let uuid): stationId = uuid
         }
+        let failed = "Les 15 minutes supplémentaires n’ont pas été accordées."
         let (answer, value) = try await accountCall(URL(string: "\(accountURL(auth.accountId))/subscriptions/\(pathSegment(subscriptionId))/via")!, method: "POST",
                                                     headers: ["Content-Type": Guesses.viaMediaType], body: orderedJSON([(Guesses.viaStationField, stationId)]), auth: auth,
-                                                    failed: "Les 15 minutes supplémentaires n’ont pas été accordées.", http: http)
+                                                    failed: failed, unsure: Messages.viaNoAnswer, http: http)
         guard answer.ok else { return answer }
         var outcome = answer
         let state = value?.string ?? value?[Guesses.viaStateField]?.string
         outcome.ok = state == Guesses.viaSuccessState
         outcome.transactionState = state
-        outcome.message = outcome.ok ? nil : "Vélo’v n’a pas confirmé les minutes supplémentaires. Vérifiez votre trajet avant de réessayer."
+        outcome.message = outcome.ok ? nil : outcome.isUncertain ? Messages.viaNoAnswer : failed
         return outcome
     }
 
@@ -34,13 +35,13 @@ extension Writes {
         let form = multipart([(Guesses.mailFields.complaintType, body.complaintType), (Guesses.mailFields.message, contactMessage(body))], boundary: boundary)
         return try await accountCall(URL(string: "\(accountURL(auth.accountId))/mail")!, method: "POST",
                                      headers: ["Accept": Guesses.mailAccept, "Content-Type": "multipart/form-data; boundary=\(boundary)"], body: form, auth: auth,
-                                     failed: "Vélo’v n’a pas confirmé l’envoi du message.", http: http).outcome
+                                     failed: "Vélo’v n’a pas confirmé l’envoi du message.", unsure: Messages.contactNoAnswer, http: http).outcome
     }
 
     public static func promoCode(_ auth: WriteAuth, http: HTTPTransport) async throws -> PromoResult {
         let (answer, value) = try await accountCall(URL(string: "\(accountURL(auth.accountId))/rewards/consume/promocode")!, method: "POST",
                                                     headers: ["Accept": Guesses.promocodeAccept], body: nil, auth: auth,
-                                                    failed: "Le code n’a pas pu être créé.", http: http)
+                                                    failed: "Le code n’a pas pu être créé.", unsure: Messages.promoNoAnswer, http: http)
         let code = value?[Guesses.promocodeCodeField]?.string.flatMap { $0.isEmpty ? nil : $0 }
         var outcome = answer
         if outcome.ok && code == nil {

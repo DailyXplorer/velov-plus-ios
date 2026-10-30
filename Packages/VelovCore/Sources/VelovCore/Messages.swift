@@ -34,7 +34,13 @@ public enum Messages {
         "REJECTED": "Refusé", "TIMEOUT": "Expiré", "ERROR": "En erreur", "WARNING": "Avertissement", "REVERSED": "Annulé"
     ]
 
+    public static let noReply = "Vélo’v ne répond pas."
     public static let unlockNoAnswer = "Vélo’v ne répond pas. Le vélo est peut-être déverrouillé."
+    public static let bookingNoAnswer = "Vélo’v ne répond pas. Le vélo est peut-être réservé."
+    public static let changeNoAnswer = "Vélo’v ne répond pas. La modification a peut-être été prise en compte."
+    public static let viaNoAnswer = "Vélo’v ne répond pas. Les 15 minutes ont peut-être été ajoutées."
+    public static let contactNoAnswer = "Vélo’v ne répond pas. Votre message a peut-être déjà été envoyé."
+    public static let promoNoAnswer = "Vélo’v ne répond pas. Vos points ont peut-être été débités."
     public static let notSent = "Vélo’v ne répond pas. Rien n’a été envoyé."
     public static let uncertain = "Le résultat est incertain : vérifiez avant de réessayer."
     public static let uncertainUnlock = "Le résultat est incertain : vérifiez la borne avant de réessayer."
@@ -42,7 +48,6 @@ public enum Messages {
     public static let unsaved = "Ce téléphone ne peut pas suivre cette action. Rien n’a été envoyé."
     public static let lost = "L’app a été fermée avant la réponse. L’action a peut-être abouti."
     public static let notApplied = "Vélo’v n’a rien enregistré. Vous pouvez réessayer."
-    public static let unverified = "Le résultat est incertain et n’a pas pu être vérifié. Vérifiez de nouveau avant de réessayer."
     public static let ratingUnconfirmed = "Vélo’v ne répond pas. La note a peut-être été enregistrée."
     public static let ratingUncertain = "Vélo’v n’a pas confirmé la note. Elle a peut-être été enregistrée."
     public static let ratingRefused = "Vélo’v a refusé cette note."
@@ -64,25 +69,28 @@ public enum Messages {
     public static let soon = "Bientôt disponible"
 }
 
+private func failure(_ outcome: Outcome, _ known: String?, failed: String, unsure: String) -> Outcome {
+    guard !outcome.ok else { return outcome }
+    var result = outcome
+    result.message = known ?? (outcome.httpStatus == 401 ? Messages.sessionExpired : outcome.httpStatus == 403 ? Messages.sessionRefused
+                               : outcome.isUncertain ? unsure : failed)
+    return result
+}
+
 public func releaseOutcome(httpStatus: Int, code: String?, detail: String?, transactionState: String?) -> Outcome {
-    let ok = httpStatus == 200 && transactionState == "OK"
-    let message: String? = ok ? nil
-        : code.flatMap { Messages.releaseCodes[$0] }
-        ?? transactionState.flatMap { Messages.releaseStates[$0] }
-        ?? (httpStatus == 403 ? Messages.sessionRefused : Messages.releaseFailed)
-    return Outcome(ok: ok, httpStatus: httpStatus, transactionState: transactionState, code: code, message: message, detail: detail)
+    failure(Outcome(ok: httpStatus == 200 && transactionState == "OK", httpStatus: httpStatus, transactionState: transactionState, code: code, detail: detail),
+            code.flatMap { Messages.releaseCodes[$0] } ?? transactionState.flatMap { Messages.releaseStates[$0] },
+            failed: Messages.releaseFailed, unsure: Messages.unlockNoAnswer)
 }
 
 public func bookingOutcome(httpStatus: Int, code: String?, detail: String?) -> Outcome {
-    let ok = (200..<300).contains(httpStatus)
-    let message: String? = ok ? nil : code.flatMap { Messages.bookingCodes[$0] } ?? (httpStatus == 403 ? Messages.sessionRefused : Messages.bookingFailed)
-    return Outcome(ok: ok, httpStatus: httpStatus, code: code, message: message, detail: detail)
+    failure(Outcome(ok: (200..<300).contains(httpStatus), httpStatus: httpStatus, code: code, detail: detail), code.flatMap { Messages.bookingCodes[$0] },
+            failed: Messages.bookingFailed, unsure: Messages.bookingNoAnswer)
 }
 
-public func accountOutcome(httpStatus: Int, code: String?, detail: String?, failed: String) -> Outcome {
-    let ok = (200..<300).contains(httpStatus)
-    let message: String? = ok ? nil : code.flatMap { Messages.accountCodes[$0] } ?? (httpStatus == 403 ? Messages.sessionRefused : failed)
-    return Outcome(ok: ok, httpStatus: httpStatus, code: code, message: message, detail: detail)
+public func accountOutcome(httpStatus: Int, code: String?, detail: String?, failed: String, unsure: String) -> Outcome {
+    failure(Outcome(ok: (200..<300).contains(httpStatus), httpStatus: httpStatus, code: code, detail: detail), code.flatMap { Messages.accountCodes[$0] },
+            failed: failed, unsure: unsure)
 }
 
 public func ratingOutcome(_ outcome: Outcome) -> Outcome {

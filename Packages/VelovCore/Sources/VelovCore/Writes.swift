@@ -28,7 +28,7 @@ public func attempt(_ run: () async throws -> Outcome) async -> Outcome {
     } catch let error as VelovError {
         return Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: "local.\(error.code.rawValue)", message: error.message)
     } catch {
-        return Outcome(ok: false, httpStatus: 0, code: "network", message: "Le serveur ne répond pas. Actualisez avant de réessayer.", detail: networkLine(error))
+        return Outcome(ok: false, httpStatus: 0, code: "network", message: Messages.noReply, detail: networkLine(error))
     }
 }
 
@@ -103,7 +103,7 @@ public enum Writes {
             response = try await http.send(makeRequest(url, method: "POST", headers: [
                 "Authorization": "Taknv1 \(auth.token)", "Identity": auth.identity, "Content-Type": "application/json; charset=UTF-8"], body: body, timeout: 30))
         } catch {
-            var outcome = Outcome.refusal("network", "Vélo’v ne répond pas. Le vélo est peut-être réservé : actualisez avant de réessayer.")
+            var outcome = Outcome.refusal("network", Messages.bookingNoAnswer)
             outcome.detail = networkLine(error)
             return (outcome, nil)
         }
@@ -114,13 +114,13 @@ public enum Writes {
             return (outcome, booking)
         }
         outcome.ok = false
-        outcome.message = "Vélo’v n’a pas confirmé la réservation. Vérifiez-la avant de réessayer."
+        outcome.message = Messages.bookingNoAnswer
         outcome.detail = reply.detail ?? (response.body.isEmpty ? "Réponse vide" : String(response.text.prefix(160)))
         return (outcome, nil)
     }
 
     static func accountCall(_ url: URL, method: String, headers: [String: String], body: Data?, auth: WriteAuth, failed: String,
-                            http: HTTPTransport) async throws -> (outcome: Outcome, value: JSON?) {
+                            unsure: String = Messages.changeNoAnswer, http: HTTPTransport) async throws -> (outcome: Outcome, value: JSON?) {
         let response: HTTPResponse
         do {
             var all = headers
@@ -128,12 +128,12 @@ public enum Writes {
             all["Identity"] = auth.identity
             response = try await http.send(makeRequest(url, method: method, headers: all, body: body, timeout: 15))
         } catch {
-            var outcome = Outcome.refusal("network", "Vélo’v ne répond pas. La modification a peut-être été prise en compte : actualisez avant de réessayer.")
+            var outcome = Outcome.refusal("network", unsure)
             outcome.detail = networkLine(error)
             return (outcome, nil)
         }
         let reply = ErrorReply(response)
-        return (accountOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail, failed: failed), response.ok ? reply.value : nil)
+        return (accountOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail, failed: failed, unsure: unsure), response.ok ? reply.value : nil)
     }
 
     public static func setAutoSpend(_ auth: WriteAuth, _ autoSpend: Bool, http: HTTPTransport) async throws -> (outcome: Outcome, autoSpend: Bool?) {
@@ -151,7 +151,8 @@ public enum Writes {
 
     public static func receipt(_ auth: WriteAuth, subscriptionId: String, periodId: String, http: HTTPTransport) async throws -> (outcome: Outcome, filename: String?, pdf: Data?) {
         let url = URL(string: "\(accountURL(auth.accountId))/subscriptions/\(pathSegment(subscriptionId))/periods/\(pathSegment(periodId))/reports")!
-        var (outcome, value) = try await accountCall(url, method: "POST", headers: ["Accept": "application/json"], body: nil, auth: auth, failed: "Ce reçu n’est pas disponible.", http: http)
+        var (outcome, value) = try await accountCall(url, method: "POST", headers: ["Accept": "application/json"], body: nil, auth: auth, failed: "Ce reçu n’est pas disponible.",
+                                                     unsure: Messages.noReply, http: http)
         guard outcome.ok else { return (outcome, nil, nil) }
         guard let content = value?["translations"]?["content"]?.string, let bytes = Data(base64Encoded: content), bytes.starts(with: Data("%PDF-".utf8)) else {
             outcome.ok = false
@@ -170,7 +171,7 @@ public enum Writes {
                                        ("city", body.city), ("phoneNumber", body.phoneNumber), ("address", address)]
         var outcome = try await accountCall(URL(string: accountURL(auth.accountId))!, method: "PATCH", headers: ["Content-Type": "application/vnd.account.v4+json"],
                                             body: orderedJSON(pairs.filter { $0.1 != nil }), auth: auth, failed: "Vélo’v n’a pas enregistré ces coordonnées.", http: http).outcome
-        if body.firstName != nil || body.lastName != nil, (400..<500).contains(outcome.httpStatus) {
+        if body.firstName != nil || body.lastName != nil, (400..<500).contains(outcome.httpStatus), !outcome.isUncertain {
             outcome.message = "Vélo’v n’a pas accepté ce changement de nom."
         }
         return outcome

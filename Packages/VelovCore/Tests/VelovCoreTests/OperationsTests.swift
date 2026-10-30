@@ -137,7 +137,7 @@ final class OperationsTests: XCTestCase {
             XCTAssertEqual(operations.begin("autoSpend"), .busy)
             throw URLError(.timedOut)
         }
-        var timedOut = noAnswer("Le serveur ne répond pas.")
+        var timedOut = noAnswer("Vélo’v ne répond pas.")
         timedOut.detail = "Délai dépassé · NSURLErrorTimedOut (-1001)"
         XCTAssertEqual(thrown, .finished(timedOut))
         XCTAssertEqual(operations.get("profile")?.status, .uncertain)

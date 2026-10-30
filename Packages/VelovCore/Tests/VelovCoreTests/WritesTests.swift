@@ -27,12 +27,38 @@ final class WritesTests: XCTestCase {
     func testAReleaseSucceedsOnTransactionStateOKOnlyNotOnHTTP200() async throws {
         for (state, message) in [("NOK", "Le vélo n’a pas pu être déverrouillé."), ("ABORT", "Le déverrouillage a été annulé."),
                                  ("TIME_OUT", "La borne n’a pas répondu à temps."), ("NOT_CONNECTED", "Aucun vélo n’est accroché à cette borne."),
-                                 ("SOMETHING_NEW", Messages.releaseFailed), (nil, Messages.releaseFailed)] as [(String?, String)] {
+                                 ("SOMETHING_NEW", Messages.unlockNoAnswer), (nil, Messages.unlockNoAnswer)] as [(String?, String)] {
             let (outcome, _) = try await release(.json(state.map { ["transactionState": $0] } ?? [:]))
             XCTAssertFalse(outcome.ok)
             XCTAssertEqual(outcome.transactionState, state)
             XCTAssertEqual(outcome.message, message)
         }
+    }
+
+    func testAnUncertainMessageGivesOnlyTheCauseLikeTheSite() async throws {
+        let lost = { MockServer { _, _ in .failure(.timedOut) }.transport }
+        let (gateway, _) = try await release(.status(502, body: "<html>Bad Gateway</html>"))
+        let (failed, _, _) = try await book(.status(500))
+        let (silent, _, _) = try await book(.failure(.timedOut))
+        let (change, _) = try await Writes.setAutoSpend(auth, true, http: lost())
+        let via = try await Writes.via(auth, subscriptionId: "sub-1", station: .number(2002), http: lost())
+        let contact = try await Writes.contactMail(auth, ContactBody(complaintType: "TRIP", message: "Bonjour"), http: lost())
+        let cases: [(Outcome, String)] = [
+            (gateway, "Vélo’v ne répond pas. Le vélo est peut-être déverrouillé."),
+            (failed, "Vélo’v ne répond pas. Le vélo est peut-être réservé."),
+            (silent, "Vélo’v ne répond pas. Le vélo est peut-être réservé."),
+            (change, "Vélo’v ne répond pas. La modification a peut-être été prise en compte."),
+            (via, "Vélo’v ne répond pas. Les 15 minutes ont peut-être été ajoutées."),
+            (contact, "Vélo’v ne répond pas. Votre message a peut-être déjà été envoyé.")
+        ]
+        for (outcome, message) in cases {
+            XCTAssertTrue(outcome.isUncertain, message)
+            XCTAssertEqual(outcome.message, message)
+            XCTAssertFalse([Messages.releaseFailed, Messages.bookingFailed].contains(outcome.message ?? ""))
+            XCTAssertNil(outcome.message?.range(of: "réessayer|actualisez", options: [.regularExpression, .caseInsensitive]), outcome.message ?? "")
+        }
+        let (refused, _) = try await release(.json(["code": "some.new.code"], status: 400))
+        XCTAssertEqual(refused.message, Messages.releaseFailed, "a clear refusal still says it did not go through")
     }
 
     func testReleaseRefusalsMapToTheAppsFrenchMessagesAndKeepTheRawCodeAndMessage() async throws {
@@ -100,7 +126,7 @@ final class WritesTests: XCTestCase {
             XCTAssertTrue(outcome.isUncertain)
             XCTAssertNil(booking)
             XCTAssertEqual(server.calls.count, 1)
-            XCTAssertEqual(outcome.message, "Vélo’v n’a pas confirmé la réservation. Vérifiez-la avant de réessayer.")
+            XCTAssertEqual(outcome.message, "Vélo’v ne répond pas. Le vélo est peut-être réservé.")
         }
     }
 

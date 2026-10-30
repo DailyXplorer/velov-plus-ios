@@ -63,7 +63,6 @@ struct ViaSheet: View {
                 FailureBlock(message: failure.message ?? "Les 15 minutes supplémentaires n’ont pas été accordées.",
                              uncertain: failure.isUncertain)
             }
-            if failure?.isUncertain == true { TextLink(title: "Écrire au service client", action: contact) }
             if let notice { FormError(notice) }
         } actions: {
             if failure?.isUncertain == true {
@@ -110,13 +109,6 @@ struct ViaSheet: View {
             }
             .padding(.top, Space.actions - Space.cards)
         }
-    }
-
-    private func contact() {
-        guard !model.operations.sending else { return }
-        dismiss()
-        model.contactRequested = true
-        model.page = .account
     }
 
     private func close() {

@@ -208,10 +208,10 @@ struct SampleService: VelovService {
         AutoRenewalResult(outcome: Outcome(ok: true, httpStatus: 200), autoRenewal: autoRenewal, autoRenewalAllowed: true, verified: true)
     }
     func requestExtraTime(stationNumber: Int) async throws -> Outcome {
-        screen == .viaUncertain ? lost("Vélo’v ne répond pas.") : Outcome(ok: true, httpStatus: 200, transactionState: "OK")
+        screen == .viaUncertain ? lost(Messages.viaNoAnswer) : Outcome(ok: true, httpStatus: 200, transactionState: "OK")
     }
     func contactSupport(_ body: ContactBody) async throws -> Outcome {
-        screen == .contactUncertain ? lost("Vélo’v ne répond pas.") : Outcome(ok: true, httpStatus: 200)
+        screen == .contactUncertain ? lost(Messages.contactNoAnswer) : Outcome(ok: true, httpStatus: 200)
     }
     func consumePromoCode(expectedCost: Int) async throws -> PromoResult { PromoResult(outcome: Outcome(ok: true, httpStatus: 200), promoCode: "EXEMPLE-0000") }
 }

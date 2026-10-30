@@ -228,7 +228,7 @@ struct WriteDialog<Question: View>: View {
             if Question.self != EmptyView.self { question() }
         } extra: {
             if let failure {
-                FailureBlock(message: failure.message ?? (failure.isUncertain ? Messages.unverified : "La modification n’a pas abouti."),
+                FailureBlock(message: failure.message ?? (failure.isUncertain ? Messages.noReply : "La modification n’a pas abouti."),
                              uncertain: uncertain)
             }
             if uncertain, check == nil, let restart {

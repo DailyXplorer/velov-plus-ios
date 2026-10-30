@@ -73,7 +73,7 @@ public enum Writes {
             outcome.detail = networkLine(error)
             return ratingOutcome(outcome)
         }
-        if response.ok { return Outcome(ok: true, httpStatus: response.status) }
+        if response.ok, response.body.isEmpty || JSON.parse(response.body) != nil { return Outcome(ok: true, httpStatus: response.status) }
         let reply = ErrorReply(response)
         return ratingOutcome(Outcome(ok: false, httpStatus: response.status, code: reply.code, detail: reply.detail))
     }

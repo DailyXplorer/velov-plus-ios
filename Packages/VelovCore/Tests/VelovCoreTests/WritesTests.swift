@@ -167,6 +167,14 @@ final class WritesTests: XCTestCase {
         XCTAssertEqual(refused.message, "Vélo’v a refusé cette note.")
     }
 
+    func testARatingIsDoneOnlyOnAnEmptyOrJSONAnswer() async throws {
+        for (reply, done) in [(Reply.status(204), true), (.status(200, body: "{}"), true), (.status(200, body: "<html>Maintenance</html>"), false)] {
+            let outcome = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .recommend, http: MockServer { _, _ in reply }.transport)
+            XCTAssertEqual(outcome.ok, done, "\(reply)")
+            XCTAssertEqual(outcome.isUncertain, !done, "\(reply)")
+        }
+    }
+
     func testBookingRefusalsMapToFrenchMessagesAndAreNeverRetried() async throws {
         for (code, message) in [("booking.exception.bike.already.reserved", "Ce vélo est déjà réservé par un autre usager."),
                                 ("bookings.exception.not.authorized", "Vous avez déjà une réservation en cours, ou moins de 10 points."),

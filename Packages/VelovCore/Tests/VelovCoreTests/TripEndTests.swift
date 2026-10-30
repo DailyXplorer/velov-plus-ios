@@ -317,6 +317,7 @@ final class TripEndTests: XCTestCase {
             Outcome(ok: false, httpStatus: 502, code: "gateway"),
             Outcome(ok: false, httpStatus: 500, transactionState: "NOK"),
             Outcome(ok: false, httpStatus: 400),
+            Outcome(ok: false, httpStatus: 401),
             Outcome(ok: false, httpStatus: 200, code: "local.promo.unreadable")
         ]
         XCTAssertEqual(sure.filter(\.isUncertain), [])

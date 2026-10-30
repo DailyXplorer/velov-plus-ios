@@ -70,10 +70,6 @@ final class WritesTests: XCTestCase {
         XCTAssertEqual(server.calls.count, 1)
         XCTAssertEqual([lost.ok ? "ok" : "no", String(lost.httpStatus), lost.code, lost.detail], ["no", "0", "network", "Délai dépassé · NSURLErrorTimedOut (-1001)"])
         XCTAssert(lost.message!.contains("peut-être déverrouillé"))
-        let expired = MockServer { _, _ in .status(401) }
-        do { _ = try await Writes.release(auth, subscriptionId: "sub-1", stationNumber: 2002, standNumber: 1, bikeNumber: 20449, http: expired.transport); XCTFail("no error") }
-        catch { XCTAssertEqual((error as? VelovError)?.code, .expired) }
-        XCTAssertEqual(expired.calls.count, 1)
     }
 
     func book(_ reply: Reply) async throws -> (Outcome, RawBooking?, MockServer) {
@@ -159,9 +155,6 @@ final class WritesTests: XCTestCase {
         _ = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .recommend, http: server.transport)
         XCTAssertEqual(server.calls[0].url, "https://api.cyclocity.fr/contracts/lyon/accounts/acc-1/trips/trip-1/rate")
         XCTAssertEqual(server.calls[0].bodyText, #"{"bikeId":20449,"recommended":true,"contract":"lyon","rating":null}"#)
-        let expired = MockServer { _, _ in .status(401) }
-        do { _ = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .warn(30), http: expired.transport); XCTFail("no error") }
-        catch { XCTAssertEqual((error as? VelovError)?.code, .expired) }
         for status in [404, 502] {
             let failing = MockServer { _, _ in .status(status) }
             let outcome = try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .warn(30), http: failing.transport)
@@ -195,6 +188,23 @@ final class WritesTests: XCTestCase {
             let server = MockServer { _, _ in reply }
             _ = try? await Writes.setAutoSpend(auth, false, http: server.transport)
             XCTAssertEqual(server.calls.count, 1)
+        }
+    }
+
+    func testABare401ToASentWriteStaysUncertainAndIsNeverRetried() async throws {
+        let auth = auth
+        let writes: [(String, (HTTPTransport) async throws -> Outcome)] = [
+            ("release", { try await Writes.release(auth, subscriptionId: "sub-1", stationNumber: 2002, standNumber: 1, bikeNumber: 20449, http: $0) }),
+            ("book", { try await Writes.book(auth, stationId: "st-uuid", stationNumber: 2002, standNumber: 12, subscriptionId: "sub-1", bikeId: "bike-uuid", http: $0).outcome }),
+            ("rate", { try await Writes.rate(auth, tripId: "trip-1", bikeNumber: 20449, vote: .warn(30), http: $0) }),
+            ("favorite", { try await Writes.setFavorite(auth, station: 2002, on: true, http: $0) })
+        ]
+        for (name, send) in writes {
+            let server = MockServer { _, _ in .status(401) }
+            let outcome = try? await send(server.transport)
+            XCTAssertEqual(outcome?.isUncertain, true, name)
+            XCTAssertEqual(outcome?.httpStatus, 401, name)
+            XCTAssertEqual(server.calls.count, 1, name)
         }
     }
 }

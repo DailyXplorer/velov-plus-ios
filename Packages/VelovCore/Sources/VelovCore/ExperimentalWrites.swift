@@ -9,7 +9,7 @@ extension Writes {
     public static func setAutoRenewal(_ auth: WriteAuth, subscriptionId: String, autoRenewal: Bool, http: HTTPTransport) async throws -> Outcome {
         try await accountCall(URL(string: "\(accountURL(auth.accountId))/subscriptions/\(pathSegment(subscriptionId))")!, method: "PATCH",
                               headers: ["Content-Type": Guesses.subscriptionMediaType], body: orderedJSON([(Guesses.autoRenewalField, autoRenewal)]), auth: auth,
-                              failed: "Vélo’v n’a pas enregistré le renouvellement automatique.", http: http, preserveUnauthorized: true).outcome
+                              failed: "Vélo’v n’a pas enregistré le renouvellement automatique.", http: http).outcome
     }
 
     public static func via(_ auth: WriteAuth, subscriptionId: String, station: ViaStation, http: HTTPTransport) async throws -> Outcome {
@@ -20,7 +20,7 @@ extension Writes {
         }
         let (answer, value) = try await accountCall(URL(string: "\(accountURL(auth.accountId))/subscriptions/\(pathSegment(subscriptionId))/via")!, method: "POST",
                                                     headers: ["Content-Type": Guesses.viaMediaType], body: orderedJSON([(Guesses.viaStationField, stationId)]), auth: auth,
-                                                    failed: "Les 15 minutes supplémentaires n’ont pas été accordées.", http: http, preserveUnauthorized: true)
+                                                    failed: "Les 15 minutes supplémentaires n’ont pas été accordées.", http: http)
         guard answer.ok else { return answer }
         var outcome = answer
         let state = value?.string ?? value?[Guesses.viaStateField]?.string
@@ -34,13 +34,13 @@ extension Writes {
         let form = multipart([(Guesses.mailFields.complaintType, body.complaintType), (Guesses.mailFields.message, contactMessage(body))], boundary: boundary)
         return try await accountCall(URL(string: "\(accountURL(auth.accountId))/mail")!, method: "POST",
                                      headers: ["Accept": Guesses.mailAccept, "Content-Type": "multipart/form-data; boundary=\(boundary)"], body: form, auth: auth,
-                                     failed: "Vélo’v n’a pas confirmé l’envoi du message.", http: http, preserveUnauthorized: true).outcome
+                                     failed: "Vélo’v n’a pas confirmé l’envoi du message.", http: http).outcome
     }
 
     public static func promoCode(_ auth: WriteAuth, http: HTTPTransport) async throws -> PromoResult {
         let (answer, value) = try await accountCall(URL(string: "\(accountURL(auth.accountId))/rewards/consume/promocode")!, method: "POST",
                                                     headers: ["Accept": Guesses.promocodeAccept], body: nil, auth: auth,
-                                                    failed: "Le code n’a pas pu être créé.", http: http, preserveUnauthorized: true)
+                                                    failed: "Le code n’a pas pu être créé.", http: http)
         let code = value?[Guesses.promocodeCodeField]?.string.flatMap { $0.isEmpty ? nil : $0 }
         var outcome = answer
         if outcome.ok && code == nil {

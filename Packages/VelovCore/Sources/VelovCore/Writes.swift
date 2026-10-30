@@ -73,7 +73,6 @@ public enum Writes {
             outcome.detail = networkLine(error)
             return ratingOutcome(outcome)
         }
-        if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
         if response.ok { return Outcome(ok: true, httpStatus: response.status) }
         let reply = ErrorReply(response)
         return ratingOutcome(Outcome(ok: false, httpStatus: response.status, code: reply.code, detail: reply.detail))
@@ -92,7 +91,6 @@ public enum Writes {
             outcome.detail = networkLine(error)
             return outcome
         }
-        if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
         let reply = ErrorReply(response)
         return releaseOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail, transactionState: reply.transactionState)
     }
@@ -109,7 +107,6 @@ public enum Writes {
             outcome.detail = networkLine(error)
             return (outcome, nil)
         }
-        if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
         let reply = ErrorReply(response)
         var outcome = bookingOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail)
         guard outcome.ok else { return (outcome, nil) }
@@ -122,8 +119,8 @@ public enum Writes {
         return (outcome, nil)
     }
 
-    static func accountCall(_ url: URL, method: String, headers: [String: String], body: Data?, auth: WriteAuth, failed: String, http: HTTPTransport,
-                            preserveUnauthorized: Bool = false) async throws -> (outcome: Outcome, value: JSON?) {
+    static func accountCall(_ url: URL, method: String, headers: [String: String], body: Data?, auth: WriteAuth, failed: String,
+                            http: HTTPTransport) async throws -> (outcome: Outcome, value: JSON?) {
         let response: HTTPResponse
         do {
             var all = headers
@@ -135,7 +132,6 @@ public enum Writes {
             outcome.detail = networkLine(error)
             return (outcome, nil)
         }
-        if response.status == 401 && !preserveUnauthorized { throw VelovError(.expired, Messages.sessionToRenew) }
         let reply = ErrorReply(response)
         return (accountOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail, failed: failed), response.ok ? reply.value : nil)
     }

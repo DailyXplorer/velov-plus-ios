@@ -86,8 +86,9 @@ struct InviteFriend: View {
     }
 
     private var sheet: some View {
-        ConfirmScaffold(title: "Obtenir un code\u{a0}?", closeDisabled: blocked, close: { close() }) {
-            Text("\(formatNumber(cost ?? 0)) points sont débités dès la création du code, même s’il n’est jamais utilisé.")
+        let created = shown?.ok == true
+        return ConfirmScaffold(title: created ? "Votre code" : "Obtenir un code\u{a0}?", closeDisabled: blocked, close: { close() }) {
+            if !created { Text("\(formatNumber(cost ?? 0)) points sont débités dès la création du code, même s’il n’est jamais utilisé.") }
         } extra: {
             if verification == .debited {
                 FormError("Vos points ont été débités, mais aucun code n’a été reçu. Contactez le service client pour le récupérer.")

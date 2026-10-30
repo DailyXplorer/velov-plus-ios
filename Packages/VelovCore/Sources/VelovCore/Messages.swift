@@ -65,6 +65,7 @@ public enum Messages {
     public static let stationsUnavailable = "Les disponibilités des stations sont momentanément indisponibles."
     public static let stationBikesUnavailable = "Les vélos de cette station sont momentanément indisponibles."
     public static let bikeUnavailable = "Ce vélo est momentanément indisponible."
+    public static let refreshFailed = "Actualisation impossible pour le moment."
     public static let accountUnavailable = "Certaines informations Vélo’v ne sont pas disponibles pour le moment."
     public static let soon = "Bientôt disponible"
 }

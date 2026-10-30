@@ -89,8 +89,7 @@ struct BikesSheet: View {
         defer { refreshing = false }
         do { bikes = .ready(try await model.service.stationBikes(station.number)) }
         catch {
-            let failure = LoadFailure(error, Messages.stationBikesUnavailable)
-            if bikes.value == nil { bikes = .failed(failure) } else { model.showToast(failure.message) }
+            if bikes.value == nil { bikes = .failed(LoadFailure(error, Messages.stationBikesUnavailable)) } else { model.showToast(Messages.refreshFailed) }
         }
     }
 }

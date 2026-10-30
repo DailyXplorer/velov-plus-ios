@@ -260,8 +260,7 @@ final class AppModel {
         case .failure(let error as VelovError) where error.code == .expired:
             expire()
         case .failure(let error):
-            let failure = LoadFailure(error, "Votre compte est momentanément indisponible.")
-            if dashboard == nil { phase = .failed(failure) } else { showToast(failure.message) }
+            if dashboard == nil { phase = .failed(LoadFailure(error, "Votre compte est momentanément indisponible.")) } else { showToast(Messages.refreshFailed) }
         }
     }
 
@@ -271,8 +270,7 @@ final class AppModel {
         defer { stationsPending = false }
         do { stations = .ready(try await service.stations()) }
         catch {
-            let failure = LoadFailure(error, Messages.stationsUnavailable)
-            if stations.value == nil { stations = .failed(failure) } else { showToast(failure.message) }
+            if stations.value == nil { stations = .failed(LoadFailure(error, Messages.stationsUnavailable)) } else { showToast(Messages.refreshFailed) }
         }
     }
 

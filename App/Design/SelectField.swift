@@ -122,14 +122,9 @@ private struct ChoiceList<Value: Hashable>: View {
                         value = option.value
                         dismiss()
                     } label: {
-                        HStack(spacing: Space.cards) {
-                            Text(option.label).typo(.body(.input)).foregroundStyle(Palette.ink)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            if option.value == value {
-                                Icon(.check, .bold, size: 16).foregroundStyle(Palette.red)
-                            }
-                        }
-                        .contentShape(Rectangle())
+                        Text(option.label).typo(.body(.input)).foregroundStyle(option.value == value ? Palette.red : Palette.ink)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
                     .accessibilityAddTraits(option.value == value ? .isSelected : [])
                 }

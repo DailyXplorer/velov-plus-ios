@@ -106,7 +106,7 @@ Ces règles du propriétaire valent pour l’app comme pour le site, où elles s
 
 - Le rouge est la seule couleur d’accent. Jamais de rose, de saumon ni d’encadré teinté de rouge.
 - Aucune ombre portée. Aucun contour de focus.
-- Dans un menu ou une liste de choix ouverte, pas de coche : le choix actuel est simplement en rouge. L’app ne suit pas encore cette règle (voir `docs/parity.md`).
+- Dans un menu ou une liste de choix ouverte, pas de coche : le choix actuel est simplement en rouge. Les feuilles de choix la suivent ; le menu natif des filtres pas encore (voir `docs/parity.md`).
 - Rien de souligné. Le texte sélectionné est blanc sur rouge sur le site ; dans l’app, la sélection est dessinée par le système.
 - Deux polices seulement : Faculty Glyphic (Velov Glyphic) pour les titres et les grands nombres, DM Sans pour le reste.
 - Icônes du jeu gratuit Hugeicons partout, jamais d’icône Pro.

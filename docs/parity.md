@@ -70,8 +70,8 @@ Dans l’app, le bandeau du trajet en cours reprend le bandeau rouge de la rése
 
 ### Apparence propre à iOS
 - La barre d’onglets du bas, les boutons Actualiser et Compte de l’en-tête et la barre de recherche des Stations utilisent le matériau Liquid Glass d’iOS. Le site utilise des surfaces blanches avec un filet.
-- Les filtres (Stations, type de vélo des Trajets, période des Statistiques) ouvrent le menu natif d’iOS en Liquid Glass (`Menu` avec un `Picker` intégré), où iOS coche le choix actuel. Les champs de formulaire (Pays, Objet, Trajet, Station pleine) ouvrent une feuille opaque en détente `.large` avec la liste des choix ; le choix actuel y porte une coche rouge, et son texte reste noir (`App/Design/SelectField.swift`). Le site garde sa liste blanche maison, choix actuel en texte rouge, sans coche.
-- La règle du propriétaire est : pas de coche dans un menu ouvert, le choix actuel est simplement en rouge. L’app ne la suit pas encore, ni dans la feuille ni dans le menu natif ; c’est un écart à corriger, pas une différence voulue.
+- Les filtres (Stations, type de vélo des Trajets, période des Statistiques) ouvrent le menu natif d’iOS en Liquid Glass (`Menu` avec un `Picker` intégré), où iOS coche le choix actuel. Les champs de formulaire (Pays, Objet, Trajet, Station pleine) ouvrent une feuille opaque en détente `.large` avec la liste des choix ; le choix actuel y est en texte rouge, sans coche, comme sur le site (`App/Design/SelectField.swift`). Le site garde sa liste blanche maison.
+- La règle du propriétaire est : pas de coche dans un menu ouvert, le choix actuel est simplement en rouge. La feuille de choix la suit. Le menu natif des filtres ne la suit pas encore, car iOS y dessine sa coche ; c’est un écart à corriger, pas une différence voulue.
 - L’app utilise la police des chiffres « Velov Glyphic Timer » pour les comptes à rebours des Live Activities.
 
 ### Diagnostic

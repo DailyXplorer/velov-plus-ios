@@ -170,8 +170,8 @@ public func endSession(refreshToken: String?, idToken: String?, http: HTTPTransp
 }
 
 public func accountEmail(accessToken: String) throws -> String {
-    guard let jwt = JWT(accessToken) else { throw VelovError(.expired, "Votre session a expiré. Reconnectez-vous.") }
-    guard jwt.payload["azp"]?.string == Cyclocity.clientId else { throw VelovError(.expired, "Votre session a expiré. Reconnectez-vous.") }
+    guard let jwt = JWT(accessToken) else { throw VelovError(.expired, Messages.sessionExpired) }
+    guard jwt.payload["azp"]?.string == Cyclocity.clientId else { throw VelovError(.expired, Messages.sessionExpired) }
     let email = jwt.payload["preferred_username"]?.string ?? jwt.payload["sub"]?.string ?? ""
     guard email.wholeMatch(of: /[^\s@]+@[^\s@]+\.[^\s@]+/) != nil else {
         throw VelovError(.protocol, "Votre compte n’a pas pu être vérifié. Reconnectez-vous.")

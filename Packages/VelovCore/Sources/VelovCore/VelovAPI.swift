@@ -68,7 +68,7 @@ public final class VelovAPI: Sendable {
         let response = try await getWithAppToken(client, appToken, URL(string: "\(Cyclocity.base)\(path)")!) { token in
             ["Authorization": "Taknv1 \(token)", "Identity": identity.accessToken, "Accept": accept]
         }
-        if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
+        if response.status == 401 { throw VelovError(.expired, Messages.sessionExpired) }
         guard response.ok, let value = response.json else { throw VelovError(.unavailable, Messages.accountUnavailable, status: response.status) }
         return value
     }

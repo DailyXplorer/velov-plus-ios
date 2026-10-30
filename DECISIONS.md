@@ -125,6 +125,7 @@ Ces règles du propriétaire valent pour l’app comme pour le site, où elles s
 - Aucune saisie de moyen de paiement ni achat de formule : les laisser au site officiel.
 - Les menus suivent le style iOS, avec la liste attachée à son bouton.
 - Remplacer un élément maison par un élément natif seulement avec l’accord du propriétaire.
+- Fiche vélo : RÉSERVER et DÉVERROUILLER sont empilés, en pleine largeur et à la même taille de texte ; aucun des deux n’est rétréci (validé par le propriétaire).
 - Tout changement de texte ou d’apparence d’un côté est reporté de l’autre dans le même lot, sans attendre qu’on le redemande ; seuls Liquid Glass et les widgets sont propres à l’app.
 
 ## Dépôt

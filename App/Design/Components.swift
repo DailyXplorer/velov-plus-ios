@@ -73,8 +73,8 @@ struct PillLabel<Label: View>: View {
             if pending { Spinner() }
         }
         .typo(.caps(.button))
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: !fullWidth, vertical: true)
         .padding(.horizontal, Space.row)
         .frame(minHeight: large ? Layout.largeControl : Layout.control)
         .frame(maxWidth: fullWidth ? .infinity : nil)
@@ -462,6 +462,7 @@ struct ConfirmToggle: View {
 struct OnRedPill: View {
     let icon: IconName
     let title: String
+    var fullWidth = false
     let action: () -> Void
 
     var body: some View {
@@ -469,43 +470,64 @@ struct OnRedPill: View {
             HStack(spacing: Layout.iconGap) {
                 Icon(icon, .light, size: 16).foregroundStyle(Palette.white)
                     .frame(width: 32, height: 32).background(Circle().fill(Palette.red))
-                Text(title).typo(.caps(.button)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.85)
+                Text(title).typo(.caps(.button)).foregroundStyle(Palette.ink).fixedSize()
             }
             .padding(.leading, (Layout.control - 32) / 2).padding(.trailing, Space.card)
-            .frame(minHeight: Layout.control)
+            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: Layout.control, alignment: .leading)
             .background(Capsule().fill(Palette.white))
             .contentShape(Capsule())
         }
         .buttonStyle(.press)
-        .fixedSize(horizontal: false, vertical: true)
-        .layoutPriority(1)
     }
 }
 
-struct RedBanner<Trailing: View>: View {
+struct RedBanner: View {
     let icon: IconName
     let value: String?
     let label: String
-    var valueWidth: CGFloat = 0
-    @ViewBuilder let trailing: () -> Trailing
+    var pill: OnRedPill?
     private let inset: CGFloat = 6
 
     var body: some View {
-        HStack(spacing: Space.cards) {
-            HStack(spacing: Space.label) {
-                Icon(icon, .light, size: 18)
-                    .frame(width: 34, height: 34)
-                    .overlay(Circle().strokeBorder(Palette.white, lineWidth: 1.5))
-                if let value { Text(value).typo(.countdown).fixedSize().frame(minWidth: valueWidth, alignment: .leading) }
+        Group {
+            if let pill {
+                ViewThatFits(in: .horizontal) {
+                    row(pill)
+                    VStack(alignment: .leading, spacing: inset) {
+                        clock.padding(.leading, Space.row - inset).frame(minHeight: Layout.control)
+                        OnRedPill(icon: pill.icon, title: pill.title, fullWidth: true, action: pill.action)
+                    }
+                    .padding(inset)
+                }
+            } else {
+                row(nil)
             }
-            .foregroundStyle(Palette.white)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(label)
+        }
+        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).fill(Palette.red))
+    }
+
+    private func row(_ pill: OnRedPill?) -> some View {
+        HStack(spacing: Space.cards) {
+            clock
             Spacer(minLength: 0)
-            trailing()
+            pill
         }
         .padding(.leading, Space.row).padding(.trailing, inset).padding(.vertical, inset)
-        .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).fill(Palette.red))
+    }
+
+    private var clock: some View {
+        HStack(spacing: Space.label) {
+            Icon(icon, .light, size: 18)
+                .frame(width: 34, height: 34)
+                .overlay(Circle().strokeBorder(Palette.white, lineWidth: 1.5))
+            if let value {
+                Text(String(value.map { $0.isNumber ? "0" : $0 })).typo(.countdown).fixedSize().hidden()
+                    .overlay(alignment: .leading) { Text(value).typo(.countdown).fixedSize() }
+            }
+        }
+        .foregroundStyle(Palette.white)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
     }
 }
 

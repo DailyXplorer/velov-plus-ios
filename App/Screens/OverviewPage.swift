@@ -127,9 +127,8 @@ struct OngoingBanner: View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let elapsed = trip.startedAt.map { max(0, Int(context.date.timeIntervalSince($0).rounded())) }
             RedBanner(icon: .personSimpleBike, value: elapsed.map(elapsedClock),
-                      label: elapsed.map { "Trajet en cours depuis \(max(1, $0 / 60))\u{a0}min" } ?? "Trajet en cours") {
-                OnRedPill(icon: .timer, title: "15 minutes de plus") { model.sheet = .via }
-            }
+                      label: elapsed.map { "Trajet en cours depuis \(max(1, $0 / 60))\u{a0}min" } ?? "Trajet en cours",
+                      pill: OnRedPill(icon: .timer, title: "15 minutes de plus") { model.sheet = .via })
             .padding(.bottom, Layout.margin)
         }
     }

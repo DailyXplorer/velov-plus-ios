@@ -41,7 +41,7 @@ struct StationCard: View {
                 if let distance { Text(formatDistance(distance)).typo(.body(.small)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize() }
                 Spacer(minLength: 0)
             }
-            HStack(spacing: Space.cards) {
+            PairedActions {
                 PillButton(variant: .primary, fullWidth: true, action: { bikesOpen = true }) { Text("Voir les vélos") }
                 PillButton("Itinéraire", variant: .secondary, fullWidth: true, action: directions)
                     .accessibilityHint("Ouvre Plans")

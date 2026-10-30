@@ -50,6 +50,7 @@ enum SnapshotScreen: String {
     case stats, statsCharts, statsTipFirst, statsTipMiddle, statsTipLast, statsHeatmap, statsHeatTip, statsDonut, statsRecords, statsBike, statsEnd
     case login, loginError, guestStations, guestStationSheet, guestBikeSheet, bikePush
     case expiredSession, bookingWithoutAccount
+    case ongoingLong
 
     var asGuest: Bool { [.guestStations, .guestStationSheet, .guestBikeSheet].contains(self) }
 

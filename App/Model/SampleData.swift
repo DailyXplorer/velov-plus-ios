@@ -122,7 +122,7 @@ struct SampleService: VelovService {
     var slow = false
 
     private var booking: Booking? { screen?.withBooking == true || screen == .expiredSession || screen == .bookingWithoutAccount ? SampleData.booking() : nil }
-    private var riding: Bool { screen?.riding == true }
+    private var riding: Bool { screen?.riding == true || screen == .ongoingLong }
     func account() {
         precondition(screen?.asGuest != true, "An account request started while browsing without an account")
         precondition(!SampleData.sessionForgotten, "An account request started after the session was forgotten")
@@ -147,7 +147,7 @@ struct SampleService: VelovService {
         if screen == .stationsEmptyFilter { data.profile.favorites = [] }
         if screen == .bigBalance { data.rewards.balance = 128_450; data.rewards.total = 254_300 }
         guard riding else { return data }
-        let start = SampleData.ago(23 / 60)
+        let start = SampleData.ago(screen == .ongoingLong ? 83 / 60 : 23 / 60)
         data.ongoing = [Trip(id: "ride", startedAt: start, endedAt: nil, startStation: SampleData.byNumber[2002]!.name, endStation: nil,
                              startStationNumber: 2002, endStationNumber: nil, startStand: 2, endStand: nil, distance: nil, bikeNumber: 20449, bikeType: .electrical,
                              duration: nil, price: nil, fullPrice: nil, discount: 0, pointsEarned: 0, pointsSpent: 0, litigious: false, isRated: nil,

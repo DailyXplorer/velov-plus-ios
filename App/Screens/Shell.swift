@@ -541,17 +541,12 @@ struct BookingBanners: View {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let left = booking.endsAt.map { max(0, Int($0.timeIntervalSince(context.date).rounded())) }
                 if left != 0 {
-                    RedBanner(icon: .clock, value: left.map(clock), label: left.map { "Vélo réservé, \(max(1, $0 / 60))\u{a0}min restantes" } ?? "Vélo réservé", valueWidth: 78) {
-                        if Place(booking) != nil { unlock(booking) }
-                    }
+                    RedBanner(icon: .clock, value: left.map(clock), label: left.map { "Vélo réservé, \(max(1, $0 / 60))\u{a0}min restantes" } ?? "Vélo réservé",
+                              pill: Place(booking) == nil ? nil : OnRedPill(icon: .lockOpen, title: "Déverrouiller") { model.sheet = .unlock(booking) })
                     .padding(.bottom, bottom)
                 }
             }
         }
-    }
-
-    private func unlock(_ booking: Booking) -> some View {
-        OnRedPill(icon: .lockOpen, title: "Déverrouiller") { model.sheet = .unlock(booking) }
     }
 }
 

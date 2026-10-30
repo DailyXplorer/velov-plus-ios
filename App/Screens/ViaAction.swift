@@ -33,15 +33,25 @@ struct ViaSheet: View {
     private var blocked: Bool { model.operations.sending }
 
     var body: some View {
-        if reviewing || held != nil, let target {
-            review(target)
-        } else {
-            VStack(alignment: .leading, spacing: 0) {
-                SheetHeading(title: "15 minutes de plus", closeDisabled: blocked) { close() }
-                pick.padding(.top, Space.titleToContent)
+        Group {
+            if reviewing || held != nil, let target {
+                review(target)
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    SheetHeading(title: "15 minutes de plus", closeDisabled: blocked) { close() }
+                    pick.padding(.top, Space.titleToContent)
+                }
+                .padding(Layout.dialog)
+                .velovSheet(.fit, closeDisabled: blocked)
             }
-            .padding(Layout.dialog)
-            .velovSheet(.fit, closeDisabled: blocked)
+        }
+        .task {
+            guard model.snapshot == .viaReview || model.snapshot == .viaUncertain else { return }
+            try? await Task.sleep(for: .seconds(1.5))
+            guard let station = choices.first else { return }
+            selected = station.number
+            reviewing = true
+            if model.snapshot == .viaUncertain { confirm((station.number, station.name)) }
         }
     }
 

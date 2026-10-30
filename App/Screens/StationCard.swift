@@ -60,7 +60,7 @@ struct StationCard: View {
             })
         }
         .task(id: station.id) {
-            if model.snapshot == .bikeList || model.snapshot == .bikeSheet || model.snapshot == .bookConfirm {
+            if model.snapshot?.opensBikes == true {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 bikesOpen = true
             }

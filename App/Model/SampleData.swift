@@ -17,7 +17,7 @@ enum SampleData {
         Station(id: "6003", number: 6003, name: "Brotteaux", address: "", lat: 45.7672, lon: 4.8590, mechanical: 3, electrical: 3, stands: 12, open: true),
         Station(id: "1003", number: 1003, name: "Saint-Paul", address: "", lat: 45.7663, lon: 4.8270, mechanical: 5, electrical: 1, stands: 6, open: true),
         Station(id: "7001", number: 7001, name: "Guillotière", address: "", lat: 45.7553, lon: 4.8422, mechanical: 0, electrical: 2, stands: 15, open: true),
-        Station(id: "2007", number: 2007, name: "Perrache", address: "", lat: 45.7493, lon: 4.8262, mechanical: 7, electrical: 0, stands: 3, open: true),
+        Station(id: "2007", number: 2007, name: "Perrache", address: "", lat: 45.7493, lon: 4.8262, mechanical: 7, electrical: 0, stands: 0, open: true),
         Station(id: "4001", number: 4001, name: "Croix-Rousse", address: "", lat: 45.7745, lon: 4.8320, mechanical: 2, electrical: 6, stands: 10, open: true)
     ]
     static var byNumber: [Int: Station] { Dictionary(uniqueKeysWithValues: stations.map { ($0.number, $0) }) }
@@ -101,19 +101,27 @@ extension SampleData {
 }
 
 struct SampleService: VelovService {
-    var booking: Booking?
-    var failUnlock = false
-    var riding = false
+    let screen: SnapshotScreen?
     var slow = false
 
+    private var booking: Booking? { screen?.withBooking == true ? SampleData.booking() : nil }
+    private var riding: Bool { screen?.riding == true }
     private func pause() async { if slow { try? await Task.sleep(for: .seconds(8)) } }
+    private func lost(_ message: String) -> Outcome {
+        var lost = Outcome.refusal("network", message)
+        lost.detail = NetworkFailure(code: URLError.timedOut.rawValue, elapsed: 30).line
+        return lost
+    }
 
     func hasSession() async -> Bool { true }
     func signIn(email: String, code: String) async throws {}
     func logout() async -> Bool { true }
     func dashboard() async throws -> Dashboard {
-        guard riding else { return SampleData.dashboard }
+        if screen == .pageFailure { throw NetworkFailure(code: URLError.timedOut.rawValue, elapsed: 30) }
         var data = SampleData.dashboard
+        if screen == .stationsEmptyFilter { data.profile.favorites = [] }
+        if screen == .bigBalance { data.rewards.balance = 128_450; data.rewards.total = 254_300 }
+        guard riding else { return data }
         let start = SampleData.ago(23 / 60)
         data.ongoing = [Trip(id: "ride", startedAt: start, endedAt: nil, startStation: SampleData.byNumber[2002]!.name, endStation: nil,
                              startStationNumber: 2002, endStationNumber: nil, startStand: 2, endStand: nil, distance: nil, bikeNumber: 20449, bikeType: .electrical,
@@ -122,7 +130,10 @@ struct SampleService: VelovService {
         return data
     }
     func stations() async throws -> StationData { StationData(stations: SampleData.stations, updatedAt: SampleData.now) }
-    func stationBikes(_ station: Int) async throws -> [Bike] { SampleData.bikes }
+    func stationBikes(_ station: Int) async throws -> [Bike] {
+        if screen == .bikeListFailure { throw NetworkFailure(code: URLError.notConnectedToInternet.rawValue, elapsed: 0.4) }
+        return SampleData.bikes
+    }
     func bike(_ number: Int) async throws -> Bike? { SampleData.bikes.first { $0.number == number } ?? SampleData.bikes[0] }
     func bookings() async throws -> [Booking] { booking.map { [$0] } ?? [] }
     func forgetStats() async {}
@@ -133,11 +144,7 @@ struct SampleService: VelovService {
         return (Outcome(ok: true, httpStatus: 200), SampleData.booking(bike: bikeNumber, minutesLeft: 15))
     }
     func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?) {
-        if failUnlock {
-            var lost = Outcome.refusal("network", Messages.unlockNoAnswer)
-            lost.detail = NetworkFailure(code: URLError.timedOut.rawValue, elapsed: 30).line
-            return (lost, nil)
-        }
+        if screen == .unlockUncertain { return (lost(Messages.unlockNoAnswer), nil) }
         return (Outcome(ok: true, httpStatus: 200, transactionState: "OK"), [])
     }
     func tripCheck() async throws -> TripCheck { TripCheck(ongoing: [], latest: nil) }
@@ -154,7 +161,11 @@ struct SampleService: VelovService {
     func setAutoRenewal(subscriptionId: String, autoRenewal: Bool) async throws -> AutoRenewalResult {
         AutoRenewalResult(outcome: Outcome(ok: true, httpStatus: 200), autoRenewal: autoRenewal, autoRenewalAllowed: true, verified: true)
     }
-    func requestExtraTime(stationNumber: Int) async throws -> Outcome { Outcome(ok: true, httpStatus: 200, transactionState: "OK") }
-    func contactSupport(_ body: ContactBody) async throws -> Outcome { Outcome(ok: true, httpStatus: 200) }
+    func requestExtraTime(stationNumber: Int) async throws -> Outcome {
+        screen == .viaUncertain ? lost("Vélo’v ne répond pas.") : Outcome(ok: true, httpStatus: 200, transactionState: "OK")
+    }
+    func contactSupport(_ body: ContactBody) async throws -> Outcome {
+        screen == .contactUncertain ? lost("Vélo’v ne répond pas.") : Outcome(ok: true, httpStatus: 200)
+    }
     func consumePromoCode(expectedCost: Int) async throws -> PromoResult { PromoResult(outcome: Outcome(ok: true, httpStatus: 200), promoCode: "EXEMPLE-0000") }
 }

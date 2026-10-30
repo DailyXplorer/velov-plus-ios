@@ -79,7 +79,11 @@ struct BikesSheet: View {
         .velovSheet(.large, closeDisabled: model.operations.sending)
         .task {
             await load()
-            if model.snapshot == .bikeSheet || model.snapshot == .bookConfirm, let first = assessed?.first { path = [BikeRoute(number: first.bike.number, station: station)] }
+            if model.snapshot?.pushesBike == true, let first = assessed?.first { path = [BikeRoute(number: first.bike.number, station: station)] }
+            if model.snapshot == .dockWhileBikes {
+                try? await Task.sleep(for: .seconds(5))
+                dismiss()
+            }
         }
     }
 

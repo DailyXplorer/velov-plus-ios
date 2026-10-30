@@ -67,4 +67,20 @@ shot journalPage 23-journal-page 7
 shot toggleDialog 24-toggle-dialog 8
 shot logoutDialog 25-logout-dialog 7
 shot choiceSheet 26-choice-sheet 9
+shot viaPick 27-via-pick 8
+shot viaReview 28-via-review 9
+shot viaUncertain 29-via-uncertain 10
+shot inviteDialog 30-invite-dialog 8
+shot inviteCode 31-invite-code 9
+shot renewalToggle 32-renewal-toggle 7
+shot renewalDialog 33-renewal-dialog 8
+shot contactUncertain 34-contact-uncertain 9
+shot stationsSearch 35-stations-search 8
+shot stationsEmptyFilter 36-stations-empty-filter 8
+shot locationError 37-location-error 8
+shot pageFailure 38-page-failure 6
+shot bikeListFailure 39-bike-list-failure 9
+shot bikeOwnBooking 40-bike-own-booking 10
+shot bigBalance 41-overview-big-balance 7
+shot dockWhileBikes 42-dock-while-bikes 13
 xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true

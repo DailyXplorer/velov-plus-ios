@@ -67,9 +67,18 @@ struct StationsPage: View {
         }
         .onLeaving(.stations) { searching = false }
         .task {
-            if model.snapshot == .stationSheet || model.snapshot == .bikeList || model.snapshot == .bikeSheet || model.snapshot == .bookConfirm {
+            if model.snapshot == .stationSheet || model.snapshot?.opensBikes == true {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 select("2002")
+            }
+            switch model.snapshot {
+            case .stationsSearch?: query = "Part"
+            case .stationsEmptyFilter?: filter = .favorites
+            case .locationError?:
+                locationReason = .denied
+                locationError = LocationFailure.denied.message
+                locationRaw = locationRawLine(errorCode: 1, auth: .denied, servicesEnabled: true)
+            default: break
             }
             if model.snapshot == .stationSheetLong {
                 try? await Task.sleep(nanoseconds: 600_000_000)

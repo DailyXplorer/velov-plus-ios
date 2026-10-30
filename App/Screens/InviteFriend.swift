@@ -23,7 +23,7 @@ struct InviteFriend: View {
     private var operationKey: String? { model.operations.digest.map(OperationKey.invite) }
     private var operation: Operations.Entry? { operationKey.flatMap { model.operations.get($0) } }
     private var pending: Bool { operation?.status == .sending }
-    private var blocked: Bool { pending && model.operations.sending }
+    private var blocked: Bool { model.operations.sending }
     private var uncertain: Outcome? { operation?.status == .uncertain ? operation?.outcome : nil }
     private var shown: Outcome? { uncertain ?? outcome }
     private var settled: Bool { shown.map { $0.ok || $0.isUncertain } == true || verification == .debited }
@@ -52,7 +52,15 @@ struct InviteFriend: View {
             codeList.padding(.top, Space.titleToContent)
             if !asking, let warning { FormError(warning).padding(.top, Space.cards) }
         }
-        .task(id: account) { load() }
+        .task(id: account) {
+            load()
+            guard model.snapshot == .inviteDialog || model.snapshot == .inviteCode else { return }
+            try? await Task.sleep(for: .seconds(1))
+            open()
+            guard model.snapshot == .inviteCode else { return }
+            try? await Task.sleep(for: .seconds(0.8))
+            confirm()
+        }
         .task(id: copied) {
             guard copied != nil else { return }
             try? await Task.sleep(for: .seconds(2))

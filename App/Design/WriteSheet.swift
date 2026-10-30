@@ -223,6 +223,11 @@ struct WriteDialog<Question: View>: View {
                 PillButton("Confirmer", pending: sending, fullWidth: true) { confirm() }.disabled(!ready || key == nil)
             }
         }
+        .task {
+            guard model.snapshot == .contactUncertain, entry == nil else { return }
+            try? await Task.sleep(for: .seconds(0.8))
+            confirm()
+        }
     }
 
     private func confirm() {

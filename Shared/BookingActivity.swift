@@ -28,7 +28,8 @@ enum ActivityStyle {
 }
 
 extension BookingActivityAttributes {
-    var bikeLine: String { "Vélo \(bikeNumber.map(String.init) ?? "—") · Borne \(standNumber.map(String.init) ?? "—")" }
+    var bikeLine: String { "Vélo \(bikeNumber.map(String.init) ?? "—")" }
+    var placeLine: String { "Borne \(standNumber.map(String.init) ?? "—") · \(stationName)" }
 
     func spoken(endsAt: Date, stale: Bool, now: Date = .now) -> String {
         let bike = "Vélo \(bikeNumber.map(String.init) ?? "")"
@@ -73,7 +74,7 @@ struct BookingLockScreenView: View {
             VStack(alignment: .leading, spacing: 6) {
                 ActivityPill(icon: .clock, text: "Réservé")
                 Text(attributes.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
-                Text(attributes.stationName).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
+                Text(attributes.placeLine).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
             }
             Spacer(minLength: 0)
             if stale {
@@ -94,7 +95,7 @@ struct BookingIslandLeading: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Réservé").font(ActivityStyle.label(13)).tracking(0.26).textCase(.uppercase).foregroundStyle(ActivityStyle.red)
-            Text("Vélo \(attributes.bikeNumber.map(String.init) ?? "—")").font(ActivityStyle.title(19)).foregroundStyle(.white)
+            Text(attributes.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white)
         }
         .padding(.leading, 6)
     }
@@ -119,7 +120,7 @@ struct BookingIslandBottom: View {
     var body: some View {
         HStack(spacing: 6) {
             Icon(.personSimpleBike, size: 16).foregroundStyle(ActivityStyle.red)
-            Text("Borne \(attributes.standNumber.map(String.init) ?? "—") · \(attributes.stationName)").foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+            Text(attributes.placeLine).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
         }
         .font(ActivityStyle.label(13))
         .frame(maxWidth: .infinity, alignment: .leading)

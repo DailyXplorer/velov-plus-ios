@@ -69,7 +69,7 @@ Les réglages à ouvrir ne sont pas les mêmes :
 
 ### Live Activities et widgets
 Ces éléments n’existent que dans l’app :
-- Réservation en cours sur l’écran verrouillé et dans la Dynamic Island : le pilule « Réservé », le compte à rebours, « Vélo 20449 · Borne 4 », « Borne 4 · Bellecour / Saint-Exupéry » et « Expirée ».
+- Réservation en cours sur l’écran verrouillé et dans la Dynamic Island : le pilule « Réservé », le compte à rebours, « Vélo 20449 », puis « Borne 4 · Bellecour / Saint-Exupéry » dessous, et « Expirée ».
 - Trajet en cours : « En trajet » puis « Terminé », le chronomètre et « Vélo 20449 ».
 Le bandeau de réservation dans l’app et sur le site reste identique : l’horloge et le compte à rebours, puis « Déverrouiller ».
 Avec VoiceOver, la Live Activity se lit en une phrase : « Vélo 20449 réservé, 12 min restantes » ou « Vélo 20449, en trajet depuis 23 min ».

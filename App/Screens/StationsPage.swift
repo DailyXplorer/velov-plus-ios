@@ -15,6 +15,7 @@ struct StationsPage: View {
     @Environment(\.accessibilityReduceMotion) private var still
     @Environment(\.tabBarClearance) private var clearance
     @Environment(\.floatingFloor) private var floor
+    @Environment(\.floatingRadius) private var floatingRadius
     @FocusState private var searching: Bool
     @State private var cardHeight: CGFloat = 0
     @State private var toolbarBand: CGFloat = 0
@@ -142,12 +143,22 @@ struct StationsPage: View {
     }
 
     private var emptyFilter: some View {
-        HStack(spacing: Space.cards) {
-            Text("Aucune station pour ce filtre.").typo(.body(.small)).foregroundStyle(Palette.ink)
-            TextLink(title: "Toutes les stations") { filter = .all }
+        let message = Text("Aucune station pour ce filtre.").typo(.body(.small)).foregroundStyle(Palette.ink)
+        let link = TextLink(title: "Toutes les stations") { filter = .all }.fixedSize()
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: Space.cards) {
+                message.fixedSize()
+                Spacer(minLength: 0)
+                link
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                message.fixedSize(horizontal: false, vertical: true).padding(.top, Space.cards)
+                link
+            }
         }
-        .padding(.leading, Space.row).padding(.trailing, Space.label)
-        .floatingGlass(Capsule())
+        .padding(.horizontal, Space.row)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .floatingGlass(RoundedRectangle(cornerRadius: floatingRadius, style: .continuous))
     }
 
     private var results: some View {

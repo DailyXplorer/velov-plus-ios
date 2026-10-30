@@ -380,7 +380,7 @@ struct BikeDetail: View {
                     }
                 }
                 if !expired {
-                    PairedActions {
+                    VStack(spacing: Space.cards) {
                         if !mine {
                             PillButton(variant: .secondary, fullWidth: true, action: { pending = PendingAction(place: place, bookingId: nil, action: .book) }) {
                                 ButtonIcon(.timer); Text("Réserver")

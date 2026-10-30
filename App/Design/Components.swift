@@ -459,7 +459,7 @@ struct OnRedPill: View {
             HStack(spacing: 10) {
                 Icon(icon, .light, size: 15).foregroundStyle(Palette.white)
                     .frame(width: 32, height: 32).background(Circle().fill(Palette.red))
-                Text(title).typo(.caps(.button)).foregroundStyle(Palette.ink)
+                Text(title).typo(.caps(.button)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.85)
             }
             .padding(.leading, 6).padding(.trailing, 18)
             .frame(minHeight: Layout.control)
@@ -467,7 +467,8 @@ struct OnRedPill: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.press)
-        .fixedSize()
+        .fixedSize(horizontal: false, vertical: true)
+        .layoutPriority(1)
     }
 }
 

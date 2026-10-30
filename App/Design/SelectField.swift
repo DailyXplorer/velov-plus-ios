@@ -141,7 +141,8 @@ private struct ChoiceList<Value: Hashable>: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Icon(.x, .light, size: Layout.glyph) }
+                    Button { dismiss() } label: { Icon(.x, .light, size: Layout.glyph).foregroundStyle(Palette.ink) }
+                        .tint(Palette.ink)
                         .accessibilityLabel("Fermer")
                 }
             }

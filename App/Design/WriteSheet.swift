@@ -147,11 +147,13 @@ struct ConfirmScaffold<Message: View, Extra: View, Actions: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: title, closeDisabled: closeDisabled, close: close)
-            VStack(alignment: .leading, spacing: Space.titleToContent) {
-                message().typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
-                extra()
+            if Message.self != EmptyView.self || Extra.self != EmptyView.self {
+                VStack(alignment: .leading, spacing: Space.titleToContent) {
+                    message().typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
+                    extra()
+                }
+                .padding(.top, Space.titleToContent)
             }
-            .padding(.top, Space.titleToContent)
             PairedActions(content: actions).padding(.top, Space.actions)
         }
         .padding(Layout.dialog)

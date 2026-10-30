@@ -579,7 +579,7 @@ private struct Records: View {
                     if let bike = records?.bike {
                         NavigationLink(value: Route.bike(BikeRoute(number: bike, station: nil))) {
                             Text(verbatim: "N°\u{a0}\(bike)").typo(.title(.section)).foregroundStyle(Palette.ink).underline(color: Palette.inkLine)
-                                .frame(minHeight: Layout.hit, alignment: .leading).contentShape(Rectangle())
+                                .frame(minHeight: Layout.hit, alignment: .topLeading).contentShape(Rectangle())
                         }
                         .buttonStyle(.press)
                         .accessibilityLabel("Voir la fiche du vélo \(bike)")

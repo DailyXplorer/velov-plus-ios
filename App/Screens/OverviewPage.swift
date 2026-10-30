@@ -127,10 +127,7 @@ struct OngoingBanner: View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let elapsed = trip.startedAt.map { max(0, Int(context.date.timeIntervalSince($0).rounded())) }
             HStack(spacing: Space.cards) {
-                HStack(spacing: Space.label) {
-                    Icon(.personSimpleBike, .light, size: 17)
-                        .frame(width: 34, height: 34)
-                        .overlay(Circle().strokeBorder(Palette.white, lineWidth: 1.5))
+                Group {
                     if let elapsed { Text(elapsedClock(elapsed)).typo(.countdown).fixedSize() }
                 }
                 .foregroundStyle(Palette.white)

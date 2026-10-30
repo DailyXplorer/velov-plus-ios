@@ -85,7 +85,7 @@ struct BikeActionSheet: View {
             if far {
                 HStack(alignment: .top, spacing: Space.label) {
                     Icon(.warning, .bold, size: 16).padding(.top, 1)
-                    Text("Vous semblez être à plus de \(Int(Rules.releaseDistance)) m de la station. Si quelqu’un d’autre prend le vélo, le trajet vous sera facturé.")
+                    Text("Vous semblez être à plus de \(Int(Rules.releaseDistance))\u{a0}m de la station. Si quelqu’un d’autre prend le vélo, le trajet vous sera facturé.")
                         .typo(.body(.small)).fixedSize(horizontal: false, vertical: true)
                 }
                 .foregroundStyle(Palette.formError)

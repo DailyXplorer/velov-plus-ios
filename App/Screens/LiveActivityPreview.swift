@@ -8,7 +8,7 @@ struct LiveActivityPreview: View {
     private var attributes: BookingActivityAttributes {
         BookingActivityAttributes(bookingId: booking.id, bikeNumber: booking.bikeNumber, standNumber: booking.standNumber, stationName: booking.stationName)
     }
-    private let ride = TripActivityAttributes.ContentState(tripId: "t-sample", startedAt: SampleData.ago(12.4 / 60), endedAt: nil,
+    private let ride = TripActivityAttributes.ContentState(tripId: "t-sample", startedAt: SampleData.ago(65.2 / 60), endedAt: nil,
                                                            station: SampleData.byNumber[2002]!.name, bikeNumber: 20449)
 
     var body: some View {
@@ -67,7 +67,7 @@ struct LiveActivityPreview: View {
     private var minimalIsland: some View {
         HStack(spacing: 8) {
             Capsule().fill(.black).frame(width: 126, height: 37)
-            Icon(.personSimpleBike, size: 18).foregroundStyle(ActivityStyle.red)
+            TripIslandMinimal(state: ride)
                 .frame(width: 37, height: 37).background(Circle().fill(.black))
         }
     }

@@ -40,13 +40,16 @@ struct TripLockScreenView: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 ActivityPill(icon: .personSimpleBike, text: state.status)
+                    .accessibilityHidden(true)
                 Text(state.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
                 Text(state.station).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(state.bikeLine), \(state.status.lowercased()), depuis \(state.station)")
             Spacer(minLength: 0)
-            TripElapsed(state: state, size: 34, color: .white).multilineTextAlignment(.trailing).frame(width: 118, alignment: .trailing)
+            TripElapsed(state: state, size: 34, color: .white).multilineTextAlignment(.trailing).frame(width: 150, alignment: .trailing)
         }
-        .padding(16)
+        .padding(14)
     }
 }
 
@@ -54,7 +57,7 @@ struct TripIslandLeading: View {
     let state: TripActivityAttributes.ContentState
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(state.status).font(ActivityStyle.label(13)).foregroundStyle(ActivityStyle.red)
+            Text(state.status).font(ActivityStyle.label(13)).tracking(0.26).textCase(.uppercase).foregroundStyle(ActivityStyle.red)
             Text(state.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white)
         }
         .padding(.leading, 6)
@@ -64,7 +67,7 @@ struct TripIslandLeading: View {
 struct TripIslandTrailing: View {
     let state: TripActivityAttributes.ContentState
     var body: some View {
-        TripElapsed(state: state, size: 26, color: ActivityStyle.red).multilineTextAlignment(.trailing).frame(width: 96, alignment: .trailing).padding(.trailing, 6)
+        TripElapsed(state: state, size: 26, color: ActivityStyle.red).multilineTextAlignment(.trailing).frame(width: 116, alignment: .trailing).padding(.trailing, 6)
     }
 }
 
@@ -84,6 +87,13 @@ struct TripIslandBottom: View {
 struct TripIslandCompact: View {
     let state: TripActivityAttributes.ContentState
     var body: some View {
-        TripElapsed(state: state, size: 14, color: ActivityStyle.red).multilineTextAlignment(.trailing).frame(width: 52)
+        TripElapsed(state: state, size: 14, color: ActivityStyle.red).multilineTextAlignment(.trailing).frame(width: 62)
+    }
+}
+
+struct TripIslandMinimal: View {
+    let state: TripActivityAttributes.ContentState
+    var body: some View {
+        TripElapsed(state: state, size: 11, color: ActivityStyle.red).multilineTextAlignment(.center).lineLimit(1).minimumScaleFactor(0.5).frame(width: 36)
     }
 }

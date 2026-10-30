@@ -24,7 +24,7 @@ Même phrase, seul l’objet change :
 
 ### Localisation
 Les réglages à ouvrir ne sont pas les mêmes :
-- Refus : site « Localisation refusée. Autorisez-la pour ce site dans votre navigateur, puis dans les réglages de localisation de votre appareil. » / app « Localisation refusée. Autorisez-la dans Réglages > Vélo’v+ > Position. »
+- Refus : site « Localisation refusée. Autorisez-la pour ce site dans votre navigateur, puis dans les réglages de localisation de votre appareil. » / app « Localisation refusée. Autorisez-la dans Réglages › Vélo’v+ › Position. », avec un bouton « Ouvrir Réglages » sous le message (aussi quand le service de localisation est coupé)
 - Service coupé : site « Votre appareil ne trouve pas votre position. Vérifiez que le service de localisation est activé pour ce navigateur. » / app « Le service de localisation est désactivé sur ce téléphone. »
 - Seul le site a « Localisation indisponible sur cette page. Recherchez une station par son nom. » (page non sécurisée) et « Ce navigateur ne permet pas la localisation. Recherchez une station par son nom. ».
 - La ligne technique change de forme : site « Code · message · navigateur/système · Permission … », app « CLError … · auth … · services on/off ».
@@ -37,14 +37,22 @@ Les réglages à ouvrir ne sont pas les mêmes :
 - Sur ordinateur, la Vue d’ensemble du site présélectionne une station, avec sa carte (« Voir les vélos »), et les Stations ont un panneau latéral. Sur téléphone, le site et l’app ne présélectionnent rien et utilisent la même petite fiche (nom, étoile, X, compteurs, « Voir les vélos », « Itinéraire »).
 
 ### Navigation
-- Les Statistiques sont un onglet sur le site (« Statistiques » sur ordinateur, « Stats » en bas sur téléphone). Dans l’app, c’est un bouton « Statistiques » en haut de Trajets, et la page s’ouvre avec une flèche « Retour aux trajets ». Le site a donc six onglets, l’app cinq.
+- Les Statistiques sont un onglet sur le site (« Statistiques » sur ordinateur, « Stats » en bas sur téléphone). Dans l’app, c’est un bouton « Statistiques » en haut de Trajets, et la page s’ouvre par-dessus Trajets avec le bouton retour d’iOS. Le site a donc six onglets, l’app cinq.
+- Le détail d’un trajet et la fiche d’un vélo sont des fenêtres sur le site. Dans l’app, ce sont des pages qui s’ouvrent dans l’onglet, avec le bouton retour d’iOS et le glissement depuis le bord gauche. Depuis la carte d’une station, la liste des vélos reste un panneau plein écran, et la fiche d’un vélo s’y ouvre comme une page.
+- Sur le site, « Modifier mes coordonnées » et « Écrire au service client » ouvrent leur formulaire dans la carte, et le Journal technique n’existe pas. Dans l’app, ces trois éléments ouvrent leur propre page. Quitter un formulaire modifié demande « Ignorer les modifications ? » (Ignorer / Continuer la saisie).
+- Pendant un envoi, l’app bloque aussi le bouton retour, le glissement retour et le geste qui baisse une feuille.
+- Toucher l’onglet déjà ouvert revient à la racine de l’onglet puis remonte en haut de la page.
+- Les Statistiques et la liste des vélos d’une station s’actualisent en tirant la page vers le bas.
 - Seul le site a le lien clavier « Aller au contenu », la barre latérale sur ordinateur (icône du compte et bouton de déconnexion) et la réserve de place pour la barre de défilement.
 - Seul le site masque le bouton « Se déconnecter » de la page Compte sur ordinateur : la barre latérale l’affiche déjà.
 
 ### Présentation des confirmations
-- Dans la fiche d’un vélo, le site affiche « Réserver ce vélo ? » ou « Déverrouiller ce vélo ? » dans un encadré gris, dans la fiche elle-même. L’app ouvre une feuille par-dessus : « Vélo 20449 », puis la question en titre, puis la phrase et Annuler / Confirmer. Le texte, les boutons, l’avertissement à plus de 200 m et les états d’erreur sont les mêmes.
+- Dans la fiche d’un vélo, le site affiche « Réserver ce vélo ? » ou « Déverrouiller ce vélo ? » dans un encadré gris, dans la fiche elle-même. L’app ouvre une feuille par-dessus, dont le titre est la question avec le vélo (« Réserver le vélo 20449 ? », « Déverrouiller le vélo 20449 ? »), puis la phrase et Annuler / Confirmer. Le texte, les boutons, l’avertissement à plus de 200 m et les états d’erreur sont les mêmes.
+- Les réglages à confirmer (utilisation automatique des points, renouvellement automatique) utilisent l’interrupteur natif d’iOS, en rouge. Le toucher ouvre seulement la confirmation, comme sur le site.
+- « Effacer » le Journal technique demande d’abord « Effacer le journal ? » (Effacer / Annuler), dans le menu natif d’iOS.
 - Les fenêtres du site sont des boîtes de dialogue centrées sur ordinateur, ou des feuilles en bas de l’écran sur téléphone. L’app utilise les feuilles iOS : on peut les baisser d’un geste, sauf pendant un envoi.
-- L’app ajoute des retours haptiques à la confirmation et au résultat.
+- L’app ajoute des retours haptiques : un léger à chaque choix (onglet, menu, étoile, station, barre de graphique), un plus marqué à la confirmation d’un envoi, puis succès, refus ou avertissement quand le résultat est incertain.
+- Si l’iPhone n’a pas l’app Mail, « Contacter le service client » sur un trajet litigieux copie l’adresse du service client et l’affiche sous le lien.
 
 ### Reçus et presse-papiers
 - Le site télécharge le PDF du reçu. L’app ouvre la feuille de partage iOS, et seul l’app peut dire « Le reçu n’a pas pu être enregistré sur ce téléphone. ».

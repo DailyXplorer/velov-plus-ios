@@ -69,6 +69,8 @@ struct BookingLockScreenView: View {
                 Text(attributes.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
                 Text(attributes.stationName).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Vélo \(attributes.bikeNumber.map(String.init) ?? "") réservé, borne \(attributes.standNumber.map(String.init) ?? "—"), \(attributes.stationName)")
             Spacer(minLength: 0)
             if stale {
                 Text("Expirée").font(ActivityStyle.label(15)).foregroundStyle(.white)
@@ -76,7 +78,7 @@ struct BookingLockScreenView: View {
                 BookingCountdown(endsAt: endsAt, size: 34, color: .white).multilineTextAlignment(.trailing).frame(width: 118, alignment: .trailing)
             }
         }
-        .padding(16)
+        .padding(14)
     }
 }
 
@@ -84,7 +86,7 @@ struct BookingIslandLeading: View {
     let attributes: BookingActivityAttributes
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Réservé").font(ActivityStyle.label(13)).foregroundStyle(ActivityStyle.red)
+            Text("Réservé").font(ActivityStyle.label(13)).tracking(0.26).textCase(.uppercase).foregroundStyle(ActivityStyle.red)
             Text("Vélo \(attributes.bikeNumber.map(String.init) ?? "—")").font(ActivityStyle.title(19)).foregroundStyle(.white)
         }
         .padding(.leading, 6)
@@ -95,6 +97,13 @@ struct BookingIslandTrailing: View {
     let endsAt: Date
     var body: some View {
         BookingCountdown(endsAt: endsAt, size: 26, color: ActivityStyle.red).multilineTextAlignment(.trailing).frame(width: 96, alignment: .trailing).padding(.trailing, 6)
+    }
+}
+
+struct BookingIslandMinimal: View {
+    let endsAt: Date
+    var body: some View {
+        BookingCountdown(endsAt: endsAt, size: 11, color: ActivityStyle.red).multilineTextAlignment(.center).lineLimit(1).minimumScaleFactor(0.5).frame(width: 36)
     }
 }
 

@@ -59,4 +59,12 @@ shot statsDonut 16j-stats-donut 9
 shot statsRecords 16d-stats-records 9
 shot statsBike 16f-stats-bike-sheet 12
 shot statsEnd 16e-stats-end 9
+shot ongoingBanner 19-ongoing-banner 7
+shot bikePage 20-bike-page 9
+shot profilePage 21-profile-page 7
+shot contactPage 22-contact-page 7
+shot journalPage 23-journal-page 7
+shot toggleDialog 24-toggle-dialog 8
+shot logoutDialog 25-logout-dialog 7
+shot choiceSheet 26-choice-sheet 9
 xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true

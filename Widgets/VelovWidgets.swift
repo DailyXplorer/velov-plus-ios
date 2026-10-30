@@ -26,7 +26,7 @@ struct TripLiveActivity: Widget {
             } compactTrailing: {
                 TripIslandCompact(state: context.state)
             } minimal: {
-                Icon(.personSimpleBike, size: 18).foregroundStyle(ActivityStyle.red)
+                TripIslandMinimal(state: context.state)
             }
             .keylineTint(ActivityStyle.red)
         }
@@ -49,7 +49,7 @@ struct BookingLiveActivity: Widget {
             } compactTrailing: {
                 BookingCountdown(endsAt: context.state.endsAt, size: 14, color: ActivityStyle.red).frame(width: 46)
             } minimal: {
-                Icon(.personSimpleBike, size: 18).foregroundStyle(ActivityStyle.red)
+                BookingIslandMinimal(endsAt: context.state.endsAt)
             }
             .keylineTint(ActivityStyle.red)
         }

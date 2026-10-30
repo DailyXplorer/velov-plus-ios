@@ -457,7 +457,7 @@ private struct Heatmap: View {
         .chartXAxis {
             AxisMarks(values: [0, 6, 12, 18, 23].map { Double($0) + 0.5 }) { value in
                 let hour = value.as(Double.self) ?? 0
-                AxisValueLabel(anchor: hour > 23 ? .topTrailing : .top, collisionResolution: .disabled) { axisText("\(Int(hour)) h") }
+                AxisValueLabel(anchor: hour > 23 ? .topTrailing : .top, collisionResolution: .disabled) { axisText("\(Int(hour))\u{a0}h") }
             }
         }
         .chartOverlay { proxy in
@@ -479,7 +479,7 @@ private struct Heatmap: View {
                 }
                 if let selected {
                     PlacedTip(proxy: proxy, x: proxy.position(forX: Double(selected.hour) + 0.5), y: proxy.position(forY: 7.0),
-                              tip: ChartTip(title: "\(weekdays[selected.day]), de \(selected.hour) h à \(selected.hour + 1) h", detail: plural(rows[selected.day][selected.hour], "départ")))
+                              tip: ChartTip(title: "\(weekdays[selected.day]), de \(selected.hour)\u{a0}h à \(selected.hour + 1)\u{a0}h", detail: plural(rows[selected.day][selected.hour], "départ")))
                 }
             }
         }

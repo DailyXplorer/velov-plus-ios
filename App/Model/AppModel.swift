@@ -60,7 +60,7 @@ enum SnapshotScreen: String {
 
     var riding: Bool { [.ongoingBanner, .viaPick, .viaChoices, .viaChosen, .viaReview, .viaUncertain].contains(self) }
 
-    var opensBikes: Bool { [.bikeList, .bikePush,.bikeSheet, .bookConfirm, .bikeListFailure, .bikeOwnBooking, .dockWhileBikes, .guestBikeSheet].contains(self) }
+    var opensBikes: Bool { [.bikeList, .bikePush, .bikeSheet, .bookConfirm, .bikeListFailure, .bikeOwnBooking, .dockWhileBikes, .guestBikeSheet].contains(self) }
 
     var pushesBike: Bool { [.bikeSheet, .bookConfirm, .bikeOwnBooking, .guestBikeSheet].contains(self) }
 }

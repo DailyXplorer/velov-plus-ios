@@ -19,8 +19,9 @@ final class BikeSheetJumpUITests: XCTestCase {
                 try? frame.png.write(to: URL(fileURLWithPath: dir).appendingPathComponent(name))
             }
         }
-        XCTAssertTrue(back.waitForExistence(timeout: 10), "the bike page is pushed with a back button")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "Vélo 20449")).firstMatch.waitForExistence(timeout: 10), "the bike page is pushed")
         let settled = back.frame
+        XCTAssertLessThan(settled.minX, app.frame.width / 2, "the first bar button of the bike page is its back button")
         let landed = frames.compactMap { frame in frame.back.map { (frame.time, $0) } }.filter { abs($0.1.minX - settled.minX) < 2 }
         XCTAssertFalse(landed.isEmpty, "the back button was seen in place during the capture")
         let off = landed.filter { abs($0.1.minY - settled.minY) > 1 }

@@ -51,6 +51,7 @@ enum SnapshotScreen: String {
     case login, loginError, guestStations, guestStationSheet, guestBikeSheet, bikePush
     case expiredSession, bookingWithoutAccount
     case ongoingLong
+    case stationsFailure
 
     var asGuest: Bool { [.guestStations, .guestStationSheet, .guestBikeSheet].contains(self) }
 
@@ -140,6 +141,7 @@ final class AppModel {
         case .points?, .toggleDialog?, .inviteDialog?, .inviteCode?: page = .points
         case .stations?, .stationSheet?, .stationSheetLong?, .bikeList?, .bikeSheet?, .bookConfirm?, .stationsSearch?, .stationsEmptyFilter?, .locationError?, .locationTimeout?,
              .bikeListFailure?, .bikeOwnBooking?, .dockWhileBikes?, .bikePush?: page = .stations
+        case .stationsFailure?: page = .stations
         case .account?, .accountEnd?, .accountEdit?, .profilePage?, .contactPage?, .journalPage?, .logoutDialog?, .choiceSheet?, .renewalToggle?, .renewalDialog?,
              .contactUncertain?: page = .account
         default: break

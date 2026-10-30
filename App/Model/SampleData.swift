@@ -154,7 +154,10 @@ struct SampleService: VelovService {
                              token: nil, origin: 4)]
         return data
     }
-    func stations() async throws -> StationData { StationData(stations: SampleData.stations, updatedAt: SampleData.now) }
+    func stations() async throws -> StationData {
+        if screen == .stationsFailure { throw NetworkFailure(code: URLError.notConnectedToInternet.rawValue, elapsed: 0.4) }
+        return StationData(stations: SampleData.stations, updatedAt: SampleData.now)
+    }
     func stationBikes(_ station: Int) async throws -> [Bike] {
         if screen == .bikeListFailure { throw NetworkFailure(code: URLError.notConnectedToInternet.rawValue, elapsed: 0.4) }
         return SampleData.bikes

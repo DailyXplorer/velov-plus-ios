@@ -31,14 +31,8 @@ struct StationsPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Header(title: "Stations")
-            Group {
-                BookingBanners(bottom: Space.cards)
-                if case .failed(let failure) = model.stations {
-                    ErrorNotice(failure: failure, pending: model.stationsPending) { Task { await model.loadStations() } }
-                        .padding(.bottom, Space.cards)
-                }
-            }
-            .padding(.horizontal, Layout.margin)
+            BookingBanners(bottom: Space.cards)
+                .padding(.horizontal, Layout.margin)
             map
         }
         .task(id: ranking) {
@@ -119,6 +113,11 @@ struct StationsPage: View {
                 toolbar
                     .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { toolbarBand = $0 + Space.cards }
                     .zIndex(1)
+                if case .failed(let failure) = model.stations {
+                    ErrorNotice(failure: failure, pending: model.stationsPending) { Task { await model.loadStations() } }
+                        .padding(Space.cardCompact)
+                        .ringed(RoundedRectangle(cornerRadius: floatingRadius, style: .continuous))
+                }
                 if !query.isEmpty, model.stations.value != nil { results }
                 if query.isEmpty, filter != .all, rankedFilter == filter, filtered.isEmpty, model.stations.value != nil { emptyFilter }
             }

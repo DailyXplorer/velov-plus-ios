@@ -34,7 +34,7 @@ struct OverviewPage: View {
             }
             SummaryCard(tag: (.ticket, "Abonnement"),
                         detail: missing ? Messages.missing : subscription?.validUntil.map { "Jusqu’au \(formatDate($0, .dayMonthYear))" } ?? "Voir les formules",
-                        minHeight: 150, action: { model.page = .account }) {
+                        minHeight: 150, reservesTwoLines: false, action: { model.page = .account }) {
                 Text(missing ? "—" : shortPlan(subscription?.title)).typo(.title(.card)).lineLimit(2)
             }
         }
@@ -104,7 +104,7 @@ struct OverviewSkeleton: View {
                     SummaryCard(tag: (.starFour, "Points"), detail: "1 380 gagnés au total", action: {}) { Text(verbatim: "0").typo(.title(.figure)) }.skeleton()
                     SummaryCard(tag: (.personSimpleBike, "Trajets"), detail: "12 h 40 min", action: {}) { Text(verbatim: "0").typo(.title(.figure)) }.skeleton()
                 }
-                SummaryCard(tag: (.ticket, "Abonnement"), detail: "Jusqu’au 1 mars 2027", minHeight: 150, action: {}) { Text(verbatim: "Plus 1 an").typo(.title(.card)).lineLimit(2) }.skeleton()
+                SummaryCard(tag: (.ticket, "Abonnement"), detail: "Jusqu’au 1 mars 2027", minHeight: 150, reservesTwoLines: false, action: {}) { Text(verbatim: "Plus 1 an").typo(.title(.card)).lineLimit(2) }.skeleton()
             }
             OverviewSection(title: "Stations", padding: Space.section, ghost: true, link: {}) {
                 Skeleton(height: overviewMapHeight).padding(.bottom, Concentric.gap)

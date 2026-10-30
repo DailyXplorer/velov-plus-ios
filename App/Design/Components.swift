@@ -208,6 +208,7 @@ struct SummaryCard<Value: View>: View {
     let tag: (IconName, String)
     let detail: String
     var minHeight: CGFloat = 168
+    var reservesTwoLines = true
     let action: () -> Void
     @ViewBuilder let value: () -> Value
 
@@ -218,7 +219,7 @@ struct SummaryCard<Value: View>: View {
                 value().foregroundStyle(Palette.white).lineLimit(1).minimumScaleFactor(0.5).padding(.top, Space.card)
                 Spacer(minLength: Space.titleToContent)
                 HStack(spacing: Space.pair) {
-                    Text(detail).typo(.body(.micro)).lineLimit(2).multilineTextAlignment(.leading)
+                    Text(detail).typo(.body(.micro)).lineLimit(2, reservesSpace: reservesTwoLines).multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
                     CircleArrow(style: .onCard, size: 24)
                 }

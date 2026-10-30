@@ -6,6 +6,7 @@ enum IconName: String {
     case starFour = "sparkle"
     case mapPin = "location-01"
     case userCircle = "user-circle"
+    case signIn = "login-01"
     case signOut = "logout-05"
     case arrowClockwise = "refresh-01"
     case warningCircle = "alert-circle"

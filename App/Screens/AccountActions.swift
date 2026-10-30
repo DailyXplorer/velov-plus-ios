@@ -72,7 +72,7 @@ struct ProfilePage: View {
             if let profile, draft != nil { form(profile) }
         }
         .modifier(LeaveGuard(dirty: dirty))
-        .task { if draft == nil, let profile { draft = ProfileDraft(profile) } }
+        .onChange(of: profile?.email, initial: true) { if draft == nil, let profile { draft = ProfileDraft(profile) } }
         .sheet(item: $review, onDismiss: { if saved { dismiss() } }) { review in
             WriteDialog(title: "Enregistrer les modifications\u{a0}?", key: OperationKey.profile, intent: profileIntent(review.body), run: {
                 let outcome = await attempt { try await model.service.updateProfile(review.body) }

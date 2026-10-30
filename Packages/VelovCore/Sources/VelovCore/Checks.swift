@@ -11,6 +11,7 @@ public enum Settled: Equatable, Sendable {
 public enum Reconcile {
     public static let historyLag: TimeInterval = 2 * 60
     public static let dockWindow: TimeInterval = 2 * 60
+    public static let unlockPolls: [TimeInterval] = [2, 3, 5, 5, 5, 10, 10, 10, 10, 10]
 }
 
 public func settle(_ outcome: Outcome, at: Date, now: () -> Date = Date.init, check: () async throws -> Check) async -> Settled {

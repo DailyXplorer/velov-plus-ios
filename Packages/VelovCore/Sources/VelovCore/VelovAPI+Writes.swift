@@ -61,6 +61,10 @@ extension VelovAPI {
         return (outcome, trips?.map { normalizeTrip($0, stations: byNumber) })
     }
 
+    public func watchUnlock(_ identity: Identity, bikeNumber: Int) async throws -> Trip? {
+        nil
+    }
+
     public func rate(_ identity: Identity, tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome {
         try await Writes.rate(try await writer(identity), tripId: tripId, bikeNumber: bikeNumber, vote: vote, http: http)
     }

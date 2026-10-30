@@ -3,6 +3,7 @@ import Foundation
 public final class VelovAPI: Sendable {
     public let client: ReadClient
     public let appToken: AppToken
+    let writes: HTTPTransport
     private let stationsMemo = Memo<StationData>(ttl: 45, stale: true)
     private let stationBikesMemo = Memo<[Bike]>(ttl: 15)
     private let accountIds = Memo<String>(ttl: 10 * 60)
@@ -10,9 +11,11 @@ public final class VelovAPI: Sendable {
     private let rules = Memo<[JSON]>(ttl: 10 * 60)
     let statsMemo = Memo<Stats>(ttl: { statsTTL($0) })
 
-    public init(transport: HTTPTransport, pause: @escaping @Sendable (Double) async -> Void = { try? await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }) {
+    public init(transport: HTTPTransport, writes: HTTPTransport? = nil,
+                pause: @escaping @Sendable (Double) async -> Void = { try? await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }) {
         let client = ReadClient(transport: transport, pause: pause)
         self.client = client
+        self.writes = writes ?? transport
         appToken = AppToken {
             let body = try JSONSerialization.data(withJSONObject: ["code": Cyclocity.appTokenCode, "key": Cyclocity.appTokenKey], options: [.sortedKeys])
             let request = makeRequest(URL(string: "https://api.cyclocity.fr/auth/environments/PRD/client_tokens")!, method: "POST",

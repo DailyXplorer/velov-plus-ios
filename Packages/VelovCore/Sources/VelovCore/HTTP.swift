@@ -76,6 +76,25 @@ public final class URLSessionTransport: HTTPTransport {
     }
 }
 
+public final class FreshConnectionTransport: HTTPTransport {
+    private let session: URLSession
+
+    public convenience init(configuration: URLSessionConfiguration = .ephemeral) {
+        self.init { URLSession(configuration: configuration) }
+    }
+
+    init(makeSession: @escaping @Sendable () -> URLSession) {
+        session = makeSession()
+    }
+
+    public func send(_ request: URLRequest, followRedirects: Bool) async throws -> HTTPResponse {
+        let follow = followRedirects && ["GET", "HEAD"].contains((request.httpMethod ?? "GET").uppercased())
+        let (data, response) = try await session.data(for: request, delegate: follow ? nil : NoRedirects.shared)
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        return HTTPResponse(status: http.statusCode, body: data, url: http.url)
+    }
+}
+
 private final class NoRedirects: NSObject, URLSessionTaskDelegate, Sendable {
     static let shared = NoRedirects()
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest) async -> URLRequest? { nil }

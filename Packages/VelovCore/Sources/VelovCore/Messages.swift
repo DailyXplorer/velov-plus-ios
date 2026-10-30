@@ -34,6 +34,7 @@ public enum Messages {
         "REJECTED": "Refusé", "TIMEOUT": "Expiré", "ERROR": "En erreur", "WARNING": "Avertissement", "REVERSED": "Annulé"
     ]
 
+    public static let unlockNoAnswer = "Vélo’v ne répond pas. Le vélo est peut-être déverrouillé."
     public static let uncertain = "Le résultat est incertain : vérifiez avant de réessayer."
     public static let uncertainUnlock = "Le résultat est incertain : vérifiez la borne avant de réessayer."
     public static let busy = "Une autre action est en cours. Attendez sa réponse avant de recommencer."
@@ -98,7 +99,7 @@ public func ratingOutcome(_ outcome: Outcome) -> Outcome {
 
 public func rawLine(_ outcome: Outcome, extra: String? = nil, withState: Bool = true) -> String {
     var parts: [String] = []
-    if withState { parts.append("TransactionState \(outcome.transactionState ?? "—")") }
+    if withState, let state = outcome.transactionState { parts.append("TransactionState \(state)") }
     let http = "HTTP \(outcome.httpStatus == 0 ? "aucune réponse" : String(outcome.httpStatus))"
     let code = "Code \(outcome.code ?? "—")"
     parts += withState ? [code, http] : [http, code]

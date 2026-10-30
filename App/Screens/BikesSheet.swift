@@ -109,7 +109,7 @@ struct BikeRow: View {
 
     var body: some View {
         let bike = item.bike
-        BikeRowLayout(number: "\(bike.number)", stand: bike.standNumber.map { "Borne \($0)" } ?? "Borne inconnue",
+        BikeRowLayout(number: "\(bike.number)", stand: bike.standNumber.map { "Borne \($0)" } ?? "Borne non renseignée",
                       reserved: bike.isReserved || mine, recommended: item.verdict == .recommended, electrical: bike.type == .electrical, ghost: false) {
             VStack(alignment: .trailing, spacing: 4) {
                 if let rating = bike.rating {
@@ -207,6 +207,8 @@ struct Stars: View {
             }
         }
         .foregroundStyle(Palette.red)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(String(format: "%.1f", value).replacingOccurrences(of: ".", with: ",")) sur 5")
     }
 }
 

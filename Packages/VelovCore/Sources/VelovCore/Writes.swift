@@ -68,7 +68,7 @@ public enum Writes {
                 "Authorization": "Taknv1 \(auth.token)", "Identity": auth.identity, "Content-Type": "application/vnd.trip.v6+json",
                 "Accept": "application/vnd.trip.v6+json", "Accept-Language": "fr"], body: body, timeout: 30))
         } catch {
-            var outcome = Outcome.refusal("network", "Vélo’v ne répond pas. Le vélo est peut-être déverrouillé : regardez la borne avant de réessayer.")
+            var outcome = Outcome.refusal("network", Messages.unlockNoAnswer)
             outcome.detail = networkLine(error)
             return outcome
         }

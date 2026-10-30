@@ -43,8 +43,9 @@ struct AccountPage: View {
         return AccountSection(title: "Abonnement") {
             Text(data.subscription == .unavailable ? Messages.missing : current?.title ?? "Aucun abonnement").typo(.title(.card)).foregroundStyle(Palette.ink).padding(.top, 18)
             if let current {
-                Text(current.validUntil.map { "Jusqu’au \(formatDate($0, .dayLongMonthYear))" } ?? (current.active ? "Actif" : "Inactif"))
-                    .typo(.body(.base)).foregroundStyle(Palette.inkSoft).padding(.top, 10)
+                if let line = current.validUntil.map({ "Jusqu’au \(formatDate($0, .dayLongMonthYear))" }) ?? (current.active ? nil : "Inactif") {
+                    Text(line).typo(.body(.base)).foregroundStyle(Palette.inkSoft).padding(.top, Space.label)
+                }
                 if current.type == "LT" { AutoRenewalSetting(subscription: current).id("\(current.id ?? ""):\(data.updatedAt.timeIntervalSince1970)") }
             }
             if let receipts = data.receipts, !receipts.isEmpty {

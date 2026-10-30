@@ -44,9 +44,19 @@ struct RateBike: View {
                     }
                     .buttonStyle(StarPress())
                     .disabled(sending)
-                    .accessibilityLabel("\(value) étoile\(value > 1 ? "s" : "") sur 5 · \(StarRating.labels[value]!)")
-                    .accessibilityAddTraits(stars == value ? .isSelected : [])
                 }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Note du vélo")
+            .accessibilityValue(stars.map { "\($0) étoile\($0 > 1 ? "s" : "") sur 5, \(StarRating.labels[$0]!)" } ?? "Aucune étoile")
+            .accessibilityAdjustableAction { direction in
+                guard !sending else { return }
+                let current = stars ?? 0
+                let next = direction == .increment ? min(5, current + 1) : max(1, current - 1)
+                guard next != current else { return }
+                Haptics.selection()
+                stars = next
+                refused = nil
             }
             .padding(.top, 8)
             Text(stars.flatMap { StarRating.labels[$0] } ?? "Touchez une étoile")
@@ -62,7 +72,7 @@ struct RateBike: View {
                     PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify() }
                     TextLink(title: "Plus tard", action: onLater)
                 } else {
-                    PillButton("Envoyer", pending: sending, fullWidth: true) { send() }.disabled(stars == nil)
+                    PillButton(variant: .primary, pending: sending, fullWidth: true, action: send) { ButtonIcon(.send); Text("Envoyer") }.disabled(stars == nil)
                     if !sending { TextLink(title: "Plus tard", action: onLater) }
                 }
             }

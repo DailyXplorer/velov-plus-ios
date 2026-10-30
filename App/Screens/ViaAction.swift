@@ -46,7 +46,7 @@ struct ViaSheet: View {
 
     private func review(_ station: (number: Int, name: String)) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            (Text("La station ") + Text(verbatim: "\(station.name) (n° \(station.number))").fontWeight(.semibold)
+            (Text("La station ") + Text(verbatim: "\(station.name) (n°\u{a0}\(station.number))").fontWeight(.semibold)
              + Text(" est pleine. Demander 15 minutes de plus pour rejoindre une autre station\u{a0}?"))
                 .typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             if let failure {
@@ -54,6 +54,7 @@ struct ViaSheet: View {
                              raw: messageLine(failure), uncertain: failure.isUncertain)
                     .padding(.top, Space.titleToContent)
             }
+            if failure?.isUncertain == true { TextLink(title: "Écrire au service client", action: contact).padding(.top, Space.label) }
             if let notice { FormError(notice).padding(.top, Space.cards) }
             PairedActions {
                 if failure?.isUncertain == true {
@@ -68,7 +69,7 @@ struct ViaSheet: View {
     }
 
     private var pick: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Space.cards) {
             Text("Choisissez la station pleine où vous vouliez rendre votre vélo.")
                 .typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: Space.label) {
@@ -77,20 +78,27 @@ struct ViaSheet: View {
                     .typo(.body(.input)).foregroundStyle(Palette.ink).autocorrectionDisabled()
                     .fieldPill()
             }
-            PillButton("Les plus proches", variant: .ghost, pending: locating) { locate() }
+            PillButton(variant: .ghost, pending: locating, action: locate) { ButtonIcon(.navigationArrow); Text("Les plus proches") }
             if !locationError.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    FormError(locationError)
-                    if !locationRaw.isEmpty { RawStatus(line: locationRaw) }
-                }
+                FailureBlock(message: locationError, raw: locationRaw)
             }
-            if choices.isEmpty {
-                Text("Aucune station pleine ne correspond à votre recherche.").typo(.body(.base)).foregroundStyle(Palette.inkSoft)
-            } else {
-                SelectField(label: "Station pleine", hideLabel: true, value: $selected, options: [.init(value: nil, label: "Choisir une station")] + choices.map { item in
-                    .init(value: item.number, label: "\(item.name) · N° \(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
-                }, layout: .stacked)
-                .zIndex(2)
+            switch model.stations {
+            case .loading:
+                VStack(alignment: .leading, spacing: Space.label) {
+                    Text("Station pleine").typo(.caps(.label))
+                    Capsule().frame(height: Layout.control)
+                }
+                .skeleton(Layout.control / 2)
+            case .failed(let failure):
+                ErrorNotice(failure: failure, pending: model.stationsPending) { Task { await model.loadStations() } }
+            case .ready:
+                if choices.isEmpty {
+                    Text("Aucune station pleine ne correspond à votre recherche.").typo(.body(.base)).foregroundStyle(Palette.inkSoft)
+                } else {
+                    SelectField(label: "Station pleine", value: $selected, options: [.init(value: nil, label: "Choisir une station")] + choices.map { item in
+                        .init(value: item.number, label: "\(item.name) · N°\u{a0}\(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
+                    }, layout: .stacked)
+                }
             }
             PairedActions {
                 PillButton("Annuler", variant: .ghost, fullWidth: true) { close() }
@@ -98,6 +106,13 @@ struct ViaSheet: View {
             }
             .padding(.top, Space.actions - Space.cards)
         }
+    }
+
+    private func contact() {
+        guard !model.operations.sending else { return }
+        dismiss()
+        model.contactRequested = true
+        model.page = .account
     }
 
     private func close() {

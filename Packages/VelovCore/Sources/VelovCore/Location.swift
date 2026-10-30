@@ -12,7 +12,7 @@ public enum LocationFailure: Equatable, Sendable {
     public var message: String {
         switch self {
         case .servicesOff: "Le service de localisation est désactivé sur ce téléphone."
-        case .denied: "Localisation refusée. Autorisez-la dans Réglages > Vélo’v+ > Position."
+        case .denied: "Localisation refusée. Autorisez-la dans Réglages › Vélo’v+ › Position."
         case .timedOut: "La localisation a pris trop de temps. Réessayez."
         case .unavailable: "Impossible de vous localiser pour le moment."
         }

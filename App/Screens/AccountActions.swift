@@ -152,7 +152,7 @@ struct AutoRenewalSetting: View {
     private var dialog: some View {
         if let id = subscription.id {
             let next = model.operations.get(OperationKey.autoRenewal(id)).flatMap { Intent.wanted($0.meta) } ?? self.next
-            WriteDialog(title: next ? "Activer le renouvellement automatique ?" : "Désactiver le renouvellement automatique ?", key: OperationKey.autoRenewal(id), intent: Intent.wanted(next), run: {
+            WriteDialog(title: next ? "Activer le renouvellement automatique\u{a0}?" : "Désactiver le renouvellement automatique\u{a0}?", key: OperationKey.autoRenewal(id), intent: Intent.wanted(next), run: {
                 let value: AutoRenewalResult
                 do {
                     value = try await model.service.setAutoRenewal(subscriptionId: id, autoRenewal: next)

@@ -379,5 +379,6 @@ final class Review3Tests: XCTestCase {
         }
         XCTAssertEqual(failureLine(ShapeError("history")), "Réponse illisible")
         XCTAssertEqual(failureLine(VelovError(.expired, Messages.sessionToRenew)), "Code local.expired")
+        XCTAssertEqual(failureLine(VelovError(.unavailable, Messages.stationsUnavailable, status: 502)), "HTTP 502 · Code local.unavailable")
     }
 }

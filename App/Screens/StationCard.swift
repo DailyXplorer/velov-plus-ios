@@ -1,3 +1,5 @@
+import MapKit
+import MapKit
 import SwiftUI
 import VelovCore
 
@@ -6,7 +8,6 @@ struct StationCard: View {
     let favorite: Bool
     let distance: Double?
     let close: () -> Void
-    @Environment(\.openURL) private var openURL
     @Environment(\.floatingRadius) private var radius
     @Environment(AppModel.self) private var model
     @State private var bikesOpen = false
@@ -16,35 +17,34 @@ struct StationCard: View {
     private static let pill = Layout.control
 
     var body: some View {
-        let padding = max(radius - Self.pill / 2, 16)
+        let padding = max(radius - Self.pill / 2, Space.cardCompact)
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
                 Text(station.name).typo(.title(.small)).foregroundStyle(Palette.ink).lineLimit(1)
                 IconButton(icon: .star, weight: favorite ? .fill : .light, color: favorite ? Palette.red : Palette.inkSoft,
                            label: favorite ? "Retirer des favoris" : "Ajouter aux favoris") { wasFavorite = favorite; favoriteOpen = true }
                     .accessibilityAddTraits(favorite ? .isSelected : [])
-                    .padding(.leading, -2)
-                Spacer(minLength: 8)
-                if !station.open { Text("Fermée").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).fixedSize().padding(.trailing, 8) }
-                IconButton(icon: .x, label: "Fermer", action: close)
+                    .padding(.leading, Layout.bleed + Space.pair)
+                Spacer(minLength: Space.label)
+                if !station.open { Text("Fermée").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).fixedSize() }
+                IconButton(icon: .x, label: "Fermer", action: close).bleed(.trailing)
             }
-            .padding(.trailing, -8)
             HStack(spacing: 18) {
                 StationNumbers(station: station, compact: true)
-                if let distance { Text(formatDistance(distance)).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize() }
+                if let distance { Text(formatDistance(distance)).typo(.body(.small)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize() }
                 Spacer(minLength: 0)
             }
-            .padding(.top, 2)
-            HStack(spacing: 8) {
-                PillButton(variant: .secondary, fullWidth: true, action: { bikesOpen = true }) { Text("Voir les vélos") }
-                PillButton(variant: .primary, fullWidth: true, action: directions) {
+            HStack(spacing: Space.cards) {
+                PillButton(variant: .primary, fullWidth: true, action: { bikesOpen = true }) { Text("Voir les vélos") }
+                PillButton(variant: .secondary, fullWidth: true, action: directions) {
                     Text("Itinéraire")
-                    CircleArrow(external: true, style: .onPrimary)
+                    CircleArrow(external: true, style: .outline)
                 }
+                .accessibilityHint("Ouvre Plans")
             }
-            .padding(.top, 10)
+            .padding(.top, Space.cards)
         }
-        .padding(.horizontal, padding).padding(.top, 14).padding(.bottom, padding)
+        .padding(.horizontal, padding).padding(.top, max(padding + Layout.bleed, Space.pair)).padding(.bottom, padding)
         .floatingGlass(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .sheet(isPresented: $bikesOpen) { BikesSheet(station: station) }
         .sheet(isPresented: $favoriteOpen) {
@@ -69,6 +69,8 @@ struct StationCard: View {
     }
 
     private func directions() {
-        if let url = URL(string: "maps://?daddr=\(station.lat),\(station.lon)&dirflg=w") { openURL(url) }
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon)))
+        item.name = station.name
+        item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
     }
 }

@@ -9,18 +9,19 @@ struct StationMapView: View {
     var interactive = true
     var showsUser = false
     var onSelect: (String) -> Void = { _ in }
+    var onBackground: () -> Void = {}
 
     static let lyon = MapCameraPosition.region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 45.7576, longitude: 4.832),
                                                                   span: MKCoordinateSpan(latitudeDelta: 0.022, longitudeDelta: 0.022)))
 
     var body: some View {
         Map(position: $camera, interactionModes: interactive ? [.pan, .zoom] : []) {
-            ForEach(stations.filter(\.open)) { station in
+            ForEach(stations.filter { $0.open || $0.id == selected }) { station in
                 Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon), anchor: .center) {
-                    StationPin(total: station.bikes, selected: selected == station.id)
-                        .onTapGesture { onSelect(station.id) }
+                    Button { onSelect(station.id) } label: { StationPin(total: station.bikes, selected: selected == station.id) }
+                        .buttonStyle(.plain)
                         .accessibilityLabel("\(station.name), \(station.bikes) vélo\(station.bikes > 1 ? "s" : "")")
-                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAddTraits(selected == station.id ? .isSelected : [])
                 }
                 .annotationTitles(.hidden)
             }
@@ -30,6 +31,7 @@ struct StationMapView: View {
         }
         .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
         .mapControls {}
+        .onTapGesture { onBackground() }
         .background(Palette.mist)
     }
 }
@@ -47,7 +49,7 @@ struct StationPin: View {
             .overlay(Circle().strokeBorder(Palette.white, lineWidth: 2))
             .frame(width: 44, height: 44)
             .contentShape(Circle())
-            .animation(.easeOut(duration: 0.15), value: selected)
+            .animation(Motion.standard, value: selected)
     }
 }
 

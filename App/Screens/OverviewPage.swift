@@ -55,9 +55,11 @@ struct OverviewPage: View {
                     Spacer()
                 }
             } else {
-                Button { model.page = .stations } label: { Color.clear.contentShape(Rectangle()) }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Explorer les stations")
+                Button { model.page = .stations } label: {
+                    Color.clear.contentShape(MapTapArea())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Explorer les stations")
             }
         }
         .frame(height: overviewMapHeight)
@@ -69,6 +71,14 @@ struct OverviewPage: View {
 }
 
 private let overviewMapHeight: CGFloat = 310
+
+private struct MapTapArea: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path(rect)
+        path.addRect(CGRect(x: rect.minX, y: rect.maxY - 40, width: rect.width / 2, height: 40))
+        return path.normalized(eoFill: true)
+    }
+}
 
 struct OverviewSection<Content: View>: View {
     let title: String

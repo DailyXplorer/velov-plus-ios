@@ -28,12 +28,12 @@ private let paris = TimeZone(identifier: "Europe/Paris")!
 
 private func number(_ value: Double) -> String { formatNumber(value.rounded(), maximumFractionDigits: 0) }
 private func number(_ value: Int) -> String { number(Double(value)) }
-private func plural(_ count: Int, _ word: String) -> String { "\(number(count)) \(word)\(count > 1 ? "s" : "")" }
+private func plural(_ count: Int, _ word: String) -> String { "\(number(count))\u{a0}\(word)\(count > 1 ? "s" : "")" }
 
 private func hours(_ minutes: Int) -> String {
-    guard minutes >= 60 else { return "\(minutes) min" }
+    guard minutes >= 60 else { return "\(minutes)\u{a0}min" }
     let rest = minutes % 60
-    return "\(number(minutes / 60)) h\(rest > 0 ? " \(rest) min" : "")"
+    return "\(number(minutes / 60))\u{a0}h\(rest > 0 ? " \(rest)\u{a0}min" : "")"
 }
 
 private func kilometres(_ metres: Double) -> String {
@@ -356,7 +356,7 @@ private struct MinutesChart: View {
         .chartYAxis {
             AxisMarks(position: .leading, values: [0, top / 2, top]) { value in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1)).foregroundStyle(Palette.line)
-                AxisValueLabel { if let amount = value.as(Double.self) { axisText(number(amount)) } }
+                AxisValueLabel { if let amount = value.as(Double.self) { axisText(amount == top && amount > 0 ? "\(number(amount))\u{a0}min" : number(amount)) } }
             }
         }
         .chartXAxis {
@@ -380,7 +380,35 @@ private struct MinutesChart: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .frame(height: 220)
+        .accessibilityChartDescriptor(MinutesDescriptor(data: data))
         .accessibilityLabel("Temps à vélo par \(data.unit == .day ? "jour" : "mois"), \(hours(data.minutes)) au total")
+    }
+}
+
+private struct MinutesDescriptor: AXChartDescriptorRepresentable {
+    let data: PeriodStats
+
+    func makeChartDescriptor() -> AXChartDescriptor {
+        let buckets = data.buckets
+        let top = Double(buckets.map(\.minutes).max() ?? 0)
+        let x = AXCategoricalDataAxisDescriptor(title: data.unit == .day ? "Jour" : "Mois", categoryOrder: buckets.map { bucketLabel(data.unit, $0.key) })
+        let y = AXNumericDataAxisDescriptor(title: "Minutes", range: 0...max(1, top), gridlinePositions: []) { "\(number($0)) minutes" }
+        let series = AXDataSeriesDescriptor(name: "Temps à vélo", isContinuous: false,
+                                            dataPoints: buckets.map { AXDataPoint(x: bucketLabel(data.unit, $0.key), y: Double($0.minutes)) })
+        return AXChartDescriptor(title: data.unit == .day ? "Temps à vélo par jour" : "Temps à vélo par mois", summary: "\(hours(data.minutes)) au total",
+                                 xAxis: x, yAxis: y, additionalAxes: [], series: [series])
+    }
+}
+
+private struct BikeTypesDescriptor: AXChartDescriptorRepresentable {
+    let parts: [(label: String, count: Int)]
+
+    func makeChartDescriptor() -> AXChartDescriptor {
+        let top = Double(parts.map(\.count).max() ?? 0)
+        let x = AXCategoricalDataAxisDescriptor(title: "Type de vélo", categoryOrder: parts.map(\.label))
+        let y = AXNumericDataAxisDescriptor(title: "Trajets", range: 0...max(1, top), gridlinePositions: []) { plural(Int($0), "trajet") }
+        let series = AXDataSeriesDescriptor(name: "Trajets", isContinuous: false, dataPoints: parts.map { AXDataPoint(x: $0.label, y: Double($0.count)) })
+        return AXChartDescriptor(title: "Répartition par type de vélo", summary: nil, xAxis: x, yAxis: y, additionalAxes: [], series: [series])
     }
 }
 
@@ -436,8 +464,17 @@ private struct Heatmap: View {
             ZStack {
                 TapLayer(proxy: proxy) { point in
                     guard let hour = proxy.value(atX: point.x, as: Double.self), let row = proxy.value(atY: point.y, as: Double.self), row >= 0, hour >= 0 else { focus = nil; return }
-                    let cell = (day: 6 - Int(row), hour: Int(hour))
-                    guard (0..<7).contains(cell.day), (0..<24).contains(cell.hour), rows[cell.day][cell.hour] > 0 else { focus = nil; return }
+                    let cellWidth = Swift.max(1, (width - 20) / 24)
+                    let near = (0..<7).flatMap { day in (0..<24).map { (day: day, hour: $0) } }
+                        .filter { rows[$0.day][$0.hour] > 0 }
+                        .map { cell -> (cell: (day: Int, hour: Int), distance: CGFloat) in
+                            let dx = (CGFloat(cell.hour) + 0.5 - CGFloat(hour)) * cellWidth
+                            let dy = (CGFloat(6 - cell.day) + 0.5 - CGFloat(row)) * cellHeight
+                            return (cell, (dx * dx + dy * dy).squareRoot())
+                        }
+                        .min { $0.distance < $1.distance }
+                    guard let near, near.distance <= 22 else { focus = nil; return }
+                    let cell = near.cell
                     focus = selected.map { $0.day == cell.day && $0.hour == cell.hour } == true ? nil : .cell(day: cell.day, hour: cell.hour)
                 }
                 if let selected {
@@ -497,6 +534,7 @@ private struct BikeTypes: View {
             .contentShape(Circle())
             .onTapGesture { focus = (selected == nil ? parts.first?.key : parts.firstIndex { $0.key == selected }.flatMap { $0 + 1 < parts.count ? parts[$0 + 1].key : nil }).map(ChartFocus.part) }
             .accessibilityLabel("Trajets \(parts.map { "\($0.spoken) à \(share($0.count))" }.joined(separator: ", "))")
+            .accessibilityChartDescriptor(BikeTypesDescriptor(parts: parts.map { ($0.label, $0.count) }))
             VStack(spacing: 8) {
                 ForEach(parts) { part in
                     Button { focus = selected == part.key ? nil : .part(part.key) } label: {
@@ -564,10 +602,11 @@ private struct Records: View {
     }
 
     private func tile(_ label: String, first: Bool, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Space.label) {
             Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1)
             content()
         }
+        .accessibilityElement(children: .combine)
         .padding(.leading, first ? 0 : 14).padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .leading) { if !first { Rectangle().fill(Palette.line).frame(width: 1) } }

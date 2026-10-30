@@ -13,6 +13,10 @@ struct StationsPage: View {
     @State private var locating = false
     @State private var locationError = ""
     @State private var locationRaw = ""
+    @State private var locationReason: LocationFailure?
+    @State private var rankedFilter: StationFilter?
+    @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var still
     @FocusState private var searching: Bool
     @State private var barBand: CGFloat = 0
     @State private var cardHeight: CGFloat = 0
@@ -32,11 +36,17 @@ struct StationsPage: View {
             Group {
                 BookingBanners(bottom: 12)
                 if !locationError.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(locationError).typo(.body(.small)).foregroundStyle(Palette.formError)
+                    VStack(alignment: .leading, spacing: Space.pair) {
+                        FormError(locationError)
                         if !locationRaw.isEmpty { RawStatus(line: locationRaw) }
+                        if locationReason == .denied || locationReason == .servicesOff {
+                            PillButton("Ouvrir Réglages", variant: .secondary) {
+                                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                            }
+                            .padding(.top, Space.label)
+                        }
                     }
-                    .padding(.bottom, 12)
+                    .padding(.bottom, Space.cards)
                 }
                 if case .failed(let failure) = model.stations {
                     ErrorNotice(failure: failure, pending: model.stationsPending) { Task { await model.loadStations() } }
@@ -49,7 +59,11 @@ struct StationsPage: View {
         .task(id: ranking) {
             let ranking = ranking
             let ranked = await Task.detached(priority: .userInitiated) { ranking.ranked() }.value
-            if !Task.isCancelled { filtered = ranked }
+            if !Task.isCancelled {
+                filtered = ranked
+                rankedFilter = ranking.filter
+                if let id = selectedId, !ranked.contains(where: { $0.id == id }) { selectedId = nil }
+            }
         }
         .onLeaving(.stations) { searching = false }
         .task {
@@ -71,6 +85,7 @@ struct StationsPage: View {
                     Icon(.magnifyingGlass, .light, size: 19).foregroundStyle(Palette.ink)
                     TextField("", text: $query, prompt: Text("Rechercher").foregroundStyle(Palette.inkSoft))
                         .typo(.body(.input)).foregroundStyle(Palette.ink).focused($searching).submitLabel(.search)
+                        .onSubmit { searching = false }
                         .autocorrectionDisabled().accessibilityLabel("Rechercher une station")
                     if !query.isEmpty {
                         Button { query = "" } label: {
@@ -101,7 +116,10 @@ struct StationsPage: View {
 
     private var map: some View {
         ZStack(alignment: .top) {
-            StationMapView(stations: filtered, selected: selectedId, camera: $camera, showsUser: position != nil) { select($0) }
+            StationMapView(stations: filtered, selected: selectedId, camera: $camera, showsUser: position != nil, onSelect: { select($0) }) {
+                searching = false
+                selectedId = nil
+            }
                 .safeAreaPadding(.top, toolbarBand)
                 .safeAreaPadding(.bottom, barBand + (selected == nil ? 0 : cardHeight + Concentric.gap))
             VStack(alignment: .leading, spacing: 12) {
@@ -109,6 +127,7 @@ struct StationsPage: View {
                     .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { toolbarBand = $0 + 12 }
                     .zIndex(1)
                 if !query.isEmpty, model.stations.value != nil { results }
+                if query.isEmpty, filter != .all, rankedFilter == filter, filtered.isEmpty, model.stations.value != nil { emptyFilter }
             }
             .padding(.horizontal, Layout.margin)
             .padding(.top, Space.cards)
@@ -125,10 +144,19 @@ struct StationsPage: View {
                 .padding(.horizontal, Concentric.inset)
                 .padding(.bottom, Concentric.gap)
                 .ignoresSafeArea(.keyboard)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .transition(Motion.panelTransition(still: still))
             }
         }
-        .animation(.snappy(duration: 0.3), value: selected?.id)
+        .animation(Motion.panel, value: selected?.id)
+    }
+
+    private var emptyFilter: some View {
+        HStack(spacing: Space.cards) {
+            Text("Aucune station pour ce filtre.").typo(.body(.small)).foregroundStyle(Palette.ink)
+            TextLink(title: "Toutes les stations") { filter = .all }
+        }
+        .padding(.leading, Space.row).padding(.trailing, Space.label)
+        .floatingGlass(Capsule())
     }
 
     private var results: some View {
@@ -147,8 +175,11 @@ struct StationsPage: View {
                             Spacer(minLength: 0)
                             Icon(.caretRight, .light, size: 16).foregroundStyle(Palette.inkSoft)
                         }
-                        Text(verbatim: "\(here.map { "\(formatDistance(haversine($0, station.point))) · " } ?? "")N° \(station.number)\(station.open ? "" : " · Fermée")")
-                            .typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
+                        HStack(spacing: Space.label) {
+                            Text(verbatim: "\(here.map { "\(formatDistance(haversine($0, station.point))) · " } ?? "")N°\u{a0}\(station.number)")
+                                .typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
+                            if !station.open { Text("Fermée").typo(.caps(.tag)).foregroundStyle(Palette.inkSoft) }
+                        }
                     }
                     .padding(.horizontal, 15).padding(.vertical, 16)
                     .contentShape(Rectangle())
@@ -167,7 +198,7 @@ struct StationsPage: View {
         Haptics.selection()
         selectedId = id
         guard let station = stations.first(where: { $0.id == id }) else { return }
-        withAnimation(.easeInOut(duration: 0.5)) {
+        withAnimation(still ? nil : Motion.camera) {
             camera = .camera(MapCamera(centerCoordinate: CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon), distance: 1800))
         }
     }
@@ -175,6 +206,7 @@ struct StationsPage: View {
     private func locate() {
         locationError = ""
         locationRaw = ""
+        locationReason = nil
         locating = true
         Task {
             defer { locating = false }
@@ -182,10 +214,12 @@ struct StationsPage: View {
                 let location = try await Locator.shared.locate()
                 located(location)
             } catch let error as Locator.Failure {
+                locationReason = error.reason
                 locationError = error.message
                 locationRaw = error.raw
             } catch {
-                locationError = "Impossible de vous localiser pour le moment."
+                locationReason = .unavailable
+                locationError = LocationFailure.unavailable.message
             }
         }
     }
@@ -196,7 +230,7 @@ struct StationsPage: View {
         let favorites = favorites
         let open = stations.filter { $0.open && $0.matches(filter, favorites: favorites) }.sorted { haversine(here, $0.point) < haversine(here, $1.point) }
         let supplied = open.filter { filter == .stands ? $0.stands > 0 : $0.bikes > 0 }.prefix(3)
-        guard let nearest = open.first else {
+        guard let nearest = supplied.first else {
             locationError = "Aucune station ouverte ne correspond à ce filtre."
             return
         }
@@ -209,6 +243,6 @@ struct StationsPage: View {
         }
         let padX = max(rect.width * 0.25, 400), padY = max(rect.height * 0.2, 400)
         rect = MKMapRect(x: rect.minX - padX, y: rect.minY - padY, width: rect.width + 2 * padX, height: rect.height + 2 * padY)
-        withAnimation(.easeInOut(duration: 0.6)) { camera = .rect(rect) }
+        withAnimation(still ? nil : Motion.camera) { camera = .rect(rect) }
     }
 }

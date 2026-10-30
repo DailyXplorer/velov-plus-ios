@@ -58,6 +58,7 @@ Le bandeau de réservation dans l’app et sur le site reste identique : l’hor
 
 ### Apparence propre à iOS
 - La barre d’onglets du bas, les boutons Actualiser et Compte de l’en-tête et la barre de recherche des Stations utilisent le matériau Liquid Glass d’iOS. Le site utilise des surfaces blanches avec un filet.
+- Les listes déroulantes (filtre des Stations, type de vélo, période des Statistiques, formulaires du Compte) ouvrent le menu natif d’iOS en Liquid Glass, avec une coche sur le choix actuel. Le site garde sa liste blanche maison, choix actuel en rouge.
 - L’app utilise la police des chiffres « Velov Glyphic Timer » pour les comptes à rebours des Live Activities.
 
 ### Diagnostic

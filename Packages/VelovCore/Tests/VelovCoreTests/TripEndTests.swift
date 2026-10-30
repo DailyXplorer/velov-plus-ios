@@ -116,7 +116,7 @@ final class TripEndTests: XCTestCase {
         let harness = Harness(clock: now)
         let watch = watch(harness)
         watch.follow(nil)
-        harness.answers = Array(repeating: .success(TripCheck(ongoing: [], latest: nil)), count: 6)
+        harness.answers = Array(repeating: .success(TripCheck(ongoing: [], latest: finished("before", endedMinutesAgo: 1))), count: 6)
         for _ in 0..<5 { await fire(harness) }
         XCTAssertTrue(watch.active, "100 s after the unlock")
         await fire(harness)
@@ -126,10 +126,85 @@ final class TripEndTests: XCTestCase {
         let second = Harness(clock: now)
         let next = self.watch(second)
         next.follow(nil)
-        second.answers = [.success(riding("t-2")), .success(TripCheck(ongoing: [], latest: nil))]
+        second.answers = [.success(riding("t-2")), .success(TripCheck(ongoing: [], latest: finished("t-2", endedMinutesAgo: -1)))]
         await fire(second)
         await fire(second)
         XCTAssertEqual(second.docked.map(\.0), ["t-2"])
+
+        let third = Harness(clock: now)
+        let last = self.watch(third)
+        last.follow(nil)
+        let earlier = Trip(id: "earlier", status: "FINISHED", startedAt: now.addingTimeInterval(-300), endedAt: now.addingTimeInterval(60),
+                           bikeNumber: 20449, isRated: false)
+        third.answers = Array(repeating: .success(TripCheck(ongoing: [], latest: earlier)), count: 6)
+        for _ in 0..<6 { await fire(third) }
+        XCTAssertFalse(last.active)
+        XCTAssertTrue(third.docked.isEmpty, "a trip started before the unlock window is not this unlock's")
+    }
+
+    func testARideHiddenInTheBackgroundAfterAnUnlockStillDocksWithTheTripThatStartedAfterIt() async {
+        let harness = Harness(clock: now)
+        let watch = watch(harness)
+        watch.follow(nil)
+        harness.clock += 5
+        harness.visible = false
+        await watch.visibilityChanged()
+        XCTAssertEqual(harness.pending, 0)
+        XCTAssertEqual(harness.checks, 0)
+        harness.clock += 280
+        let ride = Trip(id: "t-1", status: "FINISHED", startedAt: now.addingTimeInterval(10), endedAt: now.addingTimeInterval(240),
+                        bikeNumber: 20449, isRated: false)
+        harness.answers = [.success(TripCheck(ongoing: [], latest: ride))]
+        harness.visible = true
+        await watch.visibilityChanged()
+        XCTAssertEqual(harness.checks, 1)
+        XCTAssertEqual(harness.docked.map(\.0), ["t-1"])
+        XCTAssertEqual(harness.docked.first?.1?.id, "t-1")
+        XCTAssertFalse(watch.active)
+        XCTAssertEqual(harness.pending, 0)
+    }
+
+    func testAShortRideInsideTheUnlockGraceDocksOnTheFirstCheckThatSeesIt() async {
+        let harness = Harness(clock: now)
+        let watch = watch(harness)
+        watch.follow(nil)
+        harness.clock += 5
+        harness.visible = false
+        await watch.visibilityChanged()
+        harness.clock += 85
+        let ride = Trip(id: "t-1", status: "FINISHED", startedAt: now.addingTimeInterval(10), endedAt: now.addingTimeInterval(80),
+                        bikeNumber: 20449, isRated: false)
+        harness.answers = [.success(TripCheck(ongoing: [], latest: ride))]
+        harness.visible = true
+        await watch.visibilityChanged()
+        XCTAssertEqual(harness.checks, 1)
+        XCTAssertEqual(harness.docked.map(\.0), ["t-1"])
+        XCTAssertFalse(watch.active)
+    }
+
+    func testADockWaitsForTheTripToReachTheHistoryThenDocksAnywayAfterTwoMinutes() async {
+        let harness = Harness(clock: now)
+        let watch = watch(harness)
+        watch.follow("t-1")
+        let lagging = TripCheck(ongoing: [], latest: finished("t-0", endedMinutesAgo: 30))
+        harness.answers = [.success(lagging), .success(TripCheck(ongoing: [], latest: finished("t-1", endedMinutesAgo: -1)))]
+        await fire(harness)
+        XCTAssertTrue(harness.docked.isEmpty, "the history does not hold the trip yet")
+        XCTAssertTrue(watch.active)
+        await fire(harness)
+        XCTAssertEqual(harness.docked.map(\.0), ["t-1"])
+        XCTAssertEqual(harness.docked.first?.1?.id, "t-1")
+        XCTAssertFalse(watch.active)
+
+        let second = Harness(clock: now)
+        let late = self.watch(second)
+        late.follow("t-1")
+        second.answers = Array(repeating: .success(lagging), count: 7)
+        for _ in 0..<6 { await fire(second) }
+        XCTAssertTrue(second.docked.isEmpty, "100 s after the trip left the ongoing list")
+        await fire(second)
+        XCTAssertEqual(second.docked.map(\.0), ["t-1"])
+        XCTAssertFalse(late.active)
     }
 
     func testInTheBackgroundNothingIsSentAndTheForegroundChecksAtOnce() async {
@@ -141,7 +216,7 @@ final class TripEndTests: XCTestCase {
         XCTAssertEqual(harness.checks, 0)
         XCTAssertEqual(harness.pending, 0, "paused until the app comes back")
         harness.visible = true
-        harness.answers = [.success(TripCheck(ongoing: [], latest: nil))]
+        harness.answers = [.success(TripCheck(ongoing: [], latest: finished("t-1", endedMinutesAgo: 0)))]
         await watch.visibilityChanged()
         XCTAssertEqual(harness.checks, 1)
         XCTAssertEqual(harness.docked.map(\.0), ["t-1"])

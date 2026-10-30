@@ -145,7 +145,7 @@ struct AccountSkeleton: View {
             }
             AccountSection(title: "Journal technique", ghost: true) {
                 VStack(alignment: .leading, spacing: Space.titleToContent) {
-                    Text("Les \(TechnicalJournal.capacity) dernières requêtes envoyées à Vélo’v, sans jeton ni donnée personnelle.").typo(.body(.base))
+                    Text(JournalLink.caption).typo(.body(.base))
                     PillButton(variant: .secondary, action: {}) { ButtonIcon(.file); Text("Ouvrir le journal") }
                 }
                 .padding(.top, Space.titleToContent)

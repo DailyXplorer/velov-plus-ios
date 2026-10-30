@@ -95,7 +95,8 @@ public func redactedOperation(_ key: String) -> String {
 public final class TechnicalJournal: @unchecked Sendable {
     public static let capacity = 50
     public static let writeCapacity = 100
-    public static let writeRetention: TimeInterval = 14 * 24 * 3600
+    public static let writeRetentionDays = 14
+    public static let writeRetention = TimeInterval(writeRetentionDays * 24 * 3600)
     public static let shared = TechnicalJournal()
     @TaskLocal public static var operation: String?
     @TaskLocal static var connection: ConnectionNote?

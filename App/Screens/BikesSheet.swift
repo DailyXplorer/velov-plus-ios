@@ -34,43 +34,36 @@ struct BikesSheet: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    SheetHeading(title: station.name, closeDisabled: model.operations.sending) { dismiss() } accessory: {
-                        IconButton(icon: .arrowClockwise, pending: refreshing, label: "Actualiser les vélos") { Task { await load() } }
-                    }
-                    .padding(.top, Layout.headerTop - Space.titleToContent)
+            PushedPage(title: station.name, close: { dismiss() }, refresh: { await load() },
+                       extra: BarAction(icon: .arrowClockwise, label: "Actualiser les vélos", pending: refreshing) { Task { await load() } }) {
+                VStack(alignment: .leading, spacing: Space.pair) {
+                    PageTitle(title: station.name)
                     if let subtitle {
-                        Text(subtitle).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).padding(.top, Space.pair)
-                    }
-                    Color.clear.frame(height: Space.label)
-                    switch bikes {
-                    case .loading:
-                        BikesSkeleton(station: station)
-                    case .failed(let failure):
-                        StateView(failure, pending: refreshing) { Task { await load() } }
-                    case .ready:
-                        if let assessed, !assessed.isEmpty {
-                            VStack(spacing: 0) {
-                                ForEach(Array(assessed.enumerated()), id: \.element.id) { index, item in
-                                    NavigationLink(value: BikeRoute(number: item.bike.number, station: station)) {
-                                        BikeRow(item: item, mine: own.contains(item.bike.number))
-                                    }
-                                    .buttonStyle(.row)
-                                    if index < assessed.count - 1 { Hairline() }
-                                }
-                            }
-                        } else {
-                            StateView("Aucun vélo à cette station.")
-                        }
+                        Text(subtitle).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1)
                     }
                 }
-                .padding(.horizontal, Layout.margin).padding(.bottom, Layout.margin)
+            } content: {
+                switch bikes {
+                case .loading:
+                    BikesSkeleton(station: station)
+                case .failed(let failure):
+                    StateView(failure, pending: refreshing) { Task { await load() } }
+                case .ready:
+                    if let assessed, !assessed.isEmpty {
+                        VStack(spacing: 0) {
+                            ForEach(Array(assessed.enumerated()), id: \.element.id) { index, item in
+                                NavigationLink(value: BikeRoute(number: item.bike.number, station: station)) {
+                                    BikeRow(item: item, mine: own.contains(item.bike.number))
+                                }
+                                .buttonStyle(.row)
+                                if index < assessed.count - 1 { Hairline() }
+                            }
+                        }
+                    } else {
+                        StateView("Aucun vélo à cette station.")
+                    }
+                }
             }
-            .scrollIndicators(.hidden)
-            .refreshable { await load() }
-            .navigationTitle(station.name)
-            .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: BikeRoute.self) { route in
                 BikeDetail(route: route, preloaded: assessed?.first { $0.bike.number == route.number }, close: { dismiss() })
             }

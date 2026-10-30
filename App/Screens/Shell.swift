@@ -119,10 +119,18 @@ struct PageTitle: View {
     }
 }
 
+struct BarAction {
+    let icon: IconName
+    let label: String
+    var pending = false
+    let action: () -> Void
+}
+
 struct PushedPage<Header: View, Content: View>: View {
     let title: String
     var close: (() -> Void)?
     var refresh: (() async -> Void)?
+    var extra: BarAction?
     @ViewBuilder let header: () -> Header
     @ViewBuilder let content: () -> Content
     @Environment(AppModel.self) private var model
@@ -147,6 +155,11 @@ struct PushedPage<Header: View, Content: View>: View {
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
+            if let extra {
+                ToolbarItem(placement: .topBarTrailing) {
+                    IconButton(icon: extra.icon, pending: extra.pending, label: extra.label, action: extra.action)
+                }
+            }
             if let close {
                 ToolbarItem(placement: .topBarTrailing) {
                     IconButton(icon: .x, label: "Fermer", action: close).disabled(sending)

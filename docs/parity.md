@@ -50,6 +50,7 @@ Les réglages à ouvrir ne sont pas les mêmes :
 
 ### Présentation des confirmations
 - Dans la fiche d’un vélo, le site affiche « Réserver ce vélo ? » ou « Déverrouiller ce vélo ? » dans un encadré gris, dans la fiche elle-même. L’app ouvre une feuille par-dessus, dont le titre est la question avec le vélo (« Réserver le vélo 20449 ? », « Déverrouiller le vélo 20449 ? »), puis la phrase et Annuler / Confirmer. Le texte, les boutons, l’avertissement à plus de 200 m et les états d’erreur sont les mêmes.
+- Le site écrit « Réserver » et « Déverrouiller » en minuscules, côte à côte. L’app les écrit en capitales, qui ne tiennent pas côte à côte avec leurs icônes sur un iPhone : les deux boutons s’empilent alors sur toute la largeur, à la même taille, plutôt que de réduire « DÉVERROUILLER ».
 - Les réglages à confirmer (utilisation automatique des points, renouvellement automatique) utilisent l’interrupteur natif d’iOS, en rouge. Le toucher ouvre seulement la confirmation, comme sur le site.
 - « Effacer » le Journal technique demande d’abord « Effacer le journal ? » (Effacer / Annuler), dans le menu natif d’iOS.
 - Les fenêtres du site sont des boîtes de dialogue centrées sur ordinateur, ou des feuilles en bas de l’écran sur téléphone. L’app utilise les feuilles iOS : on peut les baisser d’un geste, sauf pendant un envoi.

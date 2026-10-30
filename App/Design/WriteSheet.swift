@@ -57,7 +57,44 @@ struct FailureBlock: View {
 struct PairedActions<Content: View>: View {
     @ViewBuilder let content: () -> Content
     var body: some View {
-        HStack(spacing: Space.cards) { content() }.fixedSize(horizontal: false, vertical: true)
+        EqualCells(spacing: Space.cards) { content() }
+    }
+}
+
+private struct EqualCells: SwiftUI.Layout {
+    let spacing: CGFloat
+
+    private func arrangement(_ width: CGFloat?, _ subviews: Subviews) -> (cell: CGFloat, side: Bool) {
+        let count = CGFloat(subviews.count)
+        let widest = subviews.map { $0.sizeThatFits(.unspecified).width }.max() ?? 0
+        let gaps = spacing * (count - 1)
+        let available = width ?? widest * count + gaps
+        let side = widest * count + gaps <= available
+        return (side ? (available - gaps) / count : available, side)
+    }
+
+    private func heights(_ cell: CGFloat, _ subviews: Subviews) -> [CGFloat] {
+        subviews.map { $0.sizeThatFits(ProposedViewSize(width: cell, height: nil)).height }
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard !subviews.isEmpty else { return .zero }
+        let (cell, side) = arrangement(proposal.width, subviews)
+        let heights = heights(cell, subviews)
+        let width = side ? cell * CGFloat(subviews.count) + spacing * CGFloat(subviews.count - 1) : cell
+        return CGSize(width: width, height: side ? heights.max() ?? 0 : heights.reduce(0, +) + spacing * CGFloat(subviews.count - 1))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard !subviews.isEmpty else { return }
+        let (cell, side) = arrangement(bounds.width, subviews)
+        let heights = heights(cell, subviews)
+        let row = heights.max() ?? 0
+        var origin = bounds.origin
+        for (subview, height) in zip(subviews, heights) {
+            subview.place(at: origin, proposal: ProposedViewSize(width: cell, height: side ? row : height))
+            if side { origin.x += cell + spacing } else { origin.y += height + spacing }
+        }
     }
 }
 

@@ -111,7 +111,7 @@ Ces règles du propriétaire valent pour l’app comme pour le site, où elles s
 - Deux polices seulement : Faculty Glyphic (Velov Glyphic) pour les titres et les grands nombres, DM Sans pour le reste.
 - Icônes du jeu gratuit Hugeicons partout, jamais d’icône Pro.
 - Barre d’onglets : icônes et libellés noirs, onglet choisi blanc sur sa pastille rouge.
-- Des boutons côte à côte ont exactement la même taille, fond de pression compris, quelle que soit la longueur de leur texte.
+- Des boutons côte à côte ont exactement la même taille, fond de pression compris, quelle que soit la longueur de leur texte. Leur texte n’est jamais réduit : quand le plus long ne tient pas en pleine taille dans la moitié de la largeur, les deux boutons s’empilent sur toute la largeur (`PairedActions`, `App/Design/WriteSheet.swift`).
 - Ouvrir une fenêtre ou une feuille ne décale rien. Un squelette de chargement a exactement la forme du contenu chargé, en une seule étape, avec un reflet gris brume.
 - Jamais de badge « Expérimental » : une fonction au format deviné part comme une fonction normale.
 - Majuscule en début de ligne, de libellé et après un séparateur (« · », « — ») : « Vélo 27619 · Borne 4 ». Les MAJUSCULES des boutons et des étiquettes restent.

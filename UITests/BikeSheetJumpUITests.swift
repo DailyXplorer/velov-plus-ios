@@ -6,18 +6,24 @@ final class BikeSheetJumpUITests: XCTestCase {
         app.launchArguments = ["-VelovSample", "YES", "-VelovScreen", "bikePush"]
         app.launch()
         XCTAssertTrue(app.buttons["Actualiser les vélos"].waitForExistence(timeout: 30), "the station's bikes are shown")
-        let dir = ProcessInfo.processInfo.environment["VELOV_SHOT_DIR"]
-        var frames: [(TimeInterval, Data)] = []
+        let back = app.navigationBars.buttons.firstMatch
+        var frames: [(time: TimeInterval, png: Data, back: CGRect?)] = []
         let start = Date()
         while Date().timeIntervalSince(start) < 6 {
-            frames.append((Date().timeIntervalSince(start), XCUIScreen.main.screenshot().pngRepresentation))
+            let png = XCUIScreen.main.screenshot().pngRepresentation
+            frames.append((Date().timeIntervalSince(start), png, back.exists ? back.frame : nil))
         }
-        if let dir {
+        if let dir = ProcessInfo.processInfo.environment["VELOV_SHOT_DIR"] {
             for (index, frame) in frames.enumerated() {
-                let name = String(format: "jump-%02d-%04dms.png", index, Int(frame.0 * 1000))
-                try? frame.1.write(to: URL(fileURLWithPath: dir).appendingPathComponent(name))
+                let name = String(format: "jump-%02d-%04dms.png", index, Int(frame.time * 1000))
+                try? frame.png.write(to: URL(fileURLWithPath: dir).appendingPathComponent(name))
             }
         }
-        XCTAssertTrue(app.staticTexts["Vélo 20449"].waitForExistence(timeout: 10) || app.navigationBars.firstMatch.exists, "the bike page is pushed")
+        XCTAssertTrue(back.waitForExistence(timeout: 10), "the bike page is pushed with a back button")
+        let settled = back.frame
+        let landed = frames.compactMap { frame in frame.back.map { (frame.time, $0) } }.filter { abs($0.1.minX - settled.minX) < 2 }
+        XCTAssertFalse(landed.isEmpty, "the back button was seen in place during the capture")
+        let off = landed.filter { abs($0.1.minY - settled.minY) > 1 }
+        XCTAssertTrue(off.isEmpty, "the back button settles at y \(settled.minY) but sat at \(off.map { String(format: "%.0f ms: y %.1f", $0.0 * 1000, $0.1.minY) })")
     }
 }

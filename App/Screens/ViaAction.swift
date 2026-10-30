@@ -85,6 +85,7 @@ struct ViaSheet: View {
                     .fieldPill()
             }
             PillButton(variant: .ghost, pending: locating, action: locate) { ButtonIcon(.navigationArrow); Text("Les plus proches") }
+                .padding(.leading, -Space.row)
             switch model.stations {
             case .loading:
                 VStack(alignment: .leading, spacing: Space.label) {

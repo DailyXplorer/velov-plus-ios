@@ -224,10 +224,11 @@ struct ReceiptRow: View {
 }
 
 func periodLabel(_ receipt: Receipt) -> String {
-    switch (receipt.start, receipt.end) {
-    case let (start?, end?): "Du \(formatDate(start, .dayMonthYear)) au \(formatDate(end, .dayMonthYear))"
-    case let (start?, nil): "Depuis le \(formatDate(start, .dayMonthYear))"
-    case let (nil, end?): "Jusqu’au \(formatDate(end, .dayMonthYear))"
+    func day(_ date: Date) -> String { formatDate(date, .dayMonthYear).replacingOccurrences(of: " ", with: "\u{a0}") }
+    return switch (receipt.start, receipt.end) {
+    case let (start?, end?): "Du \(day(start)) au \(day(end))"
+    case let (start?, nil): "Depuis le \(day(start))"
+    case let (nil, end?): "Jusqu’au \(day(end))"
     default: "Dates inconnues"
     }
 }

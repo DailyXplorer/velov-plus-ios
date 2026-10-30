@@ -25,6 +25,7 @@ enum Layout {
     static let hit: CGFloat = 44
     static let glyph: CGFloat = 20
     static let iconGap: CGFloat = 10
+    static let mapKitMargin: CGFloat = 11
     static let bleed: CGFloat = -(hit - glyph) / 2
 }
 

@@ -8,6 +8,7 @@ struct StationMapView: View {
     @Binding var camera: MapCameraPosition
     var interactive = true
     var showsUser = false
+    var attributionInset = Concentric.inset
     var onSelect: (String) -> Void = { _ in }
     var onBackground: () -> Void = {}
 
@@ -31,6 +32,7 @@ struct StationMapView: View {
         }
         .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
         .mapControls {}
+        .safeAreaPadding(.horizontal, attributionInset - Layout.mapKitMargin)
         .onTapGesture { onBackground() }
         .background(Palette.mist)
     }

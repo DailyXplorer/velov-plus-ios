@@ -46,7 +46,7 @@ struct OverviewPage: View {
 
     private var mapCard: some View {
         ZStack {
-            StationMapView(stations: model.stations.value?.stations ?? [], camera: $camera, interactive: false)
+            StationMapView(stations: model.stations.value?.stations ?? [], camera: $camera, interactive: false, attributionInset: Space.cardCompact)
             if case .failed(let failure) = model.stations {
                 VStack {
                     ErrorNotice(failure: failure, pending: model.stationsPending) { Task { await model.loadStations() } }

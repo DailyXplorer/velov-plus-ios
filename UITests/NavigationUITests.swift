@@ -93,6 +93,36 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(visible(app, "Vélo 20449"), "the edge swipe did not pop the bike page behind the dialog")
     }
 
+    func testAGuestOnlySeesStationsAndIsAskedToSignInOnABike() {
+        let app = launch("guestBikeSheet")
+        let signIn = app.buttons["Se connecter pour réserver ou déverrouiller"]
+        XCTAssertTrue(signIn.waitForExistence(timeout: 30), "the bike page offers sign-in in place of its actions")
+        XCTAssertFalse(app.buttons["Réserver"].exists || app.buttons["Déverrouiller"].exists, "a guest has no bike action")
+        shot("guest-bike-page")
+        XCUIDevice.shared.press(.home)
+        sleep(2)
+        app.activate()
+        XCTAssertTrue(signIn.waitForExistence(timeout: 10), "returning to the app starts no account request")
+        signIn.tap()
+        let guest = app.buttons["Continuer sans compte"]
+        XCTAssertTrue(guest.waitForExistence(timeout: 10), "the link opens the login screen")
+        guest.tap()
+        XCTAssertTrue(guest.waitForNonExistence(timeout: 10), "Continuer sans compte leaves the login screen")
+    }
+
+    func testAGuestHasNoAccountTabs() {
+        let app = launch("guestStations")
+        let signIn = app.buttons["Se connecter"]
+        XCTAssertTrue(signIn.waitForExistence(timeout: 30) && signIn.isHittable, "Se connecter is in the Stations header")
+        XCTAssertTrue(visible(app, "Stations"))
+        for tab in ["Accueil", "Trajets", "Points", "Compte", "Mon compte"] {
+            XCTAssertFalse(app.buttons[tab].exists, "a guest has no \(tab)")
+        }
+        shot("guest-stations")
+        signIn.tap()
+        XCTAssertTrue(app.buttons["Continuer sans compte"].waitForExistence(timeout: 10), "Se connecter opens the login screen")
+    }
+
     func testAnEditedFormAsksBeforeItIsLeft() {
         let app = launch("profilePage")
         XCTAssertTrue(visible(app, "Modifier mes coordonnées", timeout: 30))

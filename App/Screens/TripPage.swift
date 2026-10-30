@@ -132,7 +132,7 @@ struct TripPage: View {
                             }
                         }
                     }
-                    if trip.status != "FINISHED" { DetailRow("Statut", Messages.tripStatuses[trip.status] ?? trip.status) }
+                    if trip.status != "FINISHED" { DetailRow("Statut", Messages.tripStatuses[trip.status] ?? "Inconnu") }
                 }
                 .padding(.top, Space.label)
             }

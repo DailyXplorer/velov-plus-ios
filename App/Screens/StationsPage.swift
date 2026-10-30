@@ -96,7 +96,7 @@ struct StationsPage: View {
                 ], layout: .inline)
                 .fixedSize()
             }
-            .padding(.leading, 18).padding(.trailing, Space.label)
+            .padding(.leading, Layout.fieldLeading).padding(.trailing, Space.label)
             .floatingGlass(Capsule())
             FloatingCircleButton(label: "Stations autour de moi", value: locating ? "Localisation en cours" : nil) { locate() } content: {
                 if locating { Spinner() } else { Icon(.navigationArrow, .light, size: Layout.glyph) }

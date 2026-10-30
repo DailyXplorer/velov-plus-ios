@@ -132,11 +132,11 @@ final class TripTests: XCTestCase {
     }
 
     func testFrenchFormatsMatchTheWebApp() {
-        XCTAssertEqual(formatDistance(347), "350 m")
-        XCTAssertEqual(formatDistance(3), "10 m")
-        XCTAssertEqual(formatDistance(1_234), "1,2 km")
-        XCTAssertEqual(formatDistance(2_000), "2 km")
-        XCTAssertEqual(formatDistance(14_400), "14 km")
+        XCTAssertEqual(formatDistance(347), "350\u{a0}m")
+        XCTAssertEqual(formatDistance(3), "10\u{a0}m")
+        XCTAssertEqual(formatDistance(1_234), "1,2\u{a0}km")
+        XCTAssertEqual(formatDistance(2_000), "2\u{a0}km")
+        XCTAssertEqual(formatDistance(14_400), "14\u{a0}km")
         XCTAssertEqual(formatPrice(180).filter { !$0.isWhitespace }, "1,80€")
         XCTAssertEqual(outOfFive(56), "2,8")
         XCTAssertEqual(formatDate(nil), "Date indisponible")

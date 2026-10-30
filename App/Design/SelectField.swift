@@ -78,7 +78,7 @@ struct SelectField<Value: Hashable>: View {
             shown.frame(maxWidth: layout == .stacked ? .infinity : nil, alignment: .leading)
             FieldArrow(turn: chevron)
         }
-        .padding(.leading, inline ? Layout.iconGap : 18).padding(.trailing, inline ? 0 : Space.label)
+        .padding(.leading, inline ? Layout.iconGap : Layout.fieldLeading).padding(.trailing, inline ? 0 : Space.label)
         .frame(height: Layout.control)
         .background { if !inline { Capsule().fill(Palette.white) } }
         .overlay { if !inline { Capsule().strokeBorder(Palette.inkLine, lineWidth: 1) } }

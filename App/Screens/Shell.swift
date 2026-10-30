@@ -415,7 +415,7 @@ struct Header: View {
                         Text("Se connecter").typo(.caps(.button)).lineLimit(1)
                     }
                     .foregroundStyle(Palette.ink)
-                    .padding(.leading, 14).padding(.trailing, 18)
+                    .padding(.horizontal, Space.row)
                     .frame(height: Layout.control)
                     .floatingGlass(Capsule(), interactive: true, fallback: Palette.mist)
                     .contentShape(Capsule())

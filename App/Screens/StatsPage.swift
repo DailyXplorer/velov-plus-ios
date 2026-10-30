@@ -581,8 +581,11 @@ private struct Records: View {
                 tile("Vélo favori", first: false) {
                     if let bike = records?.bike {
                         NavigationLink(value: Route.bike(BikeRoute(number: bike, station: nil))) {
-                            Text(verbatim: "N°\u{a0}\(bike)").typo(.title(.section)).foregroundStyle(Palette.ink).underline(color: Palette.inkLine)
-                                .frame(minHeight: Layout.hit, alignment: .topLeading).contentShape(Rectangle())
+                            HStack(spacing: Space.label) {
+                                Text(verbatim: "N°\u{a0}\(bike)").typo(.title(.section)).foregroundStyle(Palette.ink)
+                                Icon(.caretRight, .light, size: 16).foregroundStyle(Palette.inkSoft)
+                            }
+                            .frame(minHeight: Layout.hit, alignment: .topLeading).contentShape(Rectangle())
                         }
                         .buttonStyle(.press)
                         .accessibilityLabel("Voir la fiche du vélo \(bike)")

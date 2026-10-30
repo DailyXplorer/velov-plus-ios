@@ -82,8 +82,8 @@ public func formatName(_ name: String) -> String {
 }
 
 public func formatDistance(_ metres: Double) -> String {
-    if metres < 1000 { return "\(max(10, Int((metres / 10).rounded()) * 10)) m" }
-    return "\(formatNumber(metres / 1000, maximumFractionDigits: metres < 10_000 ? 1 : 0)) km"
+    if metres < 1000 { return "\(max(10, Int((metres / 10).rounded()) * 10))\u{a0}m" }
+    return "\(formatNumber(metres / 1000, maximumFractionDigits: metres < 10_000 ? 1 : 0))\u{a0}km"
 }
 
 public func outOfFive(_ value: Double) -> String {

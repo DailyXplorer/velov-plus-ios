@@ -6,7 +6,7 @@ extension View {
     }
 
     func fieldPill() -> some View {
-        padding(.leading, 18).padding(.trailing, Space.label).frame(minHeight: Layout.control).ringed(Capsule())
+        padding(.leading, Layout.fieldLeading).padding(.trailing, Space.label).frame(minHeight: Layout.control).ringed(Capsule())
     }
 }
 
@@ -157,7 +157,7 @@ struct Eyebrow: View {
             Icon(icon, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
             Text(text).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
         }
-        .padding(.leading, 4).padding(.trailing, 14).padding(.vertical, 4)
+        .padding(.leading, Space.pair).padding(.trailing, 14).padding(.vertical, Space.pair)
         .background(Capsule().fill(surface == .white ? Palette.mist : Palette.white))
     }
 }
@@ -255,7 +255,7 @@ struct TextLinkLabel: View {
     @Environment(\.isEnabled) private var enabled
 
     var body: some View {
-        HStack(spacing: trailing == .external ? 12 : 6) {
+        HStack(spacing: trailing == .external ? Space.cards : Space.label) {
             Text(title).typo(.caps(.button)).multilineTextAlignment(.leading)
             switch trailing {
             case .none: EmptyView()
@@ -513,7 +513,7 @@ struct OutlinePill: View {
     let text: String
     var body: some View {
         Text(text).typo(.caps(.tag)).foregroundStyle(Palette.redDeep).lineLimit(1).fixedSize()
-            .padding(.horizontal, 8).padding(.vertical, 3)
+            .padding(.horizontal, Space.label).padding(.vertical, 3)
             .overlay(Capsule().strokeBorder(Palette.red, lineWidth: 1))
     }
 }

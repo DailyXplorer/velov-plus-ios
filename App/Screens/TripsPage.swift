@@ -46,7 +46,7 @@ struct TripsFilterLine<Select: View, Count: View>: View {
     var body: some View {
         HStack {
             select()
-            Spacer(minLength: 8)
+            Spacer(minLength: Space.label)
             count().typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize()
         }
         .padding(.bottom, Space.label)

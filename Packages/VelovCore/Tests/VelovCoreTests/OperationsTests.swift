@@ -152,6 +152,19 @@ final class OperationsTests: XCTestCase {
         XCTAssertGreaterThan(operations.version, version)
     }
 
+    func testSendingHoldsForTheWholeRunEvenWhenTheCallerLostItsKey() async {
+        let operations = store(InMemoryOperationBacking(), Clock())
+        var during: Bool?
+        let result = await operations.runOnce("via:x:t-1") {
+            operations.use(account: nil)
+            during = operations.sending
+            return Outcome(ok: true, httpStatus: 200)
+        }
+        XCTAssertEqual(result, .finished(Outcome(ok: true, httpStatus: 200)))
+        XCTAssertEqual(during, true, "a sheet that can no longer name its operation still blocks every way out")
+        XCTAssertFalse(operations.sending)
+    }
+
     func testUncertainFollowsTheWebRules() {
         XCTAssertFalse(Outcome(ok: false, httpStatus: 200, transactionState: "ABORT").isUncertain)
         XCTAssertFalse(Outcome(ok: false, httpStatus: 0, code: "local.no.subscription").isUncertain)

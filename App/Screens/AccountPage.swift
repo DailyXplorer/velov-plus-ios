@@ -46,7 +46,7 @@ struct AccountPage: View {
                 if let line = current.validUntil.map({ "Jusqu’au \(formatDate($0, .dayLongMonthYear))" }) ?? (current.active ? nil : "Inactif") {
                     Text(line).typo(.body(.base)).foregroundStyle(Palette.inkSoft).padding(.top, Space.label)
                 }
-                if current.type == "LT" { AutoRenewalSetting(subscription: current).id("\(current.id ?? ""):\(data.updatedAt.timeIntervalSince1970)") }
+                if current.type == "LT" { AutoRenewalSetting(subscription: current).id(current.id ?? "") }
             }
             if let receipts = data.receipts, !receipts.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {

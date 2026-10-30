@@ -70,7 +70,7 @@ struct RateBike: View {
             VStack(spacing: 2) {
                 if uncertain != nil {
                     PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify() }
-                    TextLink(title: "Plus tard", action: onLater)
+                    TextLink(title: "Plus tard", action: onLater).disabled(checking)
                 } else {
                     PillButton(variant: .primary, pending: sending, fullWidth: true, action: send) { ButtonIcon(.send); Text("Envoyer") }.disabled(stars == nil)
                     if !sending { TextLink(title: "Plus tard", action: onLater) }

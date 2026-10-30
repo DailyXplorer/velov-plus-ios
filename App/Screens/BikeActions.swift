@@ -64,6 +64,7 @@ struct BikeActionSheet: View {
 
     private var action: BikeAction { held?.action ?? chosen }
     private var sending: Bool { held?.entry.status == .sending }
+    private var busy: Bool { sending || checking }
     private var failure: Outcome? {
         if let held { return held.entry.outcome }
         return refused
@@ -74,7 +75,7 @@ struct BikeActionSheet: View {
     var body: some View {
         let far = action == .unlock && (distance ?? 0) > Rules.releaseDistance
         ConfirmScaffold(title: action == .book ? "Réserver le vélo \(place.bikeNumber)\u{a0}?" : "Déverrouiller le vélo \(place.bikeNumber)\u{a0}?",
-                        closeDisabled: sending, close: { dismiss() }) {
+                        closeDisabled: busy, close: { dismiss() }) {
             if action == .book {
                 Text("\(Rules.bookingPoints) points pour garder ce vélo \(Rules.bookingMinutes) minutes.")
             } else {
@@ -96,10 +97,10 @@ struct BikeActionSheet: View {
             }
         } actions: {
             if uncertain {
-                PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }
+                PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }.disabled(busy)
                 PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify(action) }
             } else {
-                PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(sending)
+                PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(busy)
                 PillButton("Confirmer", pending: sending, fullWidth: true) { send() }
             }
         }

@@ -30,7 +30,7 @@ struct ViaSheet: View {
     }
     private var failure: Outcome? { operation?.outcome ?? refused }
     private var pending: Bool { operation?.status == .sending }
-    private var blocked: Bool { pending && model.operations.sending }
+    private var blocked: Bool { model.operations.sending }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

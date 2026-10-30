@@ -259,12 +259,12 @@ private struct ContactDialog: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        WriteDialog(title: "Envoyer au service client ?", key: model.operations.digest.map(OperationKey.contact), ready: draft != nil, run: { [draft] in
+        WriteDialog(title: "Envoyer au service client\u{a0}?", key: model.operations.digest.map(OperationKey.contact), ready: draft != nil, run: { [draft] in
             guard let draft else { return Outcome.refusal("local.empty", "Votre message est vide ou trop long.") }
             let outcome = await attempt { try await model.service.contactSupport(draft) }
             if outcome.ok { sent() }
             return outcome
-        }, restart: Restart(title: "Écrire un nouveau message", action: writeAgain))
+        }, restart: Restart(title: "Écrire un nouveau message", note: "Votre premier message est peut-être déjà arrivé.", action: writeAgain))
     }
 }
 

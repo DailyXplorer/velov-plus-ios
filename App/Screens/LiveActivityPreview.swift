@@ -67,7 +67,7 @@ struct LiveActivityPreview: View {
     private var minimalIsland: some View {
         HStack(spacing: 8) {
             Capsule().fill(.black).frame(width: 126, height: 37)
-            TripIslandMinimal(state: ride)
+            Icon(.personSimpleBike, size: 18).foregroundStyle(ActivityStyle.red)
                 .frame(width: 37, height: 37).background(Circle().fill(.black))
         }
     }

@@ -95,10 +95,3 @@ struct TripIslandCompact: View {
         TripElapsed(state: state, size: 14, color: ActivityStyle.red).multilineTextAlignment(.trailing).frame(width: 62)
     }
 }
-
-struct TripIslandMinimal: View {
-    let state: TripActivityAttributes.ContentState
-    var body: some View {
-        TripElapsed(state: state, size: 11, color: ActivityStyle.red).multilineTextAlignment(.center).lineLimit(1).minimumScaleFactor(0.5).frame(width: 36)
-    }
-}

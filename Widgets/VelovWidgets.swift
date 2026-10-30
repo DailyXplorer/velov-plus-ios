@@ -26,7 +26,7 @@ struct TripLiveActivity: Widget {
             } compactTrailing: {
                 TripIslandCompact(state: context.state)
             } minimal: {
-                TripIslandMinimal(state: context.state)
+                Icon(.personSimpleBike, size: 18).foregroundStyle(ActivityStyle.red)
             }
             .keylineTint(ActivityStyle.red)
         }

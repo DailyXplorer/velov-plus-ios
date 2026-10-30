@@ -45,7 +45,7 @@ struct SheetHeading: View {
         HStack(alignment: .firstTextBaseline) {
             Text(title).typo(.title(.section)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
-            IconButton(icon: .x, label: "Fermer", action: close).padding(.trailing, -10).disabled(closeDisabled)
+            IconButton(icon: .x, label: "Fermer", action: close).bleed(.trailing).disabled(closeDisabled)
         }
     }
 }

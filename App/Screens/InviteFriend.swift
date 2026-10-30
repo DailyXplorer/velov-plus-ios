@@ -108,7 +108,7 @@ struct InviteFriend: View {
                 }
             }
             .padding(.top, 12)
-            if uncertain != nil || verification == .debited { TextButton(title: "Écrire au service client", action: contact).padding(.top, 8) }
+            if uncertain != nil || verification == .debited { TextLink(title: "Écrire au service client", action: contact).padding(.top, 8) }
             if let warning { FormError(warning).padding(.top, 12) }
             PairedActions {
                 PillButton(settled ? "Fermer" : "Annuler", variant: .ghost, fullWidth: true) { close() }.disabled(blocked)

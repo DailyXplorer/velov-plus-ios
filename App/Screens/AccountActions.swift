@@ -114,8 +114,7 @@ struct AutoRenewalSetting: View {
             }
             Spacer(minLength: 0)
             if canChange, subscription.id != nil, let actual {
-                VelovSwitch(on: actual) { asking = true }
-                    .accessibilityLabel("Renouvellement automatique").accessibilityValue(actual ? "Activé" : "Désactivé")
+                ConfirmToggle(label: "Renouvellement automatique", on: actual) { asking = true }
             }
         }
         .padding(.top, 20)

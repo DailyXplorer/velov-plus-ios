@@ -6,23 +6,28 @@ extension View {
     }
 
     func fieldPill() -> some View {
-        padding(.horizontal, 18).frame(minHeight: 42).ringed(Capsule())
+        padding(.leading, 18).padding(.trailing, 8).frame(minHeight: Layout.control).ringed(Capsule())
     }
 }
 
-enum ButtonVariant { case primary, secondary, ghost }
+extension EnvironmentValues {
+    @Entry var onMist = false
+}
+
+enum ButtonVariant { case primary, secondary, ghost, destructive }
 
 struct PillButton<Label: View>: View {
     var variant: ButtonVariant = .primary
     var pending = false
-    var height: CGFloat = 42
+    var large = false
     var fullWidth = false
     let action: () -> Void
     @ViewBuilder let label: () -> Label
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.onMist) private var onMist
 
     var body: some View {
-        Button(action: action) {
+        Button(role: variant == .destructive ? .destructive : nil, action: action) {
             ZStack {
                 HStack(spacing: 10) { label() }.opacity(pending ? 0 : 1)
                 if pending { Spinner() }
@@ -31,7 +36,7 @@ struct PillButton<Label: View>: View {
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             .padding(.horizontal, 16)
-            .frame(minHeight: height)
+            .frame(minHeight: large ? Layout.largeControl : Layout.control)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .foregroundStyle(foreground)
             .background(Capsule().fill(background))
@@ -43,27 +48,26 @@ struct PillButton<Label: View>: View {
     }
 
     private var muted: Bool { !enabled && !pending }
+    private var filled: Bool { variant == .primary || variant == .destructive }
 
     private var foreground: Color {
-        if muted { return Palette.inkSoft }
         switch variant {
-        case .primary: return Palette.white
-        case .secondary: return Palette.ink
-        case .ghost: return Palette.inkSoft
+        case .primary, .destructive: muted ? Palette.inkSoft : Palette.white
+        case .secondary: muted ? Palette.inkSoft : Palette.ink
+        case .ghost: muted ? Palette.disabledInk : Palette.inkSoft
         }
     }
 
     private var background: Color {
-        switch variant {
-        case .primary: muted ? Palette.line : Palette.red
-        default: .clear
-        }
+        guard filled else { return .clear }
+        return muted ? Palette.mist : Palette.red
     }
 
     private var ring: Color {
         switch variant {
         case .secondary: muted ? Palette.inkLine : Palette.secondaryRing
-        default: .clear
+        case .primary, .destructive: muted && onMist ? Palette.inkLine : .clear
+        case .ghost: .clear
         }
     }
 }
@@ -72,6 +76,12 @@ extension PillButton where Label == Text {
     init(_ title: String, variant: ButtonVariant = .primary, pending: Bool = false, fullWidth: Bool = false, action: @escaping () -> Void) {
         self.init(variant: variant, pending: pending, fullWidth: fullWidth, action: action) { Text(title) }
     }
+}
+
+struct ButtonIcon: View {
+    let name: IconName
+    init(_ name: IconName) { self.name = name }
+    var body: some View { Icon(name, .light, size: 18) }
 }
 
 struct Spinner: View {
@@ -201,30 +211,75 @@ extension SectionHeading where Trailing == EmptyView {
     init(_ title: String) { self.init(title: title) { EmptyView() } }
 }
 
-struct TextButton: View {
+struct TextLinkLabel: View {
+    enum Trailing { case none, caret, external }
     let title: String
-    let action: () -> Void
+    var trailing = Trailing.none
     @Environment(\.isEnabled) private var enabled
+
     var body: some View {
-        Button(action: action) { Text(title).typo(.caps(.button)).foregroundStyle(enabled ? Palette.redDeep : Palette.inkSoft).lineLimit(1).fixedSize().frame(minHeight: 40) }.buttonStyle(.press)
+        HStack(spacing: trailing == .external ? 12 : 6) {
+            Text(title).typo(.caps(.button)).multilineTextAlignment(.leading)
+            switch trailing {
+            case .none: EmptyView()
+            case .caret: Icon(.caretRight, .bold, size: 16)
+            case .external: CircleArrow(external: true, style: .outline)
+            }
+        }
+        .foregroundStyle(enabled ? Palette.redDeep : Palette.disabledInk)
+        .frame(minHeight: Layout.hit)
+        .contentShape(Rectangle())
+    }
+}
+
+struct TextLink: View {
+    let title: String
+    var trailing = TextLinkLabel.Trailing.none
+    var hint: String?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) { TextLinkLabel(title: title, trailing: trailing) }
+            .buttonStyle(.press)
+            .accessibilityHint(hint ?? "")
     }
 }
 
 struct IconButton: View {
     let icon: IconName
     var weight: IconWeight = .light
-    var size: CGFloat = 20
-    var frame: CGFloat = 40
+    var size: CGFloat = Layout.glyph
     var color: Color = Palette.inkSoft
     let label: String
     let action: () -> Void
     @Environment(\.isEnabled) private var enabled
     var body: some View {
         Button(action: action) {
-            Icon(icon, weight, size: size).foregroundStyle(enabled ? color : Palette.inkSoft).frame(width: frame, height: frame).contentShape(Circle())
+            Icon(icon, weight, size: size).foregroundStyle(enabled ? color : Palette.disabledInk)
+                .frame(width: Layout.hit, height: Layout.hit).contentShape(Rectangle())
         }
         .buttonStyle(.press)
         .accessibilityLabel(label)
+    }
+}
+
+struct FloatingCircleButton<Content: View>: View {
+    let label: String
+    var value: String?
+    let action: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        Button(action: action) {
+            content()
+                .foregroundStyle(Palette.ink)
+                .frame(width: Layout.control, height: Layout.control)
+                .floatingGlass(Circle(), interactive: true, fallback: Palette.mist)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.press)
+        .accessibilityLabel(label)
+        .accessibilityValue(value ?? "")
     }
 }
 
@@ -331,20 +386,39 @@ struct StackedValue: View {
     }
 }
 
-struct VelovSwitch: View {
+struct ConfirmToggle: View {
+    let label: String
     let on: Bool
-    var action: () -> Void = {}
-    @Environment(\.isEnabled) private var enabled
+    let ask: () -> Void
+
+    var body: some View {
+        Toggle(label, isOn: Binding(get: { on }, set: { _ in ask() }))
+            .labelsHidden()
+            .tint(Palette.red)
+            .frame(minHeight: Layout.hit)
+            .contentShape(Rectangle())
+    }
+}
+
+struct OnRedPill: View {
+    let icon: IconName
+    let title: String
+    let action: () -> Void
+
     var body: some View {
         Button(action: action) {
-            Capsule().fill(!enabled ? Palette.mist : on ? Palette.red : Palette.ink.opacity(0.2)).frame(width: 52, height: 30)
-                .overlay(Capsule().strokeBorder(enabled ? .clear : Palette.inkLine, lineWidth: 1))
-                .overlay(alignment: on ? .trailing : .leading) {
-                    Circle().fill(Palette.white).frame(width: 24, height: 24)
-                        .overlay(Circle().strokeBorder(Palette.inkLine, lineWidth: 1)).padding(3)
-                }
+            HStack(spacing: 10) {
+                Icon(icon, .light, size: 15).foregroundStyle(Palette.white)
+                    .frame(width: 32, height: 32).background(Circle().fill(Palette.red))
+                Text(title).typo(.caps(.button)).foregroundStyle(Palette.ink)
+            }
+            .padding(.leading, 6).padding(.trailing, 18)
+            .frame(minHeight: Layout.control)
+            .background(Capsule().fill(Palette.white))
+            .contentShape(Capsule())
         }
         .buttonStyle(.press)
+        .fixedSize()
     }
 }
 

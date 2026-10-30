@@ -19,7 +19,7 @@ struct TripSheet: View {
                     HStack {
                         Text("Trajet").typo(.title(.section)).foregroundStyle(Palette.ink)
                         Spacer()
-                        IconButton(icon: .x, label: "Fermer les détails") { dismiss() }.padding(.trailing, -10).disabled(model.operations.sending)
+                        IconButton(icon: .x, label: "Fermer les détails") { dismiss() }.bleed(.trailing).disabled(model.operations.sending)
                     }
                     times.padding(.top, 6)
                     VStack(alignment: .leading, spacing: 14) {
@@ -114,16 +114,13 @@ struct TripSheet: View {
         return HStack(spacing: 12) {
             Text("Vélo’v a signalé ce trajet comme litigieux.").typo(.body(.small)).foregroundStyle(Palette.ink)
             Spacer(minLength: 0)
-            Button {
+            TextLink(title: "Contacter le service client", hint: "Ouvre Mail") {
                 var components = URLComponents()
                 components.scheme = "mailto"
                 components.path = Support.address
                 components.queryItems = [URLQueryItem(name: "subject", value: subject)]
                 if let url = components.url { openURL(url) }
-            } label: {
-                Text("Contacter le service client").typo(.caps(.label)).foregroundStyle(Palette.redDeep).multilineTextAlignment(.trailing)
             }
-            .buttonStyle(.press)
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.red, lineWidth: 1))
@@ -139,8 +136,7 @@ struct TripSheet: View {
                     Spacer()
                     if let number = trip.bikeNumber {
                         NavigationLink(value: BikeRoute(number: number, station: nil)) {
-                            HStack(spacing: 6) { Text(verbatim: "Vélo n° \(number)"); Icon(.caretRight, .bold, size: 14) }
-                                .typo(.caps(.button)).foregroundStyle(Palette.redDeep).frame(minHeight: 36)
+                            TextLinkLabel(title: "Vélo \(number)", trailing: .caret)
                         }
                         .buttonStyle(.press)
                     }
@@ -152,12 +148,12 @@ struct TripSheet: View {
                         DetailRow(label: "Code du trajet") {
                             HStack(spacing: 2) {
                                 Text(token).typo(.label(.small))
-                                IconButton(icon: copied ? .check : .copy, weight: copied ? .bold : .light, size: 16, frame: 32, label: copied ? "Code copié" : "Copier le code du trajet") {
+                                IconButton(icon: copied ? .check : .copy, weight: copied ? .bold : .light, size: 16, label: copied ? "Code copié" : "Copier le code du trajet") {
                                     UIPasteboard.general.string = token
                                     Haptics.success()
                                     copied = true
                                 }
-                                .padding(.trailing, -8)
+                                .bleed(.trailing)
                             }
                         }
                     }

@@ -8,13 +8,13 @@ struct SelectOption<Value: Hashable>: Identifiable {
 }
 
 struct SelectField<Value: Hashable>: View {
-    enum Layout { case row, stacked, inline }
+    enum Placement { case row, stacked, inline }
 
     let label: String
     var hideLabel = false
     @Binding var value: Value
     let options: [SelectOption<Value>]
-    var layout = Layout.row
+    var layout = Placement.row
     @State private var choosing = false
 
     private var selected: SelectOption<Value>? { options.first { $0.value == value } ?? options.first }
@@ -70,12 +70,10 @@ struct SelectField<Value: Hashable>: View {
     private func pill(chevron: Double) -> some View {
         HStack(spacing: inline ? 8 : 12) {
             shown.frame(maxWidth: layout == .stacked ? .infinity : nil, alignment: .leading)
-            Icon(.arrowRight, .bold, size: 13).foregroundStyle(Palette.ink)
-                .rotationEffect(.degrees(chevron))
-                .frame(width: 28, height: 28).background(Circle().fill(Palette.mist))
+            FieldArrow(turn: chevron)
         }
-        .padding(.leading, inline ? 10 : 18).padding(.trailing, inline ? 0 : 7)
-        .frame(height: 42)
+        .padding(.leading, inline ? 10 : 18).padding(.trailing, inline ? 0 : 8)
+        .frame(height: Layout.control)
         .background { if !inline { Capsule().fill(Palette.white) } }
         .overlay { if !inline { Capsule().strokeBorder(Palette.inkLine, lineWidth: 1) } }
         .contentShape(Rectangle())
@@ -92,6 +90,15 @@ struct SelectField<Value: Hashable>: View {
             }
             .typo(.body(.lead))
         }
+    }
+}
+
+struct FieldArrow: View {
+    var turn: Double = 0
+    var body: some View {
+        Icon(.arrowRight, .bold, size: 13).foregroundStyle(Palette.ink)
+            .rotationEffect(.degrees(turn))
+            .frame(width: 28, height: 28).background(Circle().fill(Palette.mist))
     }
 }
 

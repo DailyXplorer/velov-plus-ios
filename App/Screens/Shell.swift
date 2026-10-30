@@ -93,7 +93,7 @@ struct TabBar: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(page.title)
+                .accessibilityLabel(page.tab)
                 .accessibilityAddTraits(active ? .isSelected : [])
             }
         }
@@ -234,38 +234,30 @@ struct Header: View {
     let title: String
     @Environment(AppModel.self) private var model
     private var fullName: String { model.dashboard.map { formatName("\($0.profile.firstName) \($0.profile.lastName)") } ?? "" }
+    private var busy: Bool { model.refreshing || model.stationsPending }
 
     var body: some View {
-        HStack(spacing: 3) {
-            Text(title).typo(.title(.page)).foregroundStyle(Palette.ink).lineLimit(1)
-            Spacer(minLength: 8)
-            Button { Task { await model.manualRefresh() } } label: {
+        HStack(spacing: Space.label) {
+            Text(title).typo(.title(.page)).foregroundStyle(Palette.ink).lineLimit(1).accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 0)
+            FloatingCircleButton(label: "Actualiser", value: model.dashboard.map { "Actualisé à \(formatDate($0.updatedAt, .time))" }) {
+                Task { await model.manualRefresh() }
+            } content: {
                 Group {
-                    if model.refreshing { Spinner(size: 20) } else { Icon(.arrowClockwise, .light, size: 20) }
+                    if busy { Spinner(size: Layout.glyph) } else { Icon(.arrowClockwise, .light, size: Layout.glyph) }
                 }
-                .foregroundStyle(Palette.inkSoft).frame(width: 40, height: 40)
-                .floatingGlass(Circle(), interactive: true, fallback: .clear)
+                .foregroundStyle(Palette.inkSoft)
             }
-            .buttonStyle(.press)
-            .disabled(model.refreshing)
-            .accessibilityLabel(model.dashboard.map { "Actualisé à \(formatDate($0.updatedAt, .time))" } ?? "Actualiser")
-            Button { model.page = .account } label: {
-                Group {
-                    if let initial = model.dashboard.flatMap({ formatName($0.profile.firstName).first }) {
-                        Text(String(initial)).typo(.title(.small))
-                    } else {
-                        Icon(.userCircle, .light, size: 22)
-                    }
+            .disabled(busy)
+            FloatingCircleButton(label: fullName.isEmpty ? "Mon compte" : "Mon compte, \(fullName)") { model.page = .account } content: {
+                if let initial = model.dashboard.flatMap({ formatName($0.profile.firstName).first }) {
+                    Text(String(initial)).typo(.title(.small))
+                } else {
+                    Icon(.userCircle, .light, size: 22)
                 }
-                .foregroundStyle(Palette.ink)
-                .frame(width: 40, height: 40)
-                .floatingGlass(Circle(), interactive: true, fallback: Palette.mist)
             }
-            .buttonStyle(.press)
-            .padding(.leading, 4)
-            .accessibilityLabel(fullName.isEmpty ? "Mon compte" : "Mon compte, \(fullName)")
         }
-        .padding(.horizontal, 22).padding(.top, 24).padding(.bottom, 28)
+        .padding(.horizontal, Layout.margin).padding(.top, Layout.headerTop).padding(.bottom, Layout.headerBottom)
     }
 }
 
@@ -375,7 +367,7 @@ struct BookingBanners: View {
                         }
                         .foregroundStyle(Palette.white)
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(left.map { "Vélo réservé, \($0 / 60) min \(String(format: "%02d", $0 % 60)) restantes" } ?? "Vélo réservé")
+                        .accessibilityLabel(left.map { "Vélo réservé, \(max(1, $0 / 60)) min restantes" } ?? "Vélo réservé")
                         Spacer(minLength: 0)
                         if Place(booking) != nil { unlock(booking) }
                     }
@@ -388,19 +380,7 @@ struct BookingBanners: View {
     }
 
     private func unlock(_ booking: Booking) -> some View {
-        Button { model.unlocking = booking } label: {
-            HStack(spacing: 10) {
-                Icon(.lockOpen, .light, size: 15).foregroundStyle(Palette.white)
-                    .frame(width: 32, height: 32).background(Circle().fill(Palette.red))
-                Text("Déverrouiller").tracking(0.52).typo(.caps(.label)).foregroundStyle(Palette.ink)
-            }
-            .padding(.leading, 5).padding(.trailing, 18)
-            .frame(minHeight: 42)
-            .background(Capsule().fill(Palette.white))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.press)
-        .fixedSize()
+        OnRedPill(icon: .lockOpen, title: "Déverrouiller") { model.unlocking = booking }
     }
 }
 
@@ -414,7 +394,7 @@ struct LogoutSheet: View {
             HStack {
                 Text("Se déconnecter ?").typo(.title(.section)).foregroundStyle(Palette.ink)
                 Spacer()
-                IconButton(icon: .x, label: "Fermer") { dismiss() }.padding(.trailing, -10)
+                IconButton(icon: .x, label: "Fermer") { dismiss() }.bleed(.trailing)
             }
             PairedActions {
                 PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(pending)

@@ -80,7 +80,7 @@ struct OverviewSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionHeading(title: title) { TextButton(title: "Tout voir", action: link).ghost(ghost) }
+            SectionHeading(title: title) { TextLink(title: "Tout voir", action: link).ghost(ghost) }
             content()
         }
         .padding(.top, padding)

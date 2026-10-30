@@ -75,7 +75,7 @@ struct PointsSkeleton: View {
             }
             .fixedSize(horizontal: false, vertical: true)
             .padding(.bottom, 16)
-            SettingRow(label: "Utilisation automatique", value: "Activée") { VelovSwitch(on: true) }.skeleton()
+            SettingRow(label: "Utilisation automatique", value: "Activée") { ConfirmToggle(label: "Utilisation automatique", on: true) {} }.skeleton()
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Inviter un ami").typo(.caps(.label))
@@ -171,8 +171,7 @@ struct AutoSpendSetting: View {
             }
             Spacer(minLength: 0)
             if let value {
-                VelovSwitch(on: value) { next = !value; asking = true }
-                    .accessibilityLabel("Utilisation automatique des points").accessibilityValue(value ? "Activée" : "Désactivée")
+                ConfirmToggle(label: "Utilisation automatique des points", on: value) { next = !value; asking = true }
             }
         }
         .padding(.leading, 20).padding(.trailing, 16).padding(.vertical, 18)

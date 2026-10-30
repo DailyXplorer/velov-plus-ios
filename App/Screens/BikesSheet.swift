@@ -233,7 +233,7 @@ struct BikeDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 8) {
-                    IconButton(icon: .arrowLeft, label: route.station == nil ? "Retour au trajet" : "Retour à la liste des vélos") { dismiss() }.padding(.leading, -10).disabled(model.operations.sending)
+                    IconButton(icon: .arrowLeft, label: route.station == nil ? "Retour au trajet" : "Retour à la liste des vélos") { dismiss() }.bleed(.leading).disabled(model.operations.sending)
                     HStack(spacing: 12) {
                         Text(verbatim: "\(route.number)").typo(.title(.figureS)).foregroundStyle(Palette.ink)
                         if let item, !own.contains(route.number) { VerdictMark(verdict: item.verdict) }

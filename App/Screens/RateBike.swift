@@ -65,10 +65,10 @@ struct RateBike: View {
             VStack(spacing: 2) {
                 if uncertain != nil {
                     PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify() }
-                    TextButton(title: "Plus tard", action: onLater)
+                    TextLink(title: "Plus tard", action: onLater)
                 } else {
                     PillButton("Envoyer", pending: sending, fullWidth: true) { send() }.disabled(stars == nil)
-                    if !sending { TextButton(title: "Plus tard", action: onLater) }
+                    if !sending { TextLink(title: "Plus tard", action: onLater) }
                 }
             }
             .padding(.top, 14)

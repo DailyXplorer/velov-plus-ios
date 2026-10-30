@@ -90,19 +90,14 @@ private struct ReceiptsTitle: View {
 private struct ManageLink: View {
     let action: () -> Void
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) { Text("Gérer sur Vélo’v").typo(.caps(.button)); CircleArrow(external: true, style: .outline) }
-                .foregroundStyle(Palette.redDeep).frame(minHeight: 40)
-        }
-        .buttonStyle(.press)
-        .padding(.top, 16)
+        TextLink(title: "Gérer sur Vélo’v", trailing: .external, hint: "Ouvre le site Vélo’v", action: action).padding(.top, 16)
     }
 }
 
 private struct LogoutButton: View {
     let action: () -> Void
     var body: some View {
-        PillButton(height: 48, fullWidth: true, action: action) {
+        PillButton(variant: .destructive, large: true, fullWidth: true, action: action) {
             Icon(.signOut, .light, size: 19)
             Text("Se déconnecter")
         }
@@ -131,7 +126,7 @@ struct AccountSkeleton: View {
                         Text("Désactivé").typo(.title(.card))
                     }
                     Spacer(minLength: 0)
-                    VelovSwitch(on: false)
+                    ConfirmToggle(label: "Renouvellement automatique", on: false) {}
                 }
                 .padding(.top, 20)
                 VStack(alignment: .leading, spacing: 0) {

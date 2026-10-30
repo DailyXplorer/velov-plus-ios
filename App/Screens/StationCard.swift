@@ -13,20 +13,20 @@ struct StationCard: View {
     @State private var favoriteOpen = false
     @State private var wasFavorite = false
 
-    private static let pill: CGFloat = 40
+    private static let pill = Layout.control
 
     var body: some View {
         let padding = max(radius - Self.pill / 2, 16)
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
                 Text(station.name).typo(.title(.small)).foregroundStyle(Palette.ink).lineLimit(1)
-                IconButton(icon: .star, weight: favorite ? .fill : .light, size: 19, frame: 36, color: favorite ? Palette.red : Palette.inkSoft,
+                IconButton(icon: .star, weight: favorite ? .fill : .light, color: favorite ? Palette.red : Palette.inkSoft,
                            label: favorite ? "Retirer des favoris" : "Ajouter aux favoris") { wasFavorite = favorite; favoriteOpen = true }
                     .accessibilityAddTraits(favorite ? .isSelected : [])
                     .padding(.leading, -2)
                 Spacer(minLength: 8)
                 if !station.open { Text("Fermée").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).fixedSize().padding(.trailing, 8) }
-                IconButton(icon: .x, size: 18, frame: 36, label: "Fermer", action: close)
+                IconButton(icon: .x, label: "Fermer", action: close)
             }
             .padding(.trailing, -8)
             HStack(spacing: 18) {
@@ -36,8 +36,8 @@ struct StationCard: View {
             }
             .padding(.top, 2)
             HStack(spacing: 8) {
-                PillButton(variant: .secondary, height: Self.pill, fullWidth: true, action: { bikesOpen = true }) { Text("Voir les vélos") }
-                PillButton(variant: .primary, height: Self.pill, fullWidth: true, action: directions) {
+                PillButton(variant: .secondary, fullWidth: true, action: { bikesOpen = true }) { Text("Voir les vélos") }
+                PillButton(variant: .primary, fullWidth: true, action: directions) {
                     Text("Itinéraire")
                     CircleArrow(external: true, style: .onPrimary)
                 }

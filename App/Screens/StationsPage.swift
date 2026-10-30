@@ -75,11 +75,13 @@ struct StationsPage: View {
                     if !query.isEmpty {
                         Button { query = "" } label: {
                             Icon(.x, .light, size: 16).foregroundStyle(Palette.ink).frame(width: 28, height: 28).background(Circle().fill(Palette.mist))
+                                .frame(width: Layout.hit, height: Layout.hit).contentShape(Rectangle())
                         }
                         .buttonStyle(.press).accessibilityLabel("Effacer la recherche")
+                        .padding(.horizontal, -8)
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: 42)
+                .frame(maxWidth: .infinity, minHeight: Layout.control)
                 .layoutPriority(1)
                 SelectField(label: "Afficher", hideLabel: true, value: $filter, options: [
                     .init(value: .all, label: "Toutes les stations", short: "Toutes"), .init(value: .favorites, label: "Favorites"),
@@ -88,19 +90,12 @@ struct StationsPage: View {
                 ], layout: .inline)
                 .fixedSize()
             }
-            .padding(.leading, 14).padding(.trailing, 7)
+            .padding(.leading, 18).padding(.trailing, 8)
             .floatingGlass(Capsule())
-            Button { locate() } label: {
-                ZStack {
-                    if locating { Spinner() } else { Icon(.navigationArrow, .light, size: 18) }
-                }
-                .foregroundStyle(Palette.ink)
-                .frame(width: 42, height: 42)
-                .floatingGlass(Circle(), interactive: true)
+            FloatingCircleButton(label: "Stations autour de moi", value: locating ? "Localisation en cours" : nil) { locate() } content: {
+                if locating { Spinner() } else { Icon(.navigationArrow, .light, size: 18) }
             }
-            .buttonStyle(.press)
             .disabled(locating)
-            .accessibilityLabel("Stations autour de moi")
         }
     }
 

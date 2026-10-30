@@ -6,7 +6,7 @@ extension View {
         if #available(iOS 26, *) {
             glassEffect(.regular.interactive(interactive), in: shape)
         } else if let fallback {
-            background(shape.fill(fallback))
+            background(shape.fill(fallback)).overlay(shape.strokeBorder(Palette.inkLine, lineWidth: 1))
         } else {
             ringed(shape)
         }

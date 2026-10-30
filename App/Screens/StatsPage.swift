@@ -28,15 +28,12 @@ struct StatsLink: View {
         NavigationLink(value: TripsRoute.stats) {
             HStack(spacing: 10) {
                 Icon(.chart, .light, size: 18)
-                Text("Statistiques")
+                Text("Statistiques").typo(.body(.lead))
                 Spacer(minLength: 0)
-                Icon(.caretRight, .bold, size: 14)
+                FieldArrow()
             }
-            .typo(.caps(.button))
             .foregroundStyle(Palette.ink)
-            .padding(.horizontal, 18)
-            .frame(minHeight: 42)
-            .overlay(Capsule().strokeBorder(Palette.secondaryRing, lineWidth: 1))
+            .fieldPill()
             .contentShape(Capsule())
         }
         .buttonStyle(.press)
@@ -113,7 +110,7 @@ struct StatsPage: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 4) {
-                        IconButton(icon: .arrowLeft, color: Palette.ink, label: "Retour aux trajets") { dismiss() }.padding(.leading, -10)
+                        IconButton(icon: .arrowLeft, color: Palette.ink, label: "Retour aux trajets") { dismiss() }.bleed(.leading)
                         Text("Statistiques").typo(.title(.page)).foregroundStyle(Palette.ink).lineLimit(1)
                         Spacer(minLength: 0)
                     }

@@ -170,6 +170,8 @@ final class WriteFlowsTests: XCTestCase {
         XCTAssertEqual([result.outcome.ok, result.verified, result.autoRenewalAllowed], [true, false, false])
         XCTAssertNil(result.autoRenewal)
         XCTAssertEqual(writes(server).count, 1)
+        let before = Subscription(id: "sub-1", title: "", type: "LT", validUntil: nil, active: true, autoRenewal: true, autoRenewalAllowed: true)
+        XCTAssert(renewalShown(before, after: result) == (nil, false), "an unverified change shows no value and no toggle")
         let refused = cyclocity(write: .json(["code": "x"], status: 401))
         let failed = try await api(refused).setAutoRenewal(identity, subscriptionId: "sub-1", autoRenewal: true)
         XCTAssertEqual([failed.outcome.ok, failed.verified], [false, false])

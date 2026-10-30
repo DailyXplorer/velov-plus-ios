@@ -98,6 +98,11 @@ public struct PromoResult: Equatable, Sendable {
     public init(outcome: Outcome, promoCode: String?) { self.outcome = outcome; self.promoCode = promoCode }
 }
 
+public func renewalShown(_ subscription: Subscription, after result: AutoRenewalResult?) -> (value: Bool?, canChange: Bool) {
+    guard let result, result.outcome.ok else { return (subscription.autoRenewal, subscription.autoRenewalAllowed) }
+    return (result.autoRenewal, result.autoRenewalAllowed)
+}
+
 func renewalState(of subscription: JSON?) -> (autoRenewal: Bool?, allowed: Bool) {
     let details = subscription?["periods"]?.array?.last?["renewalDetails"]
     return (details?["autoRenewalValue"]?.bool, subscription?["isLocked"]?.bool != true && details?["autoRenewalBtn"]?.bool == true)

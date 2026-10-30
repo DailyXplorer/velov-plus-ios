@@ -126,8 +126,8 @@ struct AutoRenewalSetting: View {
     @State private var asking = false
     @State private var saved: AutoRenewalResult?
 
-    private var actual: Bool? { saved.map(\.autoRenewal) ?? subscription.autoRenewal }
-    private var canChange: Bool { saved?.autoRenewalAllowed ?? subscription.autoRenewalAllowed }
+    private var actual: Bool? { renewalShown(subscription, after: saved).value }
+    private var canChange: Bool { renewalShown(subscription, after: saved).canChange }
     private var next: Bool { !(actual ?? false) }
 
     var body: some View {
@@ -159,7 +159,7 @@ struct AutoRenewalSetting: View {
                     value = AutoRenewalResult(outcome: outcome, autoRenewal: nil, autoRenewalAllowed: false, verified: false)
                 }
                 if value.outcome.ok {
-                    if value.verified, value.autoRenewal != nil { saved = value }
+                    saved = value
                     Task { await model.loadDashboard() }
                 }
                 return value.outcome

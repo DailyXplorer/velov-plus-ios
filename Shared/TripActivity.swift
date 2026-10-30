@@ -14,6 +14,11 @@ struct TripActivityAttributes: ActivityAttributes {
 extension TripActivityAttributes.ContentState {
     var bikeLine: String { "Vélo \(bikeNumber.map(String.init) ?? "—")" }
     var status: String { endedAt == nil ? "En trajet" : "Terminé" }
+
+    func spoken(at now: Date = .now) -> String {
+        let minutes = max(1, Int((endedAt ?? now).timeIntervalSince(startedAt) / 60))
+        return endedAt == nil ? "\(bikeLine), en trajet depuis \(minutes)\u{a0}min" : "\(bikeLine), trajet terminé après \(minutes)\u{a0}min"
+    }
 }
 
 struct TripElapsed: View {
@@ -40,15 +45,15 @@ struct TripLockScreenView: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 ActivityPill(icon: .personSimpleBike, text: state.status)
-                    .accessibilityHidden(true)
                 Text(state.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
                 Text(state.station).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(state.bikeLine), \(state.status.lowercased()), depuis \(state.station)")
             Spacer(minLength: 0)
             TripElapsed(state: state, size: 34, color: .white).multilineTextAlignment(.trailing).frame(width: 150, alignment: .trailing)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(state.spoken())
+        .accessibilityHint("Départ \(state.station)")
         .padding(14)
     }
 }

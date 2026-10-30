@@ -29,6 +29,12 @@ enum ActivityStyle {
 
 extension BookingActivityAttributes {
     var bikeLine: String { "Vélo \(bikeNumber.map(String.init) ?? "—") · Borne \(standNumber.map(String.init) ?? "—")" }
+
+    func spoken(endsAt: Date, stale: Bool, now: Date = .now) -> String {
+        let bike = "Vélo \(bikeNumber.map(String.init) ?? "")"
+        guard !stale, endsAt > now else { return "\(bike), réservation expirée" }
+        return "\(bike) réservé, \(max(1, Int(endsAt.timeIntervalSince(now) / 60)))\u{a0}min restantes"
+    }
 }
 
 struct BookingCountdown: View {
@@ -69,8 +75,6 @@ struct BookingLockScreenView: View {
                 Text(attributes.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
                 Text(attributes.stationName).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Vélo \(attributes.bikeNumber.map(String.init) ?? "") réservé, borne \(attributes.standNumber.map(String.init) ?? "—"), \(attributes.stationName)")
             Spacer(minLength: 0)
             if stale {
                 Text("Expirée").font(ActivityStyle.label(15)).foregroundStyle(.white)
@@ -78,6 +82,9 @@ struct BookingLockScreenView: View {
                 BookingCountdown(endsAt: endsAt, size: 34, color: .white).multilineTextAlignment(.trailing).frame(width: 118, alignment: .trailing)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(attributes.spoken(endsAt: endsAt, stale: stale))
+        .accessibilityHint("Borne \(attributes.standNumber.map(String.init) ?? "non renseignée"), \(attributes.stationName)")
         .padding(14)
     }
 }

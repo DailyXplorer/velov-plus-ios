@@ -151,3 +151,10 @@ Ces règles du propriétaire valent pour l’app comme pour le site, où elles s
 - Aucun commentaire dans le code, aucun fichier inutile versionné (brouillons, consignes d’agent). Le README est en français et reste utile : ce que fait l’app, comment elle marche, comment la compiler, la tester et l’installer.
 - Les identifiants personnels (UDID, identifiant d’équipe Apple, nom, chemins personnels, jetons) restent dans des fichiers locaux ignorés par git, à côté d’un fichier `.example` versionné, comme `Local.xcconfig`.
 - Les règles de développement communes au site et à l’app (relecture, publication d’un dépôt, captures) sont dans `docs/development.md` du dépôt web.
+
+## Façon de travailler
+
+- Les bugs se trouvent avant le propriétaire : après chaque lot, une passe QA autonome capture chaque écran et chaque état (avec et sans compte, fiche ouverte et fermée, listes vides, erreurs, chargement, petit et grand iPhone, transitions image par image), audite le code des flux critiques (déverrouillage, réservation, fin de trajet, connexion, erreurs réseau, journal) et passe une co-review Codex croisée avec la review Opus.
+- Ce qui est trouvé est corrigé, relu, poussé et installé sans attendre l’accord du propriétaire ; il reçoit un rapport court avec une capture par écran modifié, pour information.
+- Seules les actions réelles hors du code demandent son accord : un vrai déverrouillage ou une vraie réservation (cela démarre une location sur son compte), un paiement, un message envoyé en son nom.
+- Les petits retours sont livrés en 20 à 30 minutes ; le nettoyage de fond tourne à part sans les bloquer.

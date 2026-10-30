@@ -33,7 +33,7 @@ struct StationsPage: View {
                 BookingBanners(bottom: 12)
                 if !locationError.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(locationError).typo(.body(13)).foregroundStyle(Palette.notice)
+                        Text(locationError).typo(.body(.small)).foregroundStyle(Palette.formError)
                         if !locationRaw.isEmpty { RawStatus(line: locationRaw) }
                     }
                     .padding(.bottom, 12)
@@ -70,13 +70,13 @@ struct StationsPage: View {
                 HStack(spacing: 10) {
                     Icon(.magnifyingGlass, .light, size: 19).foregroundStyle(Palette.ink)
                     TextField("", text: $query, prompt: Text("Rechercher").foregroundStyle(Palette.inkSoft))
-                        .typo(.body(16)).foregroundStyle(Palette.ink).focused($searching).submitLabel(.search)
+                        .typo(.body(.input)).foregroundStyle(Palette.ink).focused($searching).submitLabel(.search)
                         .autocorrectionDisabled().accessibilityLabel("Rechercher une station")
                     if !query.isEmpty {
                         Button { query = "" } label: {
                             Icon(.x, .light, size: 16).foregroundStyle(Palette.ink).frame(width: 28, height: 28).background(Circle().fill(Palette.mist))
                         }
-                        .buttonStyle(.plain).accessibilityLabel("Effacer la recherche")
+                        .buttonStyle(.press).accessibilityLabel("Effacer la recherche")
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: 42)
@@ -98,7 +98,7 @@ struct StationsPage: View {
                 .frame(width: 42, height: 42)
                 .floatingGlass(Circle(), interactive: true)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.press)
             .disabled(locating)
             .accessibilityLabel("Stations autour de moi")
         }
@@ -147,18 +147,18 @@ struct StationsPage: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
-                            Text(station.name).typo(.body(14, medium: true)).foregroundStyle(Palette.ink).lineLimit(1)
+                            Text(station.name).typo(.body(.base, medium: true)).foregroundStyle(Palette.ink).lineLimit(1)
                             if favorites.contains(station.number) { Icon(.star, .fill, size: 14).foregroundStyle(Palette.red) }
                             Spacer(minLength: 0)
                             Icon(.caretRight, .light, size: 16).foregroundStyle(Palette.inkSoft)
                         }
                         Text(verbatim: "\(here.map { "\(formatDistance(haversine($0, station.point))) · " } ?? "")N° \(station.number)\(station.open ? "" : " · Fermée")")
-                            .typo(.body(12)).foregroundStyle(Palette.inkSoft)
+                            .typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
                     }
                     .padding(.horizontal, 15).padding(.vertical, 16)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.row(bleed: 0))
             }
             if shown.isEmpty { EmptyState("Aucune station trouvée.") }
         }
@@ -169,6 +169,7 @@ struct StationsPage: View {
     }
 
     private func select(_ id: String) {
+        Haptics.selection()
         selectedId = id
         guard let station = stations.first(where: { $0.id == id }) else { return }
         withAnimation(.easeInOut(duration: 0.5)) {

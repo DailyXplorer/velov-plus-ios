@@ -23,26 +23,27 @@ struct SelectField<Value: Hashable>: View {
 
     var body: some View {
         switch layout {
-        case .row: HStack(spacing: 12) { title; trigger }
-        case .stacked: VStack(alignment: .leading, spacing: 6) { title; trigger }
+        case .row: HStack(spacing: 12) { title; trigger }.onChange(of: value) { Haptics.selection() }
+        case .stacked: VStack(alignment: .leading, spacing: 6) { title; trigger }.onChange(of: value) { Haptics.selection() }
         case .inline:
             HStack(spacing: 0) {
                 Rectangle().fill(Palette.inkLine).frame(width: 1, height: 22).padding(.leading, 8)
                 trigger
             }
+            .onChange(of: value) { Haptics.selection() }
         }
     }
 
     @ViewBuilder
     private var title: some View {
-        if !hideLabel { Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft).fixedSize() }
+        if !hideLabel { Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).fixedSize() }
     }
 
     @ViewBuilder
     private var trigger: some View {
         if inForm {
             Button { choosing = true } label: { pill(chevron: 0) }
-                .buttonStyle(.plain)
+                .buttonStyle(.press)
                 .accessibilityLabel("\(label), \(selected?.label ?? "")")
                 .sheet(isPresented: $choosing) {
                     ChoiceList(title: label, value: $value, options: options)
@@ -83,13 +84,13 @@ struct SelectField<Value: Hashable>: View {
     @ViewBuilder
     private var shown: some View {
         if inline {
-            Text(selected?.short ?? selected?.label ?? "").typo(.body(14)).foregroundStyle(Palette.ink).lineLimit(1)
+            Text(selected?.short ?? selected?.label ?? "").typo(.body(.base)).foregroundStyle(Palette.ink).lineLimit(1)
         } else {
             ZStack(alignment: .leading) {
                 ForEach(options) { Text($0.label).lineLimit(1).hidden() }
                 Text(selected?.label ?? "").foregroundStyle(Palette.ink).lineLimit(1)
             }
-            .typo(.body(15))
+            .typo(.body(.lead))
         }
     }
 }
@@ -109,7 +110,7 @@ private struct ChoiceList<Value: Hashable>: View {
                         dismiss()
                     } label: {
                         HStack(spacing: 12) {
-                            Text(option.label).typo(.body(16)).foregroundStyle(Palette.ink)
+                            Text(option.label).typo(.body(.input)).foregroundStyle(Palette.ink)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             if option.value == value {
                                 Image(systemName: "checkmark").font(.system(size: 16, weight: .semibold)).foregroundStyle(Palette.red)

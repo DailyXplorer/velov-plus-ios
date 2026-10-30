@@ -73,7 +73,7 @@ struct BikeActionSheet: View {
         let far = action == .unlock && (distance ?? 0) > Rules.releaseDistance
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: "Vélo \(place.bikeNumber)", closeDisabled: sending) { dismiss() }
-            Text(action == .book ? "Réserver ce vélo\u{a0}?" : "Déverrouiller ce vélo\u{a0}?").typo(.title(20)).foregroundStyle(Palette.ink).padding(.top, 10)
+            Text(action == .book ? "Réserver ce vélo\u{a0}?" : "Déverrouiller ce vélo\u{a0}?").typo(.title(.card)).foregroundStyle(Palette.ink).padding(.top, 10)
             Group {
                 if action == .book {
                     Text("\(Rules.bookingPoints) points pour garder ce vélo \(Rules.bookingMinutes) minutes.").foregroundStyle(Palette.inkSoft)
@@ -81,12 +81,12 @@ struct BikeActionSheet: View {
                     Text("Vous aurez ensuite 60 secondes pour appuyer sur le bouton de la borne \(place.standNumber) et retirer le vélo.").foregroundStyle(Palette.ink)
                 }
             }
-            .typo(.body(14)).fixedSize(horizontal: false, vertical: true).padding(.top, 10)
+            .typo(.body(.base)).fixedSize(horizontal: false, vertical: true).padding(.top, 10)
             if far {
                 HStack(alignment: .top, spacing: 8) {
                     Icon(.warning, .bold, size: 16).padding(.top, 1)
                     Text("Vous semblez être à plus de \(Int(Rules.releaseDistance)) m de la station. Si quelqu’un d’autre prend le vélo, le trajet vous sera facturé.")
-                        .typo(.body(13)).fixedSize(horizontal: false, vertical: true)
+                        .typo(.body(.small)).fixedSize(horizontal: false, vertical: true)
                 }
                 .foregroundStyle(Palette.formError)
                 .padding(.top, 12)
@@ -160,7 +160,7 @@ struct BikeActionSheet: View {
             case .busy: if model.operations.get(key) == nil { notice = Messages.busy }; return
             case .finished(let answer): outcome = answer
             }
-            Haptics.result(outcome.ok)
+            Haptics.result(outcome)
             if outcome.ok {
                 if action == .book { model.booked(booking) } else { model.unlocked(bookingId: bookingId, ride: place.ride(ongoing?.first)) }
                 dismiss()
@@ -195,9 +195,11 @@ struct BikeActionSheet: View {
             }
             switch settled {
             case .done?:
+                Haptics.success()
                 if action == .unlock, let trip { model.unlocked(bookingId: bookingId, ride: place.ride(trip)) } else { await model.loadBookings(force: true) }
                 dismiss()
             case .refused(let answer)?:
+                Haptics.refused()
                 refused = answer
                 await model.loadBookings(force: true)
             case .uncertain?, nil:

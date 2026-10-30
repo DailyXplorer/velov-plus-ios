@@ -30,17 +30,17 @@ struct BikesSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 8) {
-                        Text(station.name).typo(.title(21)).foregroundStyle(Palette.ink).frame(maxWidth: .infinity, alignment: .leading)
+                        Text(station.name).typo(.title(.section)).foregroundStyle(Palette.ink).frame(maxWidth: .infinity, alignment: .leading)
                         Button { Task { await load() } } label: {
                             Group { if refreshing { Spinner(size: 19) } else { Icon(.arrowClockwise, .light, size: 19) } }
                                 .foregroundStyle(Palette.inkSoft).frame(width: 40, height: 40)
                         }
-                        .buttonStyle(.plain).disabled(refreshing).accessibilityLabel("Actualiser les vélos")
+                        .buttonStyle(.press).disabled(refreshing).accessibilityLabel("Actualiser les vélos")
                         IconButton(icon: .x, label: "Fermer") { dismiss() }.disabled(model.operations.sending)
                     }
                     .padding(.top, 14).padding(.bottom, 10)
                     Text(assessed.map { "\($0.count) vélo\($0.count > 1 ? "s" : "") à la station" } ?? "Chargement des vélos…")
-                        .typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1).padding(.bottom, 8)
+                        .typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).padding(.bottom, 8)
                     switch bikes {
                     case .loading:
                         BikesSkeleton(station: station)
@@ -53,7 +53,7 @@ struct BikesSheet: View {
                                     NavigationLink(value: BikeRoute(number: item.bike.number, station: station)) {
                                         BikeRow(item: item, mine: own.contains(item.bike.number))
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(.row)
                                     if index < assessed.count - 1 { Hairline() }
                                 }
                             }
@@ -110,7 +110,7 @@ struct BikeRow: View {
                 }
                 if let battery = bike.batteryPercent { BatteryLevel(percent: battery) }
             }
-            .typo(.body(13))
+            .typo(.body(.small))
             .foregroundStyle(Palette.ink)
         }
         .opacity(item.verdict == .avoid ? 0.6 : 1)
@@ -132,9 +132,9 @@ struct BikeRowLayout<Facts: View>: View {
         HStack(spacing: 14) {
             if ghost { Color.clear.frame(width: 36, height: 36).skeleton(18) } else { TripIcon(electrical: electrical, size: 36) }
             VStack(alignment: .leading, spacing: 0) {
-                Text(verbatim: number).typo(.title(24)).foregroundStyle(Palette.ink).ghost(ghost)
+                Text(verbatim: number).typo(.title(.section)).foregroundStyle(Palette.ink).ghost(ghost)
                 HStack(spacing: 8) {
-                    Text(stand).typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1).ghost(ghost)
+                    Text(stand).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).ghost(ghost)
                     if reserved { OutlinePill(text: "Réservé") }
                 }
                 .padding(.top, 5)
@@ -161,12 +161,12 @@ struct BikesSkeleton: View {
         let count = station.mechanical + station.electrical
         let picks = (station.mechanical > 0 ? 1 : 0) + (station.electrical > 0 ? 1 : 0)
         if count == 0 {
-            Text("Aucun vélo à cette station.").typo(.body(14)).ghost().frame(maxWidth: .infinity).padding(.vertical, 44).padding(.horizontal, 20)
+            Text("Aucun vélo à cette station.").typo(.body(.base)).ghost().frame(maxWidth: .infinity).padding(.vertical, 44).padding(.horizontal, 20)
         } else {
             VStack(spacing: 0) {
                 ForEach(0..<count, id: \.self) { index in
                     BikeRowLayout(number: "\(12000 + index * 731)", stand: "Borne \(index + 1)", reserved: false, recommended: index < picks, electrical: false, ghost: true) {
-                        Text(verbatim: "4,5").typo(.body(13)).ghost()
+                        Text(verbatim: "4,5").typo(.body(.small)).ghost()
                     }
                     if index < count - 1 { Hairline() }
                 }
@@ -235,7 +235,7 @@ struct BikeDetail: View {
                 HStack(spacing: 8) {
                     IconButton(icon: .arrowLeft, label: route.station == nil ? "Retour au trajet" : "Retour à la liste des vélos") { dismiss() }.padding(.leading, -10).disabled(model.operations.sending)
                     HStack(spacing: 12) {
-                        Text(verbatim: "\(route.number)").typo(.title(34)).foregroundStyle(Palette.ink)
+                        Text(verbatim: "\(route.number)").typo(.title(.figureS)).foregroundStyle(Palette.ink)
                         if let item, !own.contains(route.number) { VerdictMark(verdict: item.verdict) }
                     }
                     Spacer()
@@ -282,7 +282,7 @@ struct BikeDetail: View {
         }
         .padding(.top, 4)
         if bike.status != "AVAILABLE" {
-            Text(bike.statusLabel ?? "Statut inconnu").typo(.body(14)).foregroundStyle(Palette.inkSoft).padding(.top, 14)
+            Text(bike.statusLabel ?? "Statut inconnu").typo(.body(.base)).foregroundStyle(Palette.inkSoft).padding(.top, 14)
         }
         if let station = route.station, bike.status == "AVAILABLE", bike.standNumber != nil, !bike.isReserved || mine {
             actions(bike, station: station, mine: mine)
@@ -295,7 +295,7 @@ struct BikeDetail: View {
                             Stars(value: rating.value / 20)
                             Text(outOfFive(rating.value)) + Text("/5").foregroundStyle(Palette.inkSoft)
                         }
-                        Text(verbatim: "\(formatNumber(rating.count)) avis\(fromNow(rating.lastAt).map { " · Dernier avis \($0)" } ?? "")").typo(.caps(12)).foregroundStyle(Palette.inkSoft)
+                        Text(verbatim: "\(formatNumber(rating.count)) avis\(fromNow(rating.lastAt).map { " · Dernier avis \($0)" } ?? "")").typo(.caps(.tag)).foregroundStyle(Palette.inkSoft)
                     }
                 } else {
                     Text("Pas encore d’avis")
@@ -347,17 +347,17 @@ struct BikeDetail: View {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let left = max(0, Int(endsAt.timeIntervalSince(context.date).rounded()))
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(verbatim: "Vélo réservé jusqu’à \(formatDate(endsAt, .time))").typo(.title(20)).foregroundStyle(Palette.ink)
+                            Text(verbatim: "Vélo réservé jusqu’à \(formatDate(endsAt, .time))").typo(.title(.card)).foregroundStyle(Palette.ink)
                             HStack(spacing: 6) {
                                 Icon(.clock, .bold, size: 15)
-                                Text(left > 0 ? "Il reste \(clock(left))" : "Réservation expirée").typo(.caps(13)).monospacedDigit()
+                                Text(left > 0 ? "Il reste \(clock(left))" : "Réservation expirée").typo(.caps(.label)).monospacedDigit()
                             }
                             .foregroundStyle(Palette.redDeep)
                         }
                         .padding(.bottom, 2)
                     }
                 } else {
-                    Text(verbatim: "Vélo réservé pour \(Rules.bookingMinutes) minutes").typo(.title(20)).foregroundStyle(Palette.ink).padding(.bottom, 2)
+                    Text(verbatim: "Vélo réservé pour \(Rules.bookingMinutes) minutes").typo(.title(.card)).foregroundStyle(Palette.ink).padding(.bottom, 2)
                 }
             }
             PairedActions {
@@ -388,7 +388,7 @@ struct BikeSheetSkeleton: View {
                 DetailRow(label: "Note") {
                     VStack(alignment: .trailing, spacing: 3) {
                         HStack(spacing: 8) { Stars(value: 4.5); Text(verbatim: "4,5/5") }.ghost()
-                        Text(verbatim: "12 avis · Dernier avis il y a 3 j").typo(.caps(12)).ghost()
+                        Text(verbatim: "12 avis · Dernier avis il y a 3 j").typo(.caps(.tag)).ghost()
                     }
                 }
                 DetailRow(label: "Dernier trajet") { ghostDate }
@@ -404,7 +404,7 @@ struct BikeSheetSkeleton: View {
     private var ghostDate: some View {
         VStack(alignment: .trailing, spacing: 3) {
             Text(verbatim: "Il y a 2 h").ghost()
-            Text(verbatim: "12 oct. 2026, 08:42").typo(.caps(12)).ghost()
+            Text(verbatim: "12 oct. 2026, 08:42").typo(.caps(.tag)).ghost()
         }
     }
 }

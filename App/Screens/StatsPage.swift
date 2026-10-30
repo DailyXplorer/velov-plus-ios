@@ -32,14 +32,14 @@ struct StatsLink: View {
                 Spacer(minLength: 0)
                 Icon(.caretRight, .bold, size: 14)
             }
-            .typo(.caps(14))
+            .typo(.caps(.button))
             .foregroundStyle(Palette.ink)
             .padding(.horizontal, 18)
             .frame(minHeight: 42)
             .overlay(Capsule().strokeBorder(Palette.secondaryRing, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.press)
     }
 }
 
@@ -92,7 +92,7 @@ private func niceMax(_ value: Double) -> Double {
 }
 
 private func axisText(_ text: String) -> some View {
-    Text(text).typo(.body(11)).foregroundStyle(Palette.inkSoft).fixedSize()
+    Text(text).typo(.body(.micro)).foregroundStyle(Palette.inkSoft).fixedSize()
 }
 
 private let gap: CGFloat = 10
@@ -114,7 +114,7 @@ struct StatsPage: View {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 4) {
                         IconButton(icon: .arrowLeft, color: Palette.ink, label: "Retour aux trajets") { dismiss() }.padding(.leading, -10)
-                        Text("Statistiques").typo(.title(28)).foregroundStyle(Palette.ink).lineLimit(1)
+                        Text("Statistiques").typo(.title(.page)).foregroundStyle(Palette.ink).lineLimit(1)
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, 22).padding(.top, 24).padding(.bottom, 28)
@@ -124,7 +124,7 @@ struct StatsPage: View {
                         case .loading: skeleton
                         case .failed(let message):
                             VStack(spacing: 24) {
-                                Text(message).typo(.body(14)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center)
+                                Text(message).typo(.body(.base)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center)
                                 PillButton("Réessayer", variant: .secondary) { Task { await load() } }
                             }
                             .frame(maxWidth: .infinity).padding(.vertical, 100).padding(.horizontal, 20)
@@ -166,9 +166,9 @@ struct StatsPage: View {
                         ForEach(["Électrique", "Mécanique"], id: \.self) { label in
                             HStack(spacing: 10) {
                                 Circle().frame(width: 10, height: 10).skeleton(5)
-                                Text(label).typo(.body(13)).ghost()
+                                Text(label).typo(.body(.small)).ghost()
                                 Spacer(minLength: 0)
-                                Text(verbatim: "50\u{a0}%").typo(.label(13)).ghost()
+                                Text(verbatim: "50\u{a0}%").typo(.label(.small)).ghost()
                             }
                         }
                     }
@@ -223,7 +223,7 @@ struct StatsView: View {
             SelectField(label: "Période", hideLabel: true, value: $period, options: Self.periods)
                 .zIndex(2)
                 .padding(.bottom, 6)
-            if !stats.complete { Text("Historique partiel").typo(.body(12)).foregroundStyle(Palette.inkSoft).padding(.top, 4) }
+            if !stats.complete { Text("Historique partiel").typo(.body(.meta)).foregroundStyle(Palette.inkSoft).padding(.top, 4) }
             Headline(data: data, balance: stats.balance)
             if data.trips == 0 {
                 EmptyState(stats.all.trips > 0 ? "Aucun trajet sur cette période." : "Vos statistiques apparaîtront après votre premier trajet.")
@@ -238,6 +238,7 @@ struct StatsView: View {
         .contentShape(Rectangle())
         .onTapGesture { focus = nil }
         .onChange(of: period) { focus = nil }
+        .onChange(of: focus) { _, now in if now != nil { Haptics.selection() } }
         .task {
             let keys = stats[period].buckets.map(\.key)
             switch model.snapshot {
@@ -284,10 +285,10 @@ private struct StatCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             CardTag(icon: icon, text: label, size: .stat)
-            (Text(value.glyphic) + Text(unit.map { " \($0)" } ?? "").font(Typo.title(15).font))
-                .typo(.title(32)).foregroundStyle(Palette.white).lineLimit(1).minimumScaleFactor(0.5).padding(.top, 18)
+            (Text(value.glyphic) + Text(unit.map { " \($0)" } ?? "").font(Typo.title(.unit).font))
+                .typo(.title(.figureS)).foregroundStyle(Palette.white).lineLimit(1).minimumScaleFactor(0.5).padding(.top, 18)
             Spacer(minLength: 18)
-            if let detail { Text(detail).typo(.body(11)).foregroundStyle(Palette.white).lineLimit(2).fixedSize(horizontal: false, vertical: true) }
+            if let detail { Text(detail).typo(.body(.micro)).foregroundStyle(Palette.white).lineLimit(2).fixedSize(horizontal: false, vertical: true) }
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
@@ -305,7 +306,7 @@ private struct Panel<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: tips ? 34 + tipBand : chart ? 34 : 18) {
-            Text(title).typo(.title(19)).foregroundStyle(Palette.ink)
+            Text(title).typo(.title(.card)).foregroundStyle(Palette.ink)
             content()
         }
         .padding(.horizontal, 16).padding(.top, 18).padding(.bottom, 20)
@@ -328,8 +329,8 @@ private struct ChartTip: View {
     let detail: String
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).typo(.body(12, medium: true)).foregroundStyle(Palette.ink)
-            Text(detail).typo(.body(12)).foregroundStyle(Palette.inkSoft)
+            Text(title).typo(.body(.meta, medium: true)).foregroundStyle(Palette.ink)
+            Text(detail).typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
         }
         .padding(.horizontal, 11).padding(.vertical, 8)
         .ringed(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -506,14 +507,15 @@ private struct BikeTypes: View {
         let spoken: String
         let count: Int
         let color: Color
+        let selected: Color
         var id: String { key }
     }
 
     var body: some View {
         let parts = [
-            Part(key: "electrical", label: "Électrique", spoken: "en électrique", count: data.bikeTypes.electrical, color: Palette.red),
-            Part(key: "mechanical", label: "Mécanique", spoken: "en mécanique", count: data.bikeTypes.mechanical, color: Color(hex: 0xe9e4e4)),
-            Part(key: "unknown", label: "Non renseigné", spoken: "sans type connu", count: data.bikeTypes.unknown, color: Palette.mist)
+            Part(key: "electrical", label: "Électrique", spoken: "en électrique", count: data.bikeTypes.electrical, color: Palette.red, selected: Palette.redDeep),
+            Part(key: "mechanical", label: "Mécanique", spoken: "en mécanique", count: data.bikeTypes.mechanical, color: Palette.segment, selected: Palette.segmentSelected),
+            Part(key: "unknown", label: "Non renseigné", spoken: "sans type connu", count: data.bikeTypes.unknown, color: Palette.mist, selected: Palette.segmentSelected)
         ].filter { $0.count > 0 }
         let selected: String? = if case .part(let key) = focus { key } else { nil }
         let total = max(1, data.trips)
@@ -524,13 +526,13 @@ private struct BikeTypes: View {
             ZStack {
                 Chart(parts) { part in
                     SectorMark(angle: .value("Trajets", part.count), innerRadius: .fixed(size / 2 - thickness), outerRadius: .fixed(size / 2), angularInset: parts.count > 1 ? 1 : 0)
-                        .foregroundStyle(selected == part.key && part.key == "electrical" ? Palette.redDeep : part.color)
+                        .foregroundStyle(selected == part.key ? part.selected : part.color)
                 }
                 .chartLegend(.hidden)
                 if let part = parts.first(where: { $0.key == selected }) {
                     VStack(spacing: 2) {
-                        Text(part.label).typo(.body(12, medium: true)).foregroundStyle(Palette.ink)
-                        Text("\(plural(part.count, "trajet")), soit \(share(part.count))").typo(.body(12)).foregroundStyle(Palette.inkSoft)
+                        Text(part.label).typo(.body(.meta, medium: true)).foregroundStyle(Palette.ink)
+                        Text("\(plural(part.count, "trajet")), soit \(share(part.count))").typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
                     }
                     .multilineTextAlignment(.center)
                     .frame(width: size - 2 * thickness - 8)
@@ -545,13 +547,13 @@ private struct BikeTypes: View {
                     Button { focus = selected == part.key ? nil : .part(part.key) } label: {
                         HStack(spacing: 10) {
                             Circle().fill(part.color).frame(width: 10, height: 10).overlay(Circle().strokeBorder(part.key == "unknown" ? Palette.inkLine : .clear, lineWidth: 1))
-                            Text(part.label).typo(.body(13)).foregroundStyle(Palette.ink)
+                            Text(part.label).typo(.body(.small)).foregroundStyle(Palette.ink)
                             Spacer(minLength: 0)
-                            Text(share(part.count)).typo(.label(13)).foregroundStyle(Palette.ink)
+                            Text(share(part.count)).typo(.label(.small)).foregroundStyle(Palette.ink)
                         }
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.press)
                 }
             }
         }
@@ -593,9 +595,9 @@ private struct Records: View {
                 tile("Vélo favori", first: false) {
                     if let bike = records?.bike {
                         Button { bikeOpen = true } label: {
-                            Text(verbatim: "N° \(bike)").typo(.title(23)).foregroundStyle(Palette.ink).underline(color: Palette.inkLine)
+                            Text(verbatim: "N° \(bike)").typo(.title(.section)).foregroundStyle(Palette.ink).underline(color: Palette.inkLine)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.press)
                         .accessibilityLabel("Voir la fiche du vélo \(bike)")
                     } else {
                         value(records == nil ? nil : String??.some(nil))
@@ -609,15 +611,15 @@ private struct Records: View {
     @ViewBuilder
     private func value(_ text: String??) -> some View {
         if let text {
-            Text((text ?? "—").glyphic).typo(.title(23)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
+            Text((text ?? "—").glyphic).typo(.title(.section)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
         } else {
-            Text(verbatim: "12 min").typo(.title(23)).lineLimit(1).ghost()
+            Text(verbatim: "12 min").typo(.title(.section)).lineLimit(1).ghost()
         }
     }
 
     private func tile(_ label: String, first: Bool, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1)
+            Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1)
             content()
         }
         .padding(.leading, first ? 0 : 14).padding(.vertical, 4)
@@ -635,10 +637,10 @@ private struct Ranking: View {
             ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                 if index > 0 { Hairline() }
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text("\(index + 1)").typo(.label(13)).foregroundStyle(Palette.inkSoft).frame(width: 18, alignment: .leading)
-                    Text(item.name).typo(.body(15)).foregroundStyle(Palette.ink).lineLimit(1).truncationMode(.tail).ghost(ghost)
+                    Text("\(index + 1)").typo(.label(.small)).foregroundStyle(Palette.inkSoft).frame(width: 18, alignment: .leading)
+                    Text(item.name).typo(.body(.lead)).foregroundStyle(Palette.ink).lineLimit(1).truncationMode(.tail).ghost(ghost)
                     Spacer(minLength: 0)
-                    Text(number(item.count)).typo(.label(13)).foregroundStyle(Palette.ink).ghost(ghost).accessibilityLabel("\(number(item.count)) passages")
+                    Text(number(item.count)).typo(.label(.small)).foregroundStyle(Palette.ink).ghost(ghost).accessibilityLabel("\(number(item.count)) passages")
                 }
                 .padding(.top, index > 0 ? 13 : 0).padding(.bottom, index < items.count - 1 ? 13 : 0)
             }

@@ -2,30 +2,6 @@ import CoreText
 import SwiftUI
 import UIKit
 
-enum Palette {
-    static let red = Color(hex: 0xdf2537)
-    static let redDeep = Color(hex: 0xc91f30)
-    static let redTint = Color(hex: 0xf9e0e3)
-    static let ink = Color(hex: 0x1c1717)
-    static let inkSoft = Color(hex: 0x1c1717, opacity: 0.72)
-    static let inkMuted = Color(hex: 0x1c1717, opacity: 0.6)
-    static let inkLine = Color(hex: 0x1c1717, opacity: 0.12)
-    static let line = Color(hex: 0x1c1717, opacity: 0.08)
-    static let secondaryRing = Color(hex: 0x1c1717, opacity: 0.3)
-    static let mist = Color(hex: 0xf5f2f2)
-    static let white = Color.white
-    static let onDark = Color.white.opacity(0.7)
-    static let formError = Color(hex: 0xb62938)
-    static let notice = Color(hex: 0x9e5b50)
-    static let radius: CGFloat = 16
-}
-
-extension Color {
-    init(hex: UInt32, opacity: Double = 1) {
-        self.init(red: Double(hex >> 16 & 0xff) / 255, green: Double(hex >> 8 & 0xff) / 255, blue: Double(hex & 0xff) / 255, opacity: opacity)
-    }
-}
-
 enum FontBook {
     private static var names: [String: String] = [:]
 
@@ -48,7 +24,10 @@ enum FontBook {
         let key = "\(file)|\(size)|\(weight ?? 0)|\(optical)|\(proportional)"
         if let cached = cache[key] { return cached }
         register()
-        guard let name = names[file] else { return .system(size: size) }
+        guard let name = names[file] else {
+            assertionFailure("Missing bundled font \(file)")
+            return .system(size: size)
+        }
         defer { cache[key] = makeFont(name, size: size, weight: weight, optical: optical, proportional: proportional) }
         return makeFont(name, size: size, weight: weight, optical: optical, proportional: proportional)
     }
@@ -66,25 +45,38 @@ enum FontBook {
 }
 
 enum Typo {
-    case title(CGFloat)
-    case body(CGFloat, medium: Bool = false)
-    case label(CGFloat)
-    case caps(CGFloat)
-    case countdown(CGFloat)
+    enum Title: CGFloat { case display = 48, figure = 40, figureS = 32, page = 28, section = 24, card = 20, small = 18, unit = 15 }
+    enum Text: CGFloat { case input = 16, lead = 15, base = 14, small = 13, meta = 12, micro = 11 }
+    enum Caps: CGFloat { case button = 14, label = 13, tag = 12 }
+
+    case title(Title)
+    case body(Text, medium: Bool = false)
+    case label(Text)
+    case caps(Caps)
+    case countdown
+
+    var size: CGFloat {
+        switch self {
+        case .title(let role): role.rawValue
+        case .body(let role, _), .label(let role): role.rawValue
+        case .caps(let role): role.rawValue
+        case .countdown: 26
+        }
+    }
 
     var font: Font {
         switch self {
-        case .title(let size), .countdown(let size): FontBook.font("VelovGlyphic-Regular", size: size, proportional: true)
-        case .body(let size, let medium): FontBook.font("DMSans", size: size, weight: medium ? 500 : 400, optical: true)
-        case .label(let size), .caps(let size): FontBook.font("DMSans", size: size, weight: 500, optical: true)
+        case .title, .countdown: FontBook.font("VelovGlyphic-Regular", size: size, proportional: true)
+        case .body(_, let medium): FontBook.font("DMSans", size: size, weight: medium ? 500 : 400, optical: true)
+        case .label, .caps: FontBook.font("DMSans", size: size, weight: 500, optical: true)
         }
     }
 
     var tracking: CGFloat {
         switch self {
-        case .title(let size): -0.03 * size
-        case .caps(let size): 0.02 * size
-        case .body(let size, _), .label(let size), .countdown(let size): -0.02 * size
+        case .title: -0.03 * size
+        case .caps: 0.02 * size
+        case .body, .label, .countdown: -0.02 * size
         }
     }
 }

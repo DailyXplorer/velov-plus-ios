@@ -29,12 +29,12 @@ struct RateBike: View {
 
     private var card: some View {
         VStack(spacing: 0) {
-            Text("Noter ce vélo").typo(.caps(13)).foregroundStyle(Palette.ink).frame(maxWidth: .infinity, alignment: .leading)
+            Text("Noter ce vélo").typo(.caps(.label)).foregroundStyle(Palette.ink).frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 2) {
                 ForEach(1...5, id: \.self) { value in
                     let on = stars.map { value <= $0 } ?? false
                     Button {
-                        UISelectionFeedbackGenerator().selectionChanged()
+                        Haptics.selection()
                         stars = value
                         refused = nil
                     } label: {
@@ -50,7 +50,7 @@ struct RateBike: View {
             }
             .padding(.top, 8)
             Text(stars.flatMap { StarRating.labels[$0] } ?? "Touchez une étoile")
-                .typo(.body(15)).foregroundStyle(stars == nil ? Palette.inkSoft : Palette.ink)
+                .typo(.body(.lead)).foregroundStyle(stars == nil ? Palette.inkSoft : Palette.ink)
                 .frame(minHeight: 22).padding(.top, 2)
             if let failure {
                 VStack(alignment: .leading, spacing: 4) {
@@ -98,7 +98,7 @@ struct RateBike: View {
             case .busy: if model.operations.get(key) == nil { notice = Messages.busy }; return
             case .finished(let answer): outcome = answer
             }
-            Haptics.result(outcome.ok)
+            Haptics.result(outcome)
             if outcome.ok { rated() } else if outcome.isUncertain { verify() } else { refused = outcome }
         }
     }
@@ -114,8 +114,10 @@ struct RateBike: View {
             checking = false
             switch settled {
             case .done?:
+                Haptics.success()
                 rated()
             case .refused(let answer)?:
+                Haptics.refused()
                 refused = answer
             case .uncertain?, nil:
                 break
@@ -147,10 +149,10 @@ struct TripEndedSheet: View {
             SheetHeading(title: "Trajet terminé", closeDisabled: rating) { dismiss() }
             tripTimes(trip).padding(.top, 4)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Station d’arrivée").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
+                Text("Station d’arrivée").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(trip.endStation ?? "Non renseignée").typo(.body(15)).foregroundStyle(Palette.ink)
-                    if let stand = trip.endStand { Text(verbatim: "Borne \(stand)").typo(.caps(13)).foregroundStyle(Palette.inkSoft).fixedSize() }
+                    Text(trip.endStation ?? "Non renseignée").typo(.body(.lead)).foregroundStyle(Palette.ink)
+                    if let stand = trip.endStand { Text(verbatim: "Borne \(stand)").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).fixedSize() }
                 }
             }
             .padding(.top, 20)
@@ -183,8 +185,8 @@ struct TripEndedSheet: View {
 
     private func fact(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft)
-            Text(value.glyphic).typo(.title(20)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
+            Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
+            Text(value.glyphic).typo(.title(.card)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -193,10 +195,10 @@ struct TripEndedSheet: View {
 func tripTimes(_ trip: Trip) -> some View {
     HStack(spacing: 0) {
         if let start = trip.startedAt {
-            Text(verbatim: "\(formatDate(start, .dayLongMonthYear)) · ").typo(.body(14))
-            Text(formatDate(start, .time) + (trip.endedAt.map { " → \(formatDate($0, .time))" } ?? "")).typo(.body(14))
+            Text(verbatim: "\(formatDate(start, .dayLongMonthYear)) · ").typo(.body(.base))
+            Text(formatDate(start, .time) + (trip.endedAt.map { " → \(formatDate($0, .time))" } ?? "")).typo(.body(.base))
         } else {
-            Text("Date indisponible").typo(.body(14))
+            Text("Date indisponible").typo(.body(.base))
         }
     }
     .foregroundStyle(Palette.inkSoft)

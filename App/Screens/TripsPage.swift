@@ -46,7 +46,7 @@ struct TripsFilterLine<Select: View, Count: View>: View {
         HStack {
             select()
             Spacer(minLength: 8)
-            count().typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize()
+            count().typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize()
         }
         .padding(.bottom, 20)
     }
@@ -92,7 +92,7 @@ struct TripsList: View {
         VStack(spacing: 0) {
             ForEach(Array(trips.enumerated()), id: \.element.id) { index, trip in
                 Button { selected = trip } label: { TripRow(trip: trip) }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.row)
                     .accessibilityLabel("Détails du trajet du \(formatDate(trip.startedAt))")
                 if index < trips.count - 1 { Hairline() }
             }
@@ -141,20 +141,20 @@ struct TripRowLayout: View {
                 HStack(spacing: 10) {
                     if ghost { Color.clear.frame(width: 32, height: 32).skeleton(16) } else { TripIcon(electrical: electrical) }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(start).typo(.body(13, medium: true)).foregroundStyle(Palette.ink).lineLimit(1).ghost(ghost)
-                        Text(end).typo(.body(11)).foregroundStyle(Palette.inkSoft).lineLimit(1).ghost(ghost)
+                        Text(start).typo(.body(.small, medium: true)).foregroundStyle(Palette.ink).lineLimit(1).ghost(ghost)
+                        Text(end).typo(.body(.micro)).foregroundStyle(Palette.inkSoft).lineLimit(1).ghost(ghost)
                     }
                 }
                 HStack(spacing: 5) {
-                    Text(date).typo(.body(11)).ghost(ghost)
-                    Text(time).typo(.body(11)).ghost(ghost)
+                    Text(date).typo(.body(.micro)).ghost(ghost)
+                    Text(time).typo(.body(.micro)).ghost(ghost)
                 }
                 .foregroundStyle(Palette.inkSoft)
                 .padding(.leading, 42)
             }
             Spacer(minLength: 0)
-            Text(duration).typo(.body(11)).foregroundStyle(Palette.inkSoft).ghost(ghost).frame(width: 43, alignment: .leading)
-            Text(price).typo(.body(12)).foregroundStyle(Palette.ink).ghost(ghost).frame(width: 59, alignment: .trailing)
+            Text(duration).typo(.body(.micro)).foregroundStyle(Palette.inkSoft).ghost(ghost).frame(width: 43, alignment: .leading)
+            Text(price).typo(.body(.meta)).foregroundStyle(Palette.ink).ghost(ghost).frame(width: 59, alignment: .trailing)
         }
         .padding(.vertical, 16)
         .contentShape(Rectangle())

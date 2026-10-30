@@ -37,8 +37,8 @@ struct InviteFriend: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Inviter un ami").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
-                    Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(13)).foregroundStyle(Palette.inkSoft)
+                    Text("Inviter un ami").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
+                    Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(.small)).foregroundStyle(Palette.inkSoft)
                     if cost == nil {
                         SoonNote(text: "L’offre est momentanément indisponible.")
                     } else if let cost, let balance, balance < cost {
@@ -62,10 +62,10 @@ struct InviteFriend: View {
     private var codeList: some View {
         if !codes.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Code à transmettre à votre ami").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
+                Text("Code à transmettre à votre ami").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                 ForEach(codes, id: \.code) { entry in
                     HStack(spacing: 12) {
-                        Text(entry.code).typo(.label(15)).foregroundStyle(Palette.ink).textSelection(.enabled)
+                        Text(entry.code).typo(.label(.lead)).foregroundStyle(Palette.ink).textSelection(.enabled)
                         Spacer(minLength: 0)
                         PillButton(variant: .secondary, action: { copy(entry.code) }) { Icon(.copy, .light, size: 16); Text(copied == entry.code ? "Copié" : "Copier") }
                     }
@@ -79,13 +79,13 @@ struct InviteFriend: View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: "Échanger \(formatNumber(cost ?? 0)) points ?", closeDisabled: blocked) { close() }
             Text("Les \(formatNumber(cost ?? 0)) points sont débités dès la création du code, même s’il n’est jamais utilisé.")
-                .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+                .typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
             if verification == .debited {
                 FormError("Vos points ont été débités, mais aucun code n’a été reçu. Contactez le service client pour le récupérer.").padding(.top, 14)
             } else if let shown {
                 VStack(alignment: .leading, spacing: 6) {
                     if shown.ok {
-                        Text("Code créé. Copiez-le pour l’envoyer à votre ami.").typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
+                        Text("Code créé. Copiez-le pour l’envoyer à votre ami.").typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
                     } else {
                         FormError(shown.message ?? "Le code n’a pas pu être créé.")
                         RawStatus(line: messageLine(shown))
@@ -184,7 +184,7 @@ struct InviteFriend: View {
             case .unsaved: warning = Messages.unsaved
             case .busy: if model.operations.get(operationKey) == nil { warning = Messages.busy }
             case .finished(let answer):
-                Haptics.result(answer.ok)
+                Haptics.result(answer)
                 outcome = answer
                 if answer.ok || answer.isUncertain { model.statsChanged() }
             }
@@ -237,6 +237,6 @@ struct InviteFriend: View {
     private func copy(_ code: String) {
         UIPasteboard.general.string = code
         copied = code
-        Haptics.result(true)
+        Haptics.success()
     }
 }

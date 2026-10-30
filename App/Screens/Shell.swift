@@ -76,7 +76,6 @@ struct TabBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var motion = PillMotion(at: 0)
     @State private var moving = false
-    @State private var picks = 0
     private let padding: CGFloat = 10
 
     var body: some View {
@@ -86,7 +85,7 @@ struct TabBar: View {
                 Button {
                     guard !active else { return }
                     model.page = page
-                    picks += 1
+                    Haptics.selection()
                 } label: {
                     label(page)
                         .hidden()
@@ -132,13 +131,12 @@ struct TabBar: View {
             try? await Task.sleep(for: .seconds(1.2))
             if !Task.isCancelled { moving = false }
         }
-        .sensoryFeedback(.selection, trigger: picks)
     }
 
     private func label(_ page: Page) -> some View {
         VStack(spacing: 5) {
             Icon(page.icon, .light, size: 22)
-            Text(page.tab).typo(.body(11))
+            Text(page.tab).typo(.body(.micro))
         }
         .frame(maxWidth: .infinity, minHeight: 48)
         .padding(4)
@@ -239,7 +237,7 @@ struct Header: View {
 
     var body: some View {
         HStack(spacing: 3) {
-            Text(title).typo(.title(28)).foregroundStyle(Palette.ink).lineLimit(1)
+            Text(title).typo(.title(.page)).foregroundStyle(Palette.ink).lineLimit(1)
             Spacer(minLength: 8)
             Button { Task { await model.manualRefresh() } } label: {
                 Group {
@@ -248,13 +246,13 @@ struct Header: View {
                 .foregroundStyle(Palette.inkSoft).frame(width: 40, height: 40)
                 .floatingGlass(Circle(), interactive: true, fallback: .clear)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.press)
             .disabled(model.refreshing)
             .accessibilityLabel(model.dashboard.map { "Actualisé à \(formatDate($0.updatedAt, .time))" } ?? "Actualiser")
             Button { model.page = .account } label: {
                 Group {
                     if let initial = model.dashboard.flatMap({ formatName($0.profile.firstName).first }) {
-                        Text(String(initial)).typo(.title(18))
+                        Text(String(initial)).typo(.title(.small))
                     } else {
                         Icon(.userCircle, .light, size: 22)
                     }
@@ -263,7 +261,7 @@ struct Header: View {
                 .frame(width: 40, height: 40)
                 .floatingGlass(Circle(), interactive: true, fallback: Palette.mist)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.press)
             .padding(.leading, 4)
             .accessibilityLabel(fullName.isEmpty ? "Mon compte" : "Mon compte, \(fullName)")
         }
@@ -300,7 +298,7 @@ struct PageScaffold: View {
                         content(data)
                     case .failed(let message):
                         VStack(spacing: 24) {
-                            Text(message).typo(.body(14)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center)
+                            Text(message).typo(.body(.base)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center)
                             PillButton("Réessayer", variant: .secondary, pending: model.refreshing) { Task { await model.loadDashboard() } }
                         }
                         .frame(maxWidth: .infinity).padding(.vertical, 100).padding(.horizontal, 20)
@@ -348,7 +346,7 @@ struct DataNotice: View {
         if !warnings.isEmpty {
             Disclosure(title: "Certaines informations sont indisponibles", icon: .warningCircle) {
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(warnings, id: \.self) { Text(verbatim: "• \($0)").typo(.body(13)) }
+                    ForEach(warnings, id: \.self) { Text(verbatim: "• \($0)").typo(.body(.small)) }
                 }
                 .foregroundStyle(Palette.inkSoft)
                 .padding(.leading, 8)
@@ -373,7 +371,7 @@ struct BookingBanners: View {
                             Icon(.clock, .light, size: 17)
                                 .frame(width: 34, height: 34)
                                 .overlay(Circle().strokeBorder(Palette.white, lineWidth: 1.5))
-                            if let left { Text(clock(left)).typo(.countdown(26)).fixedSize().frame(width: 78, alignment: .leading) }
+                            if let left { Text(clock(left)).typo(.countdown).fixedSize().frame(width: 78, alignment: .leading) }
                         }
                         .foregroundStyle(Palette.white)
                         .accessibilityElement(children: .ignore)
@@ -394,14 +392,14 @@ struct BookingBanners: View {
             HStack(spacing: 10) {
                 Icon(.lockOpen, .light, size: 15).foregroundStyle(Palette.white)
                     .frame(width: 32, height: 32).background(Circle().fill(Palette.red))
-                Text("Déverrouiller").tracking(0.52).typo(.caps(13)).foregroundStyle(Palette.ink)
+                Text("Déverrouiller").tracking(0.52).typo(.caps(.label)).foregroundStyle(Palette.ink)
             }
             .padding(.leading, 5).padding(.trailing, 18)
             .frame(minHeight: 42)
             .background(Capsule().fill(Palette.white))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.press)
         .fixedSize()
     }
 }
@@ -414,7 +412,7 @@ struct LogoutSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Se déconnecter ?").typo(.title(26)).foregroundStyle(Palette.ink)
+                Text("Se déconnecter ?").typo(.title(.section)).foregroundStyle(Palette.ink)
                 Spacer()
                 IconButton(icon: .x, label: "Fermer") { dismiss() }.padding(.trailing, -10)
             }

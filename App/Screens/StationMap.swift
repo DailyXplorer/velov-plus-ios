@@ -40,7 +40,7 @@ struct StationPin: View {
     var body: some View {
         let size: CGFloat = selected ? 38 : 28
         Text(verbatim: "\(total)")
-            .typo(.caps(selected ? 13 : 11))
+            .typo(.label(selected ? .small : .micro))
             .foregroundStyle(total == 0 && !selected ? Palette.inkSoft : Palette.white)
             .frame(width: size, height: size)
             .background(Circle().fill(total == 0 && !selected ? Palette.white : Palette.red))
@@ -55,7 +55,7 @@ struct UserDot: View {
     var body: some View {
         Circle().fill(Palette.white).frame(width: 18, height: 18)
             .overlay(Circle().strokeBorder(Palette.red, lineWidth: 3))
-            .background(Circle().fill(Palette.red.opacity(0.16)).frame(width: 32, height: 32))
+            .background(Circle().fill(Palette.inkLine).frame(width: 32, height: 32))
             .accessibilityElement()
             .accessibilityLabel("Votre position")
     }
@@ -77,9 +77,9 @@ struct StationNumbers: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
                 Icon(icon, .light, size: compact ? 16 : size).foregroundStyle(Palette.inkSoft)
-                Text(verbatim: "\(value)").typo(.body(compact ? 13 : 15, medium: !compact)).foregroundStyle(Palette.ink)
+                Text(verbatim: "\(value)").typo(.body(compact ? .small : .lead, medium: !compact)).foregroundStyle(Palette.ink)
             }
-            if !compact { Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1) }
+            if !compact { Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1) }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(value) \(label == "Places" ? "places libres" : label.lowercased())")

@@ -58,7 +58,7 @@ private struct ViaSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             (Text("La station ") + Text(verbatim: "\(station.name) (n° \(station.number))").fontWeight(.semibold)
              + Text(" est pleine. Demander 15 minutes de plus pour rejoindre une autre station\u{a0}?"))
-                .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
+                .typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             if let failure {
                 VStack(alignment: .leading, spacing: 6) {
                     FormError(failure.message ?? "Les 15 minutes supplémentaires n’ont pas été accordées.")
@@ -83,11 +83,11 @@ private struct ViaSheet: View {
     private var pick: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Choisissez la station pleine où vous vouliez rendre votre vélo.")
-                .typo(.body(15)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
+                .typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 6) {
-                Text("Rechercher une station pleine").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
+                Text("Rechercher une station pleine").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                 TextField("", text: $query, prompt: Text("Nom, adresse ou numéro").foregroundStyle(Palette.inkSoft))
-                    .typo(.body(16)).foregroundStyle(Palette.ink).autocorrectionDisabled()
+                    .typo(.body(.input)).foregroundStyle(Palette.ink).autocorrectionDisabled()
                     .fieldPill()
             }
             PillButton("Les plus proches", variant: .ghost, pending: locating) { locate() }
@@ -98,7 +98,7 @@ private struct ViaSheet: View {
                 }
             }
             if choices.isEmpty {
-                Text("Aucune station pleine ne correspond à votre recherche.").typo(.body(14)).foregroundStyle(Palette.inkSoft)
+                Text("Aucune station pleine ne correspond à votre recherche.").typo(.body(.base)).foregroundStyle(Palette.inkSoft)
             } else {
                 SelectField(label: "Station pleine", hideLabel: true, value: $selected, options: [.init(value: nil, label: "Choisir une station")] + choices.map { item in
                     .init(value: item.number, label: "\(item.name) · N° \(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
@@ -150,7 +150,7 @@ private struct ViaSheet: View {
             case .unsaved: notice = Messages.unsaved
             case .busy: if model.operations.get(operationKey) == nil { notice = Messages.busy }
             case .finished(let outcome):
-                Haptics.result(outcome.ok)
+                Haptics.result(outcome)
                 if outcome.ok {
                     reviewing = false
                     selected = nil

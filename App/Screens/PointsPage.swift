@@ -55,7 +55,7 @@ struct PointsFigure: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Eyebrow(icon: icon, text: label)
-            Text(value.glyphic).typo(.title(40)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.5)
+            Text(value.glyphic).typo(.title(.figure)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.5)
         }
         .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -78,8 +78,8 @@ struct PointsSkeleton: View {
             SettingRow(label: "Utilisation automatique", value: "Activée") { VelovSwitch(on: true) }.skeleton()
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Inviter un ami").typo(.caps(13))
-                    Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(13))
+                    Text("Inviter un ami").typo(.caps(.label))
+                    Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(.small))
                     SoonNote(text: "Il vous manque 255 points.")
                 }
                 Spacer(minLength: 0)
@@ -113,8 +113,8 @@ struct SettingRow<Control: View>: View {
     var body: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft)
-                Text(value).typo(.title(20)).foregroundStyle(Palette.ink)
+                Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
+                Text(value).typo(.title(.card)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
             control()
@@ -129,9 +129,9 @@ struct EarnRule: View {
     let points: String
     var body: some View {
         HStack(spacing: 16) {
-            Text(label).typo(.body(13)).foregroundStyle(Palette.inkSoft)
+            Text(label).typo(.body(.small)).foregroundStyle(Palette.inkSoft)
             Spacer()
-            Text(verbatim: points.glyphic).typo(.title(23)).foregroundStyle(Palette.red)
+            Text(verbatim: points.glyphic).typo(.title(.section)).foregroundStyle(Palette.red)
         }
         .padding(.horizontal, 18).padding(.vertical, 16).frame(minHeight: 64)
         .background(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).fill(Palette.mist))
@@ -147,11 +147,11 @@ struct MovementRow: View {
     var body: some View {
         HStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(label).typo(.body(13, medium: true)).foregroundStyle(Palette.ink).ghost(ghost)
-                Text(date).typo(.body(11)).foregroundStyle(Palette.inkSoft).ghost(ghost)
+                Text(label).typo(.body(.small, medium: true)).foregroundStyle(Palette.ink).ghost(ghost)
+                Text(date).typo(.body(.micro)).foregroundStyle(Palette.inkSoft).ghost(ghost)
             }
             Spacer()
-            Text(verbatim: amount).typo(.body(15, medium: true)).foregroundStyle(credit ? Palette.red : Palette.ink).ghost(ghost)
+            Text(verbatim: amount).typo(.body(.lead, medium: true)).foregroundStyle(credit ? Palette.red : Palette.ink).ghost(ghost)
         }
         .padding(.vertical, 16).frame(minHeight: 76)
     }
@@ -166,8 +166,8 @@ struct AutoSpendSetting: View {
     var body: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Utilisation automatique").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
-                Text(value == nil ? Messages.missing : value! ? "Activée" : "Désactivée").typo(.title(20)).foregroundStyle(Palette.ink)
+                Text("Utilisation automatique").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
+                Text(value == nil ? Messages.missing : value! ? "Activée" : "Désactivée").typo(.title(.card)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
             if let value {

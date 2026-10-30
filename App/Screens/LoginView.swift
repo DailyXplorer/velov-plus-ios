@@ -15,7 +15,7 @@ struct LoginView: View {
     var body: some View {
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
-                (Text("Vélo’v").foregroundStyle(Palette.ink) + Text("+").foregroundStyle(Palette.red)).typo(.title(48))
+                (Text("Vélo’v").foregroundStyle(Palette.ink) + Text("+").foregroundStyle(Palette.red)).typo(.title(.display))
                 VStack(spacing: 12) {
                     field {
                         TextField("", text: $email, prompt: Text("Adresse e-mail").foregroundStyle(Palette.inkSoft))
@@ -35,7 +35,7 @@ struct LoginView: View {
                     PillButton("Se connecter", pending: pending, fullWidth: true) { submit() }
                         .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty || code.count != 6)
                         .padding(.top, 6)
-                    Text(error).typo(.body(13)).foregroundStyle(Palette.formError).frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+                    Text(error).typo(.body(.small)).foregroundStyle(Palette.formError).frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
                         .opacity(error.isEmpty ? 0 : 1)
                 }
                 .padding(.top, 36)
@@ -44,7 +44,7 @@ struct LoginView: View {
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
             if let notice {
-                Text(notice).typo(.body(13)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center).padding(.horizontal, 24).padding(.top, 24)
+                Text(notice).typo(.body(.small)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center).padding(.horizontal, 24).padding(.top, 24)
             }
         }
         .background(Palette.white)
@@ -52,7 +52,7 @@ struct LoginView: View {
 
     private func field<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         content()
-            .typo(.body(16))
+            .typo(.body(.input))
             .foregroundStyle(Palette.ink)
             .disabled(pending)
             .fieldPill()
@@ -69,6 +69,7 @@ struct LoginView: View {
                 try await model.signIn(email: email.trimmingCharacters(in: .whitespaces), code: code)
                 code = ""
             } catch {
+                Haptics.refused()
                 self.error = failureMessage(error, "Connexion impossible. Vérifiez votre connexion Internet.")
             }
         }

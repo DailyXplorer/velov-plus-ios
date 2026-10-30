@@ -26,16 +26,16 @@ struct OverviewPage: View {
         return VStack(spacing: 10) {
             HStack(spacing: 10) {
                 SummaryCard(tag: (.starFour, "Points"), detail: data.rewards.total.map { "\(formatNumber($0)) gagnés au total" } ?? Messages.missing, action: { model.page = .points }) {
-                    Text(data.rewards.balance.map { formatNumber($0).glyphic } ?? "—").typo(.title(40))
+                    Text(data.rewards.balance.map { formatNumber($0).glyphic } ?? "—").typo(.title(.figure))
                 }
                 SummaryCard(tag: (.personSimpleBike, "Trajets"), detail: data.trips == nil ? Messages.missing : minutes >= 60 ? "\(formatNumber(minutes / 60)) h \(minutes % 60) min" : "\(minutes) min", action: { model.page = .trips }) {
-                    Text(data.trips.map { formatNumber($0.count).glyphic } ?? "—").typo(.title(40))
+                    Text(data.trips.map { formatNumber($0.count).glyphic } ?? "—").typo(.title(.figure))
                 }
             }
             SummaryCard(tag: (.ticket, "Abonnement"),
                         detail: missing ? Messages.missing : subscription?.validUntil.map { "Jusqu’au \(formatDate($0, .dayMonthYear))" } ?? "Voir les formules",
                         minHeight: 150, action: { model.page = .account }) {
-                Text(missing ? "—" : shortPlan(subscription?.title)).typo(.title(20)).lineLimit(2)
+                Text(missing ? "—" : shortPlan(subscription?.title)).typo(.title(.card)).lineLimit(2)
             }
         }
     }
@@ -63,7 +63,7 @@ struct OverviewPage: View {
         }
         .frame(height: overviewMapHeight)
         .clipShape(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous).strokeBorder(Palette.inkLine, lineWidth: 1))
         .padding(.bottom, Concentric.gap)
         .id("stations-map")
     }
@@ -92,10 +92,10 @@ struct OverviewSkeleton: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(spacing: 10) {
                 HStack(spacing: 10) {
-                    SummaryCard(tag: (.starFour, "Points"), detail: "1 380 gagnés au total", action: {}) { Text(verbatim: "0").typo(.title(40)) }.skeleton()
-                    SummaryCard(tag: (.personSimpleBike, "Trajets"), detail: "12 h 40 min", action: {}) { Text(verbatim: "0").typo(.title(40)) }.skeleton()
+                    SummaryCard(tag: (.starFour, "Points"), detail: "1 380 gagnés au total", action: {}) { Text(verbatim: "0").typo(.title(.figure)) }.skeleton()
+                    SummaryCard(tag: (.personSimpleBike, "Trajets"), detail: "12 h 40 min", action: {}) { Text(verbatim: "0").typo(.title(.figure)) }.skeleton()
                 }
-                SummaryCard(tag: (.ticket, "Abonnement"), detail: "Jusqu’au 1 mars 2027", minHeight: 150, action: {}) { Text(verbatim: "Plus 1 an").typo(.title(20)).lineLimit(2) }.skeleton()
+                SummaryCard(tag: (.ticket, "Abonnement"), detail: "Jusqu’au 1 mars 2027", minHeight: 150, action: {}) { Text(verbatim: "Plus 1 an").typo(.title(.card)).lineLimit(2) }.skeleton()
             }
             OverviewSection(title: "Stations", padding: 32, ghost: true, link: {}) {
                 Skeleton(height: overviewMapHeight).padding(.bottom, Concentric.gap)
@@ -112,7 +112,7 @@ struct OngoingBanner: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 14) {
                 Eyebrow(icon: .personSimpleBike, text: "Trajet en cours")
-                Text(trip.startStation ?? "Trajet Vélo’v").typo(.body(13)).foregroundStyle(Palette.inkSoft).lineLimit(1)
+                Text(trip.startStation ?? "Trajet Vélo’v").typo(.body(.small)).foregroundStyle(Palette.inkSoft).lineLimit(1)
             }
             ViaAction()
         }

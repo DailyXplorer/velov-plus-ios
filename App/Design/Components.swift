@@ -27,7 +27,7 @@ struct PillButton<Label: View>: View {
                 HStack(spacing: 10) { label() }.opacity(pending ? 0 : 1)
                 if pending { Spinner() }
             }
-            .typo(.caps(14))
+            .typo(.caps(.button))
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             .padding(.horizontal, 16)
@@ -38,7 +38,7 @@ struct PillButton<Label: View>: View {
             .overlay(Capsule().strokeBorder(ring, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.press)
         .disabled(pending)
     }
 
@@ -106,7 +106,7 @@ struct Eyebrow: View {
     var body: some View {
         HStack(spacing: 10) {
             Icon(icon, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
-            Text(text).typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
+            Text(text).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
         }
         .padding(.leading, 4).padding(.trailing, 14).padding(.vertical, 4)
         .background(Capsule().fill(Palette.mist))
@@ -119,11 +119,11 @@ struct CardTag: View {
     let text: String
     var size = Size.regular
 
-    private var metrics: (gap: CGFloat, icon: CGFloat, glyph: CGFloat, font: CGFloat, leading: CGFloat, trailing: CGFloat, vertical: CGFloat) {
+    private var metrics: (gap: CGFloat, icon: CGFloat, glyph: CGFloat, font: Typo.Caps, leading: CGFloat, trailing: CGFloat, vertical: CGFloat) {
         switch size {
-        case .regular: (10, 28, 13, 13, 7, 16, 7)
-        case .stat: (7, 22, 12, 12, 4, 10, 4)
-        case .pick: (6, 20, 11, 12, 3, 10, 3)
+        case .regular: (10, 28, 13, .label, 7, 16, 7)
+        case .stat: (7, 22, 12, .tag, 4, 10, 4)
+        case .pick: (6, 20, 11, .tag, 3, 10, 3)
         }
     }
 
@@ -169,7 +169,7 @@ struct SummaryCard<Value: View>: View {
                 value().foregroundStyle(Palette.white).padding(.top, 20)
                 Spacer(minLength: 18)
                 HStack(spacing: 4) {
-                    Text(detail).typo(.body(11)).lineLimit(2).multilineTextAlignment(.leading)
+                    Text(detail).typo(.body(.micro)).lineLimit(2).multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
                     CircleArrow(style: .onCard, size: 24)
                 }
@@ -180,7 +180,7 @@ struct SummaryCard<Value: View>: View {
             .background(ZStack { Palette.red; DottedTexture() })
             .clipShape(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.press)
     }
 }
 
@@ -189,7 +189,7 @@ struct SectionHeading<Trailing: View>: View {
     @ViewBuilder var trailing: () -> Trailing
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 16) {
-            Text(title).typo(.title(23)).foregroundStyle(Palette.ink)
+            Text(title).typo(.title(.section)).foregroundStyle(Palette.ink)
             Spacer(minLength: 0)
             trailing()
         }
@@ -206,7 +206,7 @@ struct TextButton: View {
     let action: () -> Void
     @Environment(\.isEnabled) private var enabled
     var body: some View {
-        Button(action: action) { Text(title).typo(.caps(14)).foregroundStyle(enabled ? Palette.redDeep : Palette.inkSoft).lineLimit(1).fixedSize().frame(minHeight: 40) }.buttonStyle(.plain)
+        Button(action: action) { Text(title).typo(.caps(.button)).foregroundStyle(enabled ? Palette.redDeep : Palette.inkSoft).lineLimit(1).fixedSize().frame(minHeight: 40) }.buttonStyle(.press)
     }
 }
 
@@ -223,7 +223,7 @@ struct IconButton: View {
         Button(action: action) {
             Icon(icon, weight, size: size).foregroundStyle(enabled ? color : Palette.inkSoft).frame(width: frame, height: frame).contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.press)
         .accessibilityLabel(label)
     }
 }
@@ -232,7 +232,7 @@ struct EmptyState: View {
     let text: String
     init(_ text: String) { self.text = text }
     var body: some View {
-        Text(text).typo(.body(14)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center)
+        Text(text).typo(.body(.base)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center)
             .frame(maxWidth: .infinity).padding(.vertical, 44).padding(.horizontal, 20)
     }
 }
@@ -243,7 +243,7 @@ struct ErrorNotice: View {
     let retry: () -> Void
     var body: some View {
         HStack(spacing: 16) {
-            Text(message).typo(.body(13)).foregroundStyle(Palette.notice)
+            Text(message).typo(.body(.small)).foregroundStyle(Palette.formError)
             Spacer(minLength: 0)
             PillButton("Réessayer", variant: .secondary, pending: pending, action: retry)
         }
@@ -303,12 +303,12 @@ struct DetailRow<Value: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 16) {
-                Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize()
+                Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize()
                 Spacer(minLength: 0)
-                value().typo(.body(14)).foregroundStyle(Palette.ink).multilineTextAlignment(.trailing)
+                value().typo(.body(.base)).foregroundStyle(Palette.ink).multilineTextAlignment(.trailing)
             }
             .padding(.vertical, 14)
-            if !last { Rectangle().fill(Palette.inkLine).frame(height: 1) }
+            if !last { Hairline() }
         }
     }
 }
@@ -326,7 +326,7 @@ struct StackedValue: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 3) {
             Text(value)
-            if let small, !small.isEmpty { Text(small).typo(caps ? .caps(12) : .body(12)).foregroundStyle(Palette.inkSoft) }
+            if let small, !small.isEmpty { Text(small).typo(caps ? .caps(.tag) : .body(.meta)).foregroundStyle(Palette.inkSoft) }
         }
     }
 }
@@ -344,14 +344,14 @@ struct VelovSwitch: View {
                         .overlay(Circle().strokeBorder(Palette.inkLine, lineWidth: 1)).padding(3)
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.press)
     }
 }
 
 struct OutlinePill: View {
     let text: String
     var body: some View {
-        Text(text).typo(.caps(12)).foregroundStyle(Palette.redDeep).lineLimit(1).fixedSize()
+        Text(text).typo(.caps(.tag)).foregroundStyle(Palette.redDeep).lineLimit(1).fixedSize()
             .padding(.horizontal, 8).padding(.vertical, 3)
             .overlay(Capsule().strokeBorder(Palette.red, lineWidth: 1))
     }
@@ -373,16 +373,16 @@ struct Disclosure<Content: View>: View {
                 HStack(spacing: 8) {
                     if let icon {
                         Icon(icon, .light, size: 17)
-                        Text(title).typo(.caps(13))
+                        Text(title).typo(.caps(.label))
                     } else {
-                        Text(title).typo(.caps(13))
+                        Text(title).typo(.caps(.label))
                         Icon(.caretDown, .bold, size: 14).rotationEffect(.degrees(open ? 180 : 0))
                     }
                 }
                 .foregroundStyle(Palette.inkSoft)
                 .padding(.top, icon == nil ? 18 : 8).padding(.bottom, icon == nil ? 4 : 8)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.press)
             if open { content() }
         }
     }
@@ -390,7 +390,7 @@ struct Disclosure<Content: View>: View {
 
 struct SoonNote: View {
     var text = "Bientôt disponible"
-    var body: some View { Text(text).typo(.body(12)).foregroundStyle(Palette.inkSoft) }
+    var body: some View { Text(text).typo(.body(.meta)).foregroundStyle(Palette.inkSoft) }
 }
 
 extension View {

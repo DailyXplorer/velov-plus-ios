@@ -24,8 +24,8 @@ struct AccountPage: View {
         let person = data.profile
         let name = formatName("\(person.firstName) \(person.lastName)")
         return AccountSection(title: "Profil") {
-            Text(name.isEmpty ? "Compte Vélo’v" : name).typo(.title(22)).foregroundStyle(Palette.ink).padding(.top, 18)
-            Text(person.email).typo(.body(14)).foregroundStyle(Palette.inkSoft).padding(.top, 6)
+            Text(name.isEmpty ? "Compte Vélo’v" : name).typo(.title(.card)).foregroundStyle(Palette.ink).padding(.top, 18)
+            Text(person.email).typo(.body(.base)).foregroundStyle(Palette.inkSoft).padding(.top, 6)
             if person.locked || !person.complete || data.paymentValid == false {
                 VStack(spacing: 0) {
                     if person.locked { DetailRow("Compte", "À vérifier") }
@@ -41,10 +41,10 @@ struct AccountPage: View {
     private var subscription: some View {
         let current = data.subscription.subscription
         return AccountSection(title: "Abonnement") {
-            Text(data.subscription == .unavailable ? Messages.missing : current?.title ?? "Aucun abonnement").typo(.title(22)).foregroundStyle(Palette.ink).padding(.top, 18)
+            Text(data.subscription == .unavailable ? Messages.missing : current?.title ?? "Aucun abonnement").typo(.title(.card)).foregroundStyle(Palette.ink).padding(.top, 18)
             if let current {
                 Text(current.validUntil.map { "Jusqu’au \(formatDate($0, .dayLongMonthYear))" } ?? (current.active ? "Actif" : "Inactif"))
-                    .typo(.body(14)).foregroundStyle(Palette.inkSoft).padding(.top, 10)
+                    .typo(.body(.base)).foregroundStyle(Palette.inkSoft).padding(.top, 10)
                 if current.type == "LT" { AutoRenewalSetting(subscription: current).id("\(current.id ?? ""):\(data.updatedAt.timeIntervalSince1970)") }
             }
             if let receipts = data.receipts, !receipts.isEmpty {
@@ -66,7 +66,7 @@ struct AccountSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(title).typo(.title(26)).foregroundStyle(Palette.ink)
+            Text(title).typo(.title(.section)).foregroundStyle(Palette.ink)
             content()
         }
         .padding(.horizontal, 22).padding(.vertical, 28)
@@ -84,17 +84,17 @@ private struct SectionGhost: ViewModifier {
 }
 
 private struct ReceiptsTitle: View {
-    var body: some View { Text("Reçus").typo(.caps(13)).foregroundStyle(Palette.inkSoft).padding(.bottom, 8) }
+    var body: some View { Text("Reçus").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).padding(.bottom, 8) }
 }
 
 private struct ManageLink: View {
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) { Text("Gérer sur Vélo’v").typo(.caps(14)); CircleArrow(external: true, style: .outline) }
+            HStack(spacing: 12) { Text("Gérer sur Vélo’v").typo(.caps(.button)); CircleArrow(external: true, style: .outline) }
                 .foregroundStyle(Palette.redDeep).frame(minHeight: 40)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.press)
         .padding(.top, 16)
     }
 }
@@ -113,8 +113,8 @@ struct AccountSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             AccountSection(title: "Profil", ghost: true) {
-                Text(verbatim: "Prénom Nom").typo(.title(22)).padding(.top, 18)
-                Text(verbatim: "prenom.nom@exemple.fr").typo(.body(14)).padding(.top, 6)
+                Text(verbatim: "Prénom Nom").typo(.title(.card)).padding(.top, 18)
+                Text(verbatim: "prenom.nom@exemple.fr").typo(.body(.base)).padding(.top, 6)
                 VStack(alignment: .leading, spacing: 0) {
                     DetailRow(label: "Adresse") { StackedValue(value: "1 rue de la République", small: "69002 Lyon · France") }
                     DetailRow("Téléphone", "06 00 00 00 00", last: true)
@@ -123,12 +123,12 @@ struct AccountSkeleton: View {
                 .padding(.top, 14)
             }
             AccountSection(title: "Abonnement", ghost: true) {
-                Text(verbatim: "Vélo’v Plus 1 an Jeunes – paiement comptant").typo(.title(22)).padding(.top, 18)
-                Text(verbatim: "Jusqu’au 1 janvier 2027").typo(.body(14)).padding(.top, 10)
+                Text(verbatim: "Vélo’v Plus 1 an Jeunes – paiement comptant").typo(.title(.card)).padding(.top, 18)
+                Text(verbatim: "Jusqu’au 1 janvier 2027").typo(.body(.base)).padding(.top, 10)
                 HStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Renouvellement automatique").typo(.caps(13))
-                        Text("Désactivé").typo(.title(20))
+                        Text("Renouvellement automatique").typo(.caps(.label))
+                        Text("Désactivé").typo(.title(.card))
                     }
                     Spacer(minLength: 0)
                     VelovSwitch(on: false)
@@ -138,8 +138,8 @@ struct AccountSkeleton: View {
                     ReceiptsTitle()
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(verbatim: "Vélo’v Plus 1 an Jeunes").typo(.body(14, medium: true))
-                            Text(verbatim: "Du 1 janv. 2026 au 1 janv. 2027").typo(.body(12))
+                            Text(verbatim: "Vélo’v Plus 1 an Jeunes").typo(.body(.base, medium: true))
+                            Text(verbatim: "Du 1 janv. 2026 au 1 janv. 2027").typo(.body(.meta))
                         }
                         Spacer()
                         PillButton(variant: .secondary, action: {}) { Icon(.downloadSimple, .light, size: 17); Text("Reçu") }

@@ -2,17 +2,12 @@ import SwiftUI
 import UIKit
 import VelovCore
 
-enum Haptics {
-    static func confirm() { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
-    static func result(_ ok: Bool) { UINotificationFeedbackGenerator().notificationOccurred(ok ? .success : .error) }
-}
-
 struct RawStatus: View {
     let line: String
     init(outcome: Outcome, withState: Bool = false) { line = rawLine(outcome, withState: withState) }
     init(line: String) { self.line = line }
     var body: some View {
-        Text(line).typo(.label(12)).foregroundStyle(Palette.inkSoft)
+        Text(line).typo(.label(.meta)).foregroundStyle(Palette.inkSoft)
             .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
     }
 }
@@ -24,14 +19,14 @@ func messageLine(_ outcome: Outcome) -> String {
 struct FormError: View {
     let text: String
     init(_ text: String) { self.text = text }
-    var body: some View { Text(text).typo(.body(14)).foregroundStyle(Palette.formError).fixedSize(horizontal: false, vertical: true) }
+    var body: some View { Text(text).typo(.body(.base)).foregroundStyle(Palette.formError).fixedSize(horizontal: false, vertical: true) }
 }
 
 struct UncertainNote: View {
     var unlock = false
     var body: some View {
         Text(unlock ? Messages.uncertainUnlock : Messages.uncertain)
-            .typo(.body(13, medium: true)).foregroundStyle(Palette.redDeep).fixedSize(horizontal: false, vertical: true)
+            .typo(.body(.small, medium: true)).foregroundStyle(Palette.redDeep).fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -48,7 +43,7 @@ struct SheetHeading: View {
     let close: () -> Void
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(title).typo(.title(24)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
+            Text(title).typo(.title(.section)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
             IconButton(icon: .x, label: "Fermer", action: close).padding(.trailing, -10).disabled(closeDisabled)
         }
@@ -116,7 +111,7 @@ struct WriteDialog<Question: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: title, closeDisabled: busy) { dismiss() }
             if Question.self != EmptyView.self {
-                question().typo(.body(15)).foregroundStyle(Palette.ink).padding(.top, 14)
+                question().typo(.body(.lead)).foregroundStyle(Palette.ink).padding(.top, 14)
             }
             if let failure {
                 VStack(alignment: .leading, spacing: 6) {
@@ -160,7 +155,7 @@ struct WriteDialog<Question: View>: View {
             case .busy:
                 if operations.get(key) == nil { notice = Messages.busy }
             case .finished(let outcome):
-                Haptics.result(outcome.ok)
+                Haptics.result(outcome)
                 if outcome.ok {
                     dismiss()
                 } else if !outcome.isUncertain {
@@ -181,9 +176,11 @@ struct WriteDialog<Question: View>: View {
             checking = false
             switch settled {
             case .done?:
+                Haptics.success()
                 verified(held.meta)
                 dismiss()
             case .refused(let answer)?:
+                Haptics.refused()
                 refused = answer
             case .uncertain?, nil:
                 break
@@ -208,9 +205,9 @@ struct FormField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).typo(.caps(13)).foregroundStyle(Palette.inkSoft)
+            Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
             TextField("", text: $text)
-                .typo(.body(16)).foregroundStyle(Palette.ink)
+                .typo(.body(.input)).foregroundStyle(Palette.ink)
                 .keyboardType(keyboard).textContentType(content).autocorrectionDisabled()
                 .fieldPill()
                 .onChange(of: text) { _, value in if value.count > maxLength { text = String(value.prefix(maxLength)) } }

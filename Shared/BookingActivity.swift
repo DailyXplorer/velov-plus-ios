@@ -14,8 +14,8 @@ struct BookingActivityAttributes: ActivityAttributes {
 }
 
 enum ActivityStyle {
-    static let red = Color(red: 0xdf / 255, green: 0x25 / 255, blue: 0x37 / 255)
-    static let ink = Color(red: 0x1c / 255, green: 0x17 / 255, blue: 0x17 / 255)
+    static let red = Palette.red
+    static let ink = Palette.ink
 
     static let proportionalFigures = [[kCTFontOpenTypeFeatureTag: "pnum", kCTFontOpenTypeFeatureValue: 1]] as CFArray
 

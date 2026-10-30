@@ -109,8 +109,8 @@ struct AutoRenewalSetting: View {
     var body: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Renouvellement automatique").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
-                Text(actual == nil ? "Indisponible pour le moment" : actual! ? "Activé" : "Désactivé").typo(.title(20)).foregroundStyle(Palette.ink)
+                Text("Renouvellement automatique").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
+                Text(actual == nil ? "Indisponible pour le moment" : actual! ? "Activé" : "Désactivé").typo(.title(.card)).foregroundStyle(Palette.ink)
             }
             Spacer(minLength: 0)
             if canChange, subscription.id != nil, let actual {
@@ -162,8 +162,8 @@ struct ReceiptRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(receipt.title).typo(.body(14, medium: true)).foregroundStyle(Palette.ink)
-                    Text(periodLabel(receipt)).typo(.body(12)).foregroundStyle(Palette.inkSoft)
+                    Text(receipt.title).typo(.body(.base, medium: true)).foregroundStyle(Palette.ink)
+                    Text(periodLabel(receipt)).typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
                 }
                 Spacer()
                 PillButton(variant: .secondary, pending: pending, action: download) { Icon(.downloadSimple, .light, size: 17); Text("Reçu") }
@@ -175,7 +175,7 @@ struct ReceiptRow: View {
             }
         }
         .padding(.vertical, 12)
-        .overlay(alignment: .bottom) { Hairline(color: Palette.inkLine) }
+        .overlay(alignment: .bottom) { Hairline() }
         .sheet(item: $file) { ShareSheet(url: $0.url).presentationDetents([.medium, .large]).sheetCorners() }
     }
 
@@ -274,8 +274,8 @@ struct ContactSupport: View {
                             layout: .stacked).zIndex(2)
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("Message").typo(.caps(13)).foregroundStyle(Palette.inkSoft)
-                TextEditor(text: $message).typo(.body(16)).frame(minHeight: 110).scrollContentBackground(.hidden)
+                Text("Message").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
+                TextEditor(text: $message).typo(.body(.input)).frame(minHeight: 110).scrollContentBackground(.hidden)
                     .padding(.horizontal, 13).padding(.vertical, 4)
                     .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
                     .accessibilityLabel("Message")

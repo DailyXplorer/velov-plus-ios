@@ -15,34 +15,61 @@ struct StationMapView: View {
     static let lyon = MapCameraPosition.region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 45.7576, longitude: 4.832),
                                                                   span: MKCoordinateSpan(latitudeDelta: 0.022, longitudeDelta: 0.022)))
 
+    @State private var zone: CGRect = .zero
+    @State private var covered: Set<String> = []
+
     var body: some View {
-        Map(position: $camera, interactionModes: interactive ? [.pan, .zoom] : []) {
-            ForEach(stations.filter { $0.open || $0.id == selected }) { station in
-                Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon), anchor: .center) {
-                    Button { onSelect(station.id) } label: { StationPin(total: station.bikes, selected: selected == station.id) }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(station.name), \(station.bikes) vélo\(station.bikes > 1 ? "s" : "")")
-                        .accessibilityAddTraits(selected == station.id ? .isSelected : [])
+        MapReader { proxy in
+            Map(position: $camera, interactionModes: interactive ? [.pan, .zoom] : []) {
+                ForEach(stations.filter { $0.id == selected || ($0.open && !covered.contains($0.id)) }) { station in
+                    Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon), anchor: .center) {
+                        Button { onSelect(station.id) } label: { StationPin(total: station.bikes, selected: selected == station.id) }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("\(station.name), \(station.bikes) vélo\(station.bikes > 1 ? "s" : "")")
+                            .accessibilityAddTraits(selected == station.id ? .isSelected : [])
+                    }
+                    .annotationTitles(.hidden)
                 }
-                .annotationTitles(.hidden)
+                if showsUser {
+                    UserAnnotation { UserDot() }
+                }
             }
-            if showsUser {
-                UserAnnotation { UserDot() }
-            }
+            .onGeometryChange(for: CGRect.self, of: { MapAttribution.zone($0) }) { zone = $0 }
+            .onMapCameraChange(frequency: .onEnd) { covered = covering(proxy) }
+            .onChange(of: zone) { covered = covering(proxy) }
+            .onChange(of: stations.map(\.id)) { covered = covering(proxy) }
+            .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
+            .mapControls {}
+            .safeAreaPadding(.horizontal, attributionInset - Layout.mapKitMargin)
+            .onTapGesture { onBackground() }
+            .background(Palette.mist)
         }
-        .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
-        .mapControls {}
-        .safeAreaPadding(.horizontal, attributionInset - Layout.mapKitMargin)
-        .onTapGesture { onBackground() }
-        .background(Palette.mist)
+    }
+
+    private func covering(_ proxy: MapProxy) -> Set<String> {
+        Set(stations.filter { station in
+            proxy.convert(CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon), to: .local).map(zone.contains) ?? false
+        }.map(\.id))
+    }
+}
+
+private enum MapAttribution {
+    static let size = CGSize(width: 145, height: 24)
+
+    static func zone(_ proxy: GeometryProxy) -> CGRect {
+        let insets = proxy.safeAreaInsets
+        let width = Layout.mapKitMargin + size.width, height = Layout.mapKitMargin + size.height
+        return CGRect(x: insets.leading, y: proxy.size.height - insets.bottom - height, width: width, height: height)
+            .insetBy(dx: -StationPin.size / 2, dy: -StationPin.size / 2)
     }
 }
 
 struct StationPin: View {
+    static let size: CGFloat = 28
     let total: Int
     let selected: Bool
     var body: some View {
-        let size: CGFloat = selected ? 38 : 28
+        let size: CGFloat = selected ? 38 : Self.size
         Text(verbatim: "\(total)")
             .typo(.label(selected ? .small : .micro))
             .foregroundStyle(total == 0 && !selected ? Palette.inkSoft : Palette.white)

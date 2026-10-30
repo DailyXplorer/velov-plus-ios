@@ -558,12 +558,14 @@ private struct BikeTypes: View {
 private struct Records: View {
     let records: StatsRecords?
     @Environment(AppModel.self) private var model
+    @State private var pushedSample = false
 
     var body: some View {
         grid
             .task(id: records?.bike) {
-                guard model.snapshot == .statsBike, let bike = records?.bike else { return }
+                guard model.snapshot == .statsBike, !pushedSample, let bike = records?.bike else { return }
                 try? await Task.sleep(nanoseconds: 2_500_000_000)
+                pushedSample = true
                 model.push(.bike(BikeRoute(number: bike, station: nil)), on: .trips)
             }
     }

@@ -39,7 +39,7 @@ Les réglages à ouvrir ne sont pas les mêmes :
 ### Navigation
 - Les Statistiques sont un onglet sur le site (« Statistiques » sur ordinateur, « Stats » en bas sur téléphone). Dans l’app, c’est un bouton « Statistiques » en haut de Trajets, et la page s’ouvre par-dessus Trajets avec le bouton retour d’iOS. Le site a donc six onglets, l’app cinq.
 - Le détail d’un trajet et la fiche d’un vélo sont des fenêtres sur le site. Dans l’app, ce sont des pages qui s’ouvrent dans l’onglet, avec le bouton retour d’iOS et le glissement depuis le bord gauche. Depuis la carte d’une station, la liste des vélos reste un panneau plein écran, et la fiche d’un vélo s’y ouvre comme une page.
-- Sur le site, « Modifier mes coordonnées » et « Écrire au service client » ouvrent leur formulaire dans la carte, et le Journal technique n’existe pas. Dans l’app, ces trois éléments ouvrent leur propre page. Quitter un formulaire modifié demande « Ignorer les modifications ? » (Ignorer / Continuer la saisie).
+- Sur le site, « Modifier mes coordonnées » et « Écrire au service client » ouvrent leur formulaire dans la carte, et le Journal technique n’existe pas. Dans l’app, ces trois éléments ouvrent leur propre page. Quitter un formulaire modifié demande « Ignorer les modifications ? », que l’on touche le bouton retour d’iOS, Annuler, l’onglet Compte ou un autre onglet, ou que l’on glisse depuis le bord gauche. Sur iOS 26, la question s’affiche en bulle avec le seul bouton « Ignorer » : toucher à côté garde la saisie.
 - Pendant un envoi, l’app bloque aussi le bouton retour, le glissement retour et le geste qui baisse une feuille.
 - Toucher l’onglet déjà ouvert revient à la racine de l’onglet puis remonte en haut de la page.
 - Les Statistiques et la liste des vélos d’une station s’actualisent en tirant la page vers le bas.
@@ -55,7 +55,7 @@ Les réglages à ouvrir ne sont pas les mêmes :
 - Si l’iPhone n’a pas l’app Mail, « Contacter le service client » sur un trajet litigieux copie l’adresse du service client et l’affiche sous le lien.
 
 ### Reçus et presse-papiers
-- Le site télécharge le PDF du reçu. L’app ouvre la feuille de partage iOS, et seul l’app peut dire « Le reçu n’a pas pu être enregistré sur ce téléphone. ».
+- Le site télécharge le PDF du reçu. Dans l’app, « Reçu » télécharge le PDF, puis le bouton devient « Partager » et ouvre la feuille de partage iOS. Seul l’app peut dire « Le reçu n’a pas pu être enregistré sur ce téléphone. ».
 - Seul le site peut échouer à copier : « Copie impossible. Sélectionnez le code pour le copier. ». Dans l’app, la copie ne peut pas échouer.
 
 ### Live Activities et widgets
@@ -63,6 +63,8 @@ Ces éléments n’existent que dans l’app :
 - Réservation en cours sur l’écran verrouillé et dans la Dynamic Island : le pilule « Réservé », le compte à rebours, « Vélo 20449 · Borne 4 », « Borne 4 · Bellecour / Saint-Exupéry » et « Expirée ».
 - Trajet en cours : « En trajet » puis « Terminé », le chronomètre et « Vélo 20449 ».
 Le bandeau de réservation dans l’app et sur le site reste identique : l’horloge et le compte à rebours, puis « Déverrouiller ».
+Avec VoiceOver, la Live Activity se lit en une phrase : « Vélo 20449 réservé, 12 min restantes » ou « Vélo 20449, en trajet depuis 23 min ».
+Dans l’app, le bandeau du trajet en cours reprend le bandeau rouge de la réservation : le vélo dans un cercle blanc, le temps écoulé, puis « 15 minutes de plus ».
 
 ### Apparence propre à iOS
 - La barre d’onglets du bas, les boutons Actualiser et Compte de l’en-tête et la barre de recherche des Stations utilisent le matériau Liquid Glass d’iOS. Le site utilise des surfaces blanches avec un filet.

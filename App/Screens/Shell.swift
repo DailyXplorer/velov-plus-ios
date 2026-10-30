@@ -41,16 +41,17 @@ struct Shell: View {
             case .via: ViaSheet()
             }
         }
+        .confirmationDialog("Ignorer les modifications\u{a0}?", isPresented: Binding(get: { model.leaving != nil }, set: { if !$0 { model.leaving = nil } }),
+                            titleVisibility: .visible, presenting: model.leaving) { intent in
+            Button("Ignorer", role: .destructive) { model.discard(intent) }
+            Button("Continuer la saisie", role: .cancel) {}
+        }
         .environment(\.floatingRadius, radius)
         .environment(\.tabBarBand, tabBarBand)
     }
 
-    @ViewBuilder
     private func screen(_ page: Page) -> some View {
-        switch page {
-        case .stations: StationsPage()
-        default: TabStack(page: page)
-        }
+        TabStack(page: page)
     }
 }
 
@@ -61,12 +62,17 @@ struct TabStack: View {
     var body: some View {
         @Bindable var model = model
         NavigationStack(path: Binding(get: { model.paths[page] ?? [] }, set: { model.paths[page] = $0 })) {
-            PageScaffold(page: page)
+            root
                 .navigationTitle(page.title)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in destination(route) }
         }
         .onLeaving(page) { if !model.operations.sending { model.paths[page] = [] } }
+    }
+
+    @ViewBuilder
+    private var root: some View {
+        if page == .stations { StationsPage() } else { PageScaffold(page: page) }
     }
 
     @ViewBuilder
@@ -93,7 +99,6 @@ struct PushedPage<Header: View, Content: View>: View {
     let title: String
     var close: (() -> Void)?
     var refresh: (() async -> Void)?
-    var held = false
     @ViewBuilder let header: () -> Header
     @ViewBuilder let content: () -> Content
     @Environment(AppModel.self) private var model
@@ -124,13 +129,13 @@ struct PushedPage<Header: View, Content: View>: View {
                 }
             }
         }
-        .heldWhile(sending || held)
+        .heldWhile(sending)
     }
 }
 
 extension PushedPage where Header == PageTitle {
-    init(_ title: String, close: (() -> Void)? = nil, refresh: (() async -> Void)? = nil, held: Bool = false, @ViewBuilder content: @escaping () -> Content) {
-        self.init(title: title, close: close, refresh: refresh, held: held, header: { PageTitle(title: title) }, content: content)
+    init(_ title: String, close: (() -> Void)? = nil, refresh: (() async -> Void)? = nil, @ViewBuilder content: @escaping () -> Content) {
+        self.init(title: title, close: close, refresh: refresh, header: { PageTitle(title: title) }, content: content)
     }
 }
 
@@ -173,8 +178,7 @@ struct TabBar: View {
                 let active = model.page == page
                 Button {
                     guard !active else { return model.reselect(page) }
-                    model.page = page
-                    Haptics.selection()
+                    if model.select(page) { Haptics.selection() }
                 } label: {
                     label(page)
                         .hidden()
@@ -361,10 +365,11 @@ struct PageScaffold: View {
                 .onLeaving(page) { proxy.scrollTo("page-top", anchor: .top) }
                 .onChange(of: model.tops[page]) { withAnimation(Motion.standard) { proxy.scrollTo("page-top", anchor: .top) } }
                 .task {
-                    if model.snapshot == .overviewMap || model.snapshot == .accountEnd {
-                        try? await Task.sleep(nanoseconds: 1_500_000_000)
-                        proxy.scrollTo(model.snapshot == .overviewMap ? "stations-map" : "page-end", anchor: .bottom)
-                    }
+                    let anchors: [SnapshotScreen: (String, UnitPoint)] = [.overviewMap: ("stations-map", .bottom), .accountEnd: ("page-end", .bottom),
+                                                                          .renewalToggle: ("renewal", .center), .renewalDialog: ("renewal", .center)]
+                    guard page == model.page, let snapshot = model.snapshot, let (id, anchor) = anchors[snapshot] else { return }
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    proxy.scrollTo(id, anchor: anchor)
                 }
         }
     }

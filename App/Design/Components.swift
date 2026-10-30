@@ -611,10 +611,89 @@ private struct PopGestureLock: UIViewControllerRepresentable {
             gestures(of: navigation).forEach { $0.isEnabled = true }
         }
 
-        private func gestures(of navigation: UINavigationController) -> [UIGestureRecognizer] {
-            var gestures = [navigation.interactivePopGestureRecognizer]
-            if #available(iOS 26, *) { gestures.append(navigation.interactiveContentPopGestureRecognizer) }
-            return gestures.compactMap { $0 }
+        private func gestures(of navigation: UINavigationController) -> [UIGestureRecognizer] { popGestures(navigation) }
+    }
+}
+
+private func popGestures(_ navigation: UINavigationController?) -> [UIGestureRecognizer] {
+    guard let navigation else { return [] }
+    var gestures = [navigation.interactivePopGestureRecognizer]
+    if #available(iOS 26, *) { gestures.append(navigation.interactiveContentPopGestureRecognizer) }
+    return gestures.compactMap { $0 }
+}
+
+extension View {
+    func askingBeforeBack(_ ask: (() -> Void)?) -> some View {
+        background(BackInterceptor(ask: ask).frame(width: 0, height: 0))
+    }
+}
+
+private struct BackInterceptor: UIViewControllerRepresentable {
+    let ask: (() -> Void)?
+
+    func makeUIViewController(context: Context) -> Probe { Probe() }
+
+    func updateUIViewController(_ probe: Probe, context: Context) {
+        probe.ask = ask
+    }
+
+    static func dismantleUIViewController(_ probe: Probe, coordinator: ()) {
+        probe.ask = nil
+    }
+
+    final class Probe: UIViewController {
+        var ask: (() -> Void)? { didSet { apply() } }
+        private weak var page: UIViewController?
+        private weak var held: UINavigationController?
+        private lazy var edge: UIScreenEdgePanGestureRecognizer = {
+            let edge = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(swiped(_:)))
+            edge.edges = .left
+            return edge
+        }()
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            apply()
+        }
+
+        override func viewDidDisappear(_ animated: Bool) {
+            super.viewDidDisappear(animated)
+            release()
+        }
+
+        private func apply() {
+            guard let page = page ?? pushedPage() else { return }
+            self.page = page
+            page.navigationItem.backAction = ask.map { ask in UIAction { _ in ask() } }
+            guard ask != nil, let navigation = page.navigationController else { return release() }
+            held = navigation
+            popGestures(navigation).forEach { $0.isEnabled = false }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.ask != nil, self.held === navigation else { return }
+                popGestures(navigation).forEach { $0.isEnabled = false }
+            }
+            if edge.view !== navigation.view { navigation.view.addGestureRecognizer(edge) }
+        }
+
+        private func release() {
+            guard let navigation = held else { return }
+            held = nil
+            navigation.view.removeGestureRecognizer(edge)
+            popGestures(navigation).forEach { $0.isEnabled = true }
+        }
+
+        private func pushedPage() -> UIViewController? {
+            var current: UIViewController = self
+            while let parent = current.parent {
+                if parent is UINavigationController { return current }
+                current = parent
+            }
+            return nil
+        }
+
+        @objc private func swiped(_ gesture: UIGestureRecognizer) {
+            guard gesture.state == .began, let ask, let page, page.navigationController?.topViewController === page else { return }
+            ask()
         }
     }
 }

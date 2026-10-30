@@ -45,11 +45,19 @@ enum SnapshotScreen: String {
     case bookingBanner, unlockConfirm, bookConfirm, unlockUncertain, liveActivityLock, liveActivityIsland, tripActivityLock, tripActivityIsland
     case tripEnded, tripEndedStars
     case ongoingBanner, profilePage, contactPage, journalPage, bikePage, logoutDialog, toggleDialog, choiceSheet
+    case viaPick, viaReview, viaUncertain, inviteDialog, inviteCode, renewalToggle, renewalDialog, contactUncertain
+    case stationsSearch, stationsEmptyFilter, locationError, pageFailure, bikeListFailure, bikeOwnBooking, bigBalance, dockWhileBikes
     case stats, statsCharts, statsTipFirst, statsTipMiddle, statsTipLast, statsHeatmap, statsHeatTip, statsDonut, statsRecords, statsBike, statsEnd
 
     var isLiveActivity: Bool { [.liveActivityLock, .liveActivityIsland, .tripActivityLock, .tripActivityIsland].contains(self) }
 
-    var withBooking: Bool { [.bookingBanner, .unlockConfirm, .unlockUncertain].contains(self) }
+    var withBooking: Bool { [.bookingBanner, .unlockConfirm, .unlockUncertain, .bikeOwnBooking].contains(self) }
+
+    var riding: Bool { [.ongoingBanner, .viaPick, .viaReview, .viaUncertain].contains(self) }
+
+    var opensBikes: Bool { [.bikeList, .bikeSheet, .bookConfirm, .bikeListFailure, .bikeOwnBooking, .dockWhileBikes].contains(self) }
+
+    var pushesBike: Bool { [.bikeSheet, .bookConfirm, .bikeOwnBooking].contains(self) }
 }
 
 @MainActor
@@ -74,6 +82,8 @@ final class AppModel {
     var sheet: ActiveSheet?
     var paths: [Page: [Route]] = [:]
     var tops: [Page: Int] = [:]
+    var unsaved: Page?
+    var leaving: Leave?
     var ratedHere: Set<String> = []
     var contactRequested = false
     var foreground = true
@@ -115,14 +125,16 @@ final class AppModel {
         switch snapshot {
         case .trips?, .tripSheet?, .rateCard?, .bikePage?: page = .trips
         case .stats?, .statsCharts?, .statsTipFirst?, .statsTipMiddle?, .statsTipLast?, .statsHeatmap?, .statsHeatTip?, .statsDonut?, .statsRecords?, .statsBike?, .statsEnd?: page = .trips
-        case .points?: page = .points
-        case .stations?, .stationSheet?, .stationSheetLong?, .bikeList?, .bikeSheet?, .bookConfirm?: page = .stations
-        case .account?, .accountEnd?, .accountEdit?, .profilePage?, .contactPage?, .journalPage?, .logoutDialog?, .choiceSheet?: page = .account
-        case .toggleDialog?: page = .points
+        case .points?, .toggleDialog?, .inviteDialog?, .inviteCode?: page = .points
+        case .stations?, .stationSheet?, .stationSheetLong?, .bikeList?, .bikeSheet?, .bookConfirm?, .stationsSearch?, .stationsEmptyFilter?, .locationError?,
+             .bikeListFailure?, .bikeOwnBooking?, .dockWhileBikes?: page = .stations
+        case .account?, .accountEnd?, .accountEdit?, .profilePage?, .contactPage?, .journalPage?, .logoutDialog?, .choiceSheet?, .renewalToggle?, .renewalDialog?,
+             .contactUncertain?: page = .account
         default: break
         }
         paths = Self.snapshotPaths(snapshot)
         if snapshot == .logoutDialog { sheet = .logout }
+        if snapshot == .viaPick || snapshot == .viaReview || snapshot == .viaUncertain { sheet = .via }
     }
 
     private static func snapshotPaths(_ snapshot: SnapshotScreen?) -> [Page: [Route]] {
@@ -131,7 +143,7 @@ final class AppModel {
         case .tripSheet, .rateCard: return [.trips: [.trip(TripRoute(trip: first))]]
         case .bikePage: return [.trips: [.trip(TripRoute(trip: first)), .bike(BikeRoute(number: first.bikeNumber ?? 20449, station: nil))]]
         case .accountEdit, .profilePage, .choiceSheet: return [.account: [.profile]]
-        case .contactPage: return [.account: [.contact]]
+        case .contactPage, .contactUncertain: return [.account: [.contact]]
         case .journalPage: return [.account: [.journal]]
         default: return snapshot.showsStats ? [.trips: [.stats]] : [:]
         }
@@ -232,6 +244,13 @@ final class AppModel {
             if let trip = SampleData.trips.first { sheet = .ended(trip) }
             return
         }
+        if snapshot == .dockWhileBikes, let trip = SampleData.trips.first {
+            Task {
+                try? await Task.sleep(for: .seconds(3))
+                showEnded(trip)
+            }
+            return
+        }
         guard snapshot == nil else { return }
         if foreground { rides.observed(data.ongoing, latest: data.trips.flatMap(latestFinished)) }
         if let trip = data.ongoing?.first(where: { !docked.contains($0.id) }) { dockWatch.follow(trip.id) }
@@ -254,7 +273,7 @@ final class AppModel {
 
     private func showEnded(_ trip: Trip) {
         if sheet == nil && openSheets == 0 { sheet = .ended(trip) } else { queuedEnded = trip }
-        rides.finished(trip)
+        if snapshot == nil { rides.finished(trip) }
     }
 
     func closeEnded(_ trip: Trip) {
@@ -276,9 +295,35 @@ final class AppModel {
         paths[page, default: []].append(route)
     }
 
+    @discardableResult
+    func select(_ target: Page) -> Bool {
+        guard target != page else { return false }
+        if unsaved == page, !operations.sending {
+            leaving = .tab(target)
+            return false
+        }
+        page = target
+        return true
+    }
+
     func reselect(_ page: Page) {
+        if unsaved == page, !operations.sending { return leave(.root(page)) }
         if paths[page]?.isEmpty == false, !operations.sending { paths[page] = [] }
         tops[page, default: 0] += 1
+    }
+
+    func leave(_ intent: Leave) {
+        if unsaved != nil { leaving = intent } else { discard(intent) }
+    }
+
+    func discard(_ intent: Leave) {
+        leaving = nil
+        unsaved = nil
+        switch intent {
+        case .back(let page): if paths[page]?.isEmpty == false { paths[page]?.removeLast() }
+        case .root(let page): reselect(page)
+        case .tab(let target): page = target
+        }
     }
 
     func booked(_ booking: Booking?) {
@@ -347,6 +392,8 @@ final class AppModel {
         sheet = nil
         queuedEnded = nil
         paths = [:]
+        unsaved = nil
+        leaving = nil
         activities.endAll()
         rides.endAll()
         operations.use(account: nil)

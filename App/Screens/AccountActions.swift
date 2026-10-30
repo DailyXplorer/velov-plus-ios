@@ -35,23 +35,16 @@ struct ProfileCoordinates: View {
 
 struct LeaveGuard: ViewModifier {
     let dirty: Bool
+    var page = Page.account
     @Environment(AppModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
-    @State private var asking = false
 
     func body(content: Content) -> some View {
         content
-            .toolbar {
-                if dirty, !model.operations.sending {
-                    ToolbarItem(placement: .topBarLeading) {
-                        IconButton(icon: .arrowLeft, color: Palette.ink, label: "Retour") { asking = true }
-                    }
-                }
+            .askingBeforeBack(dirty ? { [model, page] in model.leave(.back(page)) } : nil)
+            .onChange(of: dirty, initial: true) { _, dirty in
+                if dirty { model.unsaved = page } else if model.unsaved == page { model.unsaved = nil }
             }
-            .confirmationDialog("Ignorer les modifications\u{a0}?", isPresented: $asking, titleVisibility: .visible) {
-                Button("Ignorer", role: .destructive) { dismiss() }
-                Button("Continuer la saisie", role: .cancel) {}
-            }
+            .onDisappear { if model.unsaved == page { model.unsaved = nil } }
     }
 }
 
@@ -68,7 +61,7 @@ struct ProfilePage: View {
     private var dirty: Bool { profile.flatMap { profile in draft.map { reviewProfile(profile, $0) != nil } } ?? false }
 
     var body: some View {
-        PushedPage("Modifier mes coordonnées", held: dirty) {
+        PushedPage("Modifier mes coordonnées") {
             if let profile, draft != nil { form(profile) }
         }
         .modifier(LeaveGuard(dirty: dirty))
@@ -110,7 +103,7 @@ struct ProfilePage: View {
             FormField(label: "Téléphone", text: binding(\.phone), maxLength: 20, keyboard: .phonePad, content: .telephoneNumber, focus: $focus, field: .phone)
             if let error { FormError(error) }
             PairedActions {
-                PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }
+                PillButton("Annuler", variant: .ghost, fullWidth: true) { model.leave(.back(.account)) }
                 PillButton("Enregistrer", fullWidth: true) { submit(profile) }
             }
             .padding(.top, Space.actions - Space.field)
@@ -146,6 +139,11 @@ struct AutoRenewalSetting: View {
         .padding(.top, Space.card)
         .onChange(of: subscription) { saved = nil }
         .sheet(isPresented: $asking) { dialog }
+        .task {
+            guard model.snapshot == .renewalDialog else { return }
+            try? await Task.sleep(for: .seconds(1.5))
+            asking = true
+        }
     }
 
     @ViewBuilder
@@ -306,8 +304,14 @@ struct ContactPage: View {
     private var dirty: Bool { !message.isEmpty || tripId != "none" || subject != Guesses.mailComplaintTypes[0] }
 
     var body: some View {
-        PushedPage("Écrire au service client", held: dirty) { form }
+        PushedPage("Écrire au service client") { form }
             .modifier(LeaveGuard(dirty: dirty))
+            .task {
+                guard model.snapshot == .contactUncertain else { return }
+                try? await Task.sleep(for: .seconds(1.5))
+                message = "Bonjour, mon dernier trajet n’apparaît pas dans mon historique."
+                review()
+            }
             .sheet(isPresented: $asking, onDismiss: {
                 draft = nil
                 if sent { dismiss() }
@@ -341,7 +345,7 @@ struct ContactPage: View {
             }
             if let error { FormError(error) }
             PairedActions {
-                PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }
+                PillButton("Annuler", variant: .ghost, fullWidth: true) { model.leave(.back(.account)) }
                 PillButton(variant: .primary, fullWidth: true, action: review) { ButtonIcon(.send); Text("Envoyer") }
             }
             .padding(.top, Space.actions - Space.field)

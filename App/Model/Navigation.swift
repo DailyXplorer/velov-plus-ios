@@ -16,6 +16,12 @@ enum Route: Hashable {
     case journal
 }
 
+enum Leave: Equatable {
+    case back(Page)
+    case root(Page)
+    case tab(Page)
+}
+
 enum ActiveSheet: Identifiable {
     case logout
     case unlock(Booking)

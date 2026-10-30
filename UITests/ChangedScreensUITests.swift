@@ -20,6 +20,8 @@ final class ChangedScreensUITests: XCTestCase {
     func testViaChosen() { capture("viaChosen", "27c-via-chosen", until: "Continuer", wait: 5) }
     func testViaReview() { capture("viaReview", "28-via-review", until: "Confirmer", wait: 5) }
 
+    func testAccountEnd() { capture("accountEnd", "40-account-end", until: "Ouvrir le journal", wait: 3) }
+
     func testLeaveAlert() {
         let app = XCUIApplication()
         app.launchArguments = ["-VelovSample", "YES", "-VelovScreen", "profilePage"]

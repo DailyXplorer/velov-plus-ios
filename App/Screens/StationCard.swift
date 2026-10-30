@@ -43,11 +43,8 @@ struct StationCard: View {
             }
             HStack(spacing: Space.cards) {
                 PillButton(variant: .primary, fullWidth: true, action: { bikesOpen = true }) { Text("Voir les vélos") }
-                PillButton(variant: .secondary, fullWidth: true, action: directions) {
-                    Text("Itinéraire")
-                    CircleArrow(external: true, style: .outline)
-                }
-                .accessibilityHint("Ouvre Plans")
+                PillButton("Itinéraire", variant: .secondary, fullWidth: true, action: directions)
+                    .accessibilityHint("Ouvre Plans")
             }
             .padding(.top, Space.cards)
         }

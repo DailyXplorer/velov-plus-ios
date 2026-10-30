@@ -41,10 +41,14 @@ struct Shell: View {
             case .via: ViaSheet()
             }
         }
-        .alert("Ignorer les modifications\u{a0}?", isPresented: Binding(get: { model.leaving != nil }, set: { if !$0 { model.leaving = nil } }),
-               presenting: model.leaving) { intent in
-            Button("Ignorer", role: .destructive) { model.discard(intent) }
-            Button("Continuer la saisie", role: .cancel) {}
+        .background {
+            Color.clear
+                .alert("Ignorer les modifications\u{a0}?", isPresented: Binding(get: { model.leaving != nil }, set: { if !$0 { model.leaving = nil } }),
+                       presenting: model.leaving) { intent in
+                    Button("Ignorer", role: .destructive) { model.discard(intent) }
+                    Button("Continuer la saisie", role: .cancel) {}
+                }
+                .tint(Palette.ink)
         }
         .environment(\.floatingRadius, radius)
         .environment(\.tabBarBand, tabBarBand)
@@ -148,6 +152,7 @@ struct PushedPage<Header: View, Content: View>: View {
         }
         .scrollIndicators(.hidden)
         .contentMargins(.bottom, tabBarBand, for: .scrollContent)
+        .fadesUnderTabBar()
         .background(Palette.white)
         .modifier(Refreshing(refresh: refresh))
         .navigationTitle(title)
@@ -174,6 +179,30 @@ extension PushedPage where Header == PageTitle {
     init(_ title: String, close: (() -> Void)? = nil, refresh: (() async -> Void)? = nil, @ViewBuilder content: @escaping () -> Content) {
         self.init(title: title, close: close, refresh: refresh, header: { PageTitle(title: title) }, content: content)
     }
+}
+
+private struct UnderTabBarFade: ViewModifier {
+    @Environment(\.tabBarBand) private var band
+    @Environment(\.tabBarClearance) private var clearance
+
+    func body(content: Content) -> some View {
+        if band > 0 {
+            content.mask {
+                VStack(spacing: 0) {
+                    Color.black
+                    LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: Space.actions)
+                    Color.clear.frame(height: clearance)
+                }
+                .ignoresSafeArea()
+            }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    func fadesUnderTabBar() -> some View { modifier(UnderTabBarFade()) }
 }
 
 private struct Refreshing: ViewModifier {
@@ -455,6 +484,7 @@ struct PageScaffold: View {
         }
         .scrollIndicators(.hidden)
         .contentMargins(.bottom, tabBarBand, for: .scrollContent)
+        .fadesUnderTabBar()
         .refreshable { await model.manualRefresh() }
     }
 

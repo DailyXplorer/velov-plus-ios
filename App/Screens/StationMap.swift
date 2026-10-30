@@ -57,9 +57,8 @@ private enum MapAttribution {
     static let size = CGSize(width: 145, height: 24)
 
     static func zone(_ proxy: GeometryProxy) -> CGRect {
-        let insets = proxy.safeAreaInsets
         let width = Layout.mapKitMargin + size.width, height = Layout.mapKitMargin + size.height
-        return CGRect(x: insets.leading, y: proxy.size.height - insets.bottom - height, width: width, height: height)
+        return CGRect(x: 0, y: proxy.size.height - height, width: width, height: height)
             .insetBy(dx: -StationPin.size / 2, dy: -StationPin.size / 2)
     }
 }

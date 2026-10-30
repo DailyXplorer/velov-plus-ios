@@ -61,6 +61,7 @@ struct FloatingHost<Content: View>: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if tabBar {
                     TabBar(radius: radius)
+                        .onGeometryChange(for: CGFloat.self, of: { Concentric.radius($0) }) { radius = $0 }
                         .padding(.horizontal, Concentric.inset).padding(.bottom, Concentric.inset - homeIndicator)
                         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { measuredBand = $0 }
                 }
@@ -70,10 +71,12 @@ struct FloatingHost<Content: View>: View {
                 Color.clear.ignoresSafeArea(.keyboard).onGeometryChange(for: CGFloat.self, of: { $0.safeAreaInsets.bottom }) { homeIndicator = $0 }
             }
             .background(alignment: .bottom) {
-                Color.clear.frame(height: 2 * Concentric.fallback)
-                    .onGeometryChange(for: CGFloat.self, of: { Concentric.radius($0) }) { radius = $0 }
-                    .padding(.horizontal, Concentric.inset).padding(.bottom, Concentric.inset)
-                    .ignoresSafeArea()
+                if !tabBar {
+                    Color.clear.frame(height: 2 * Concentric.fallback)
+                        .onGeometryChange(for: CGFloat.self, of: { Concentric.radius($0) }) { radius = $0 }
+                        .padding(.horizontal, Concentric.inset).padding(.bottom, Concentric.inset)
+                        .ignoresSafeArea()
+                }
             }
             .environment(\.floatingRadius, radius)
             .environment(\.tabBarBand, band)
@@ -192,7 +195,7 @@ private struct UnderTabBarFade: ViewModifier {
                     LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: Space.actions)
                     Color.clear.frame(height: clearance)
                 }
-                .ignoresSafeArea(.container, edges: .bottom)
+                .ignoresSafeArea(.container)
             }
         } else {
             content

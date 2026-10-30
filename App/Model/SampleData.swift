@@ -69,7 +69,7 @@ enum SampleData {
     }
 
     static let bikes: [Bike] = [
-        Bike(number: 20449, type: .electrical, standNumber: 2, statusLabel: "Accroché", rating: .init(value: 92, count: 31, lastAt: ago(5)), batteryPercent: 88, frameId: "FR-0042-2044", lastTripAt: ago(2), lastControlAt: ago(200), nextCheckAt: now.addingTimeInterval(3 * 86_400), lastSignalAt: ago(0.1), nextReviewAt: now.addingTimeInterval(60 * 86_400)),
+        Bike(number: 20449, type: .electrical, standNumber: 2, statusLabel: "Accroché", rating: .init(value: 92, count: 31, lastAt: ago(5)), batteryPercent: 88, frameId: "FR-0042-2044", lastTripAt: ago(2), lastControlAt: ago(200), nextCheckAt: ago(18 * 24), lastSignalAt: ago(0.1), nextReviewAt: now.addingTimeInterval(60 * 86_400)),
         Bike(number: 11872, type: .mechanical, standNumber: 5, statusLabel: "Accroché", rating: .init(value: 88, count: 24, lastAt: ago(20)), lastTripAt: ago(6), lastControlAt: ago(300), nextCheckAt: now.addingTimeInterval(86_400)),
         Bike(number: 12204, type: .mechanical, standNumber: 7, statusLabel: "Accroché", rating: .init(value: 79, count: 12, lastAt: ago(40)), lastTripAt: ago(30)),
         Bike(number: 20117, type: .electrical, standNumber: 9, statusLabel: "Accroché", rating: .init(value: 84, count: 9, lastAt: ago(60)), batteryPercent: 46, lastTripAt: ago(14)),

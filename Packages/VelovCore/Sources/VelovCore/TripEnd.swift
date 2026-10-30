@@ -59,11 +59,12 @@ public final class DockWatch {
         case idle
         case unlocked(since: Date, startedAt: Date)
         case riding(tripId: String, startedAt: Date)
+        case ended(tripId: String, since: Date, startedAt: Date)
 
         var startedAt: Date? {
             switch self {
             case .idle: nil
-            case .unlocked(_, let startedAt), .riding(_, let startedAt): startedAt
+            case .unlocked(_, let startedAt), .riding(_, let startedAt), .ended(_, _, let startedAt): startedAt
             }
         }
     }
@@ -151,11 +152,26 @@ public final class DockWatch {
         delay = answer?.ongoing != nil ? Self.interval : min(delay * 2, Self.backoffCap)
         if let ongoing = answer?.ongoing, let first = ongoing.first {
             state = .riding(tripId: first.id, startedAt: startedAt)
-        } else if answer?.ongoing != nil, case .riding(let tripId, _) = state {
-            stop()
-            return docked(tripId, answer?.latest)
-        } else if answer?.ongoing != nil, case .unlocked(let since, _) = state, now().timeIntervalSince(since) >= Self.unlockGrace {
-            return stop()
+        } else if answer?.ongoing != nil {
+            let latest = answer?.latest
+            switch state {
+            case .riding(let tripId, _) where latest?.id != tripId:
+                state = .ended(tripId: tripId, since: now(), startedAt: startedAt)
+            case .riding(let tripId, _), .ended(let tripId, _, _) where latest?.id == tripId:
+                stop()
+                return docked(tripId, latest)
+            case .ended(let tripId, let since, _) where now().timeIntervalSince(since) >= Reconcile.historyLag:
+                stop()
+                return docked(tripId, latest)
+            case .unlocked(let since, _):
+                if let latest, let start = latest.startedAt, let ended = latest.endedAt,
+                   start >= since.addingTimeInterval(-Reconcile.dockWindow), ended > since {
+                    stop()
+                    return docked(latest.id, latest)
+                }
+                if now().timeIntervalSince(since) >= Self.unlockGrace { return stop() }
+            default: break
+            }
         }
         plan()
     }

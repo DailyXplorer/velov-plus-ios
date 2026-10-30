@@ -40,7 +40,7 @@ Les réglages à ouvrir ne sont pas les mêmes :
 
 ### Navigation
 - Les Statistiques sont un onglet sur le site (« Statistiques » sur ordinateur, « Stats » en bas sur téléphone). Dans l’app, c’est un bouton « Statistiques » en haut de Trajets, et la page s’ouvre par-dessus Trajets avec le bouton retour d’iOS. Le site a donc six onglets, l’app cinq.
-- Le détail d’un trajet et la fiche d’un vélo sont des fenêtres sur le site. Dans l’app, ce sont des pages qui s’ouvrent dans l’onglet, avec le bouton retour d’iOS et le glissement depuis le bord gauche. Depuis la carte d’une station, la liste des vélos reste un panneau plein écran, et la fiche d’un vélo s’y ouvre comme une page.
+- Le détail d’un trajet et la fiche d’un vélo sont des fenêtres sur le site. Dans l’app, ce sont des pages qui s’ouvrent dans l’onglet, avec le bouton retour d’iOS et le glissement depuis le bord gauche. Depuis la carte d’une station, la liste des vélos reste un panneau plein écran, et la fiche d’un vélo s’y ouvre comme une page. Les deux gardent la même barre iOS en haut (Actualiser et X sur la liste, retour et X sur la fiche), avec le nom de la station ou le numéro du vélo en grand dessous.
 - Sur le site, « Modifier mes coordonnées » et « Écrire au service client » ouvrent leur formulaire dans la carte, et le Journal technique n’existe pas. Dans l’app, ces trois éléments ouvrent leur propre page. Quitter un formulaire modifié demande « Ignorer les modifications ? », que l’on touche le bouton retour d’iOS, Annuler, l’onglet Compte ou un autre onglet, ou que l’on glisse depuis le bord gauche. La question s’affiche en alerte iOS centrée, avec « Ignorer » et « Continuer la saisie ».
 - Pendant un envoi, l’app bloque aussi le bouton retour, le glissement retour et le geste qui baisse une feuille.
 - Toucher l’onglet déjà ouvert revient à la racine de l’onglet puis remonte en haut de la page.
@@ -56,7 +56,7 @@ Les réglages à ouvrir ne sont pas les mêmes :
 
 ### Présentation des confirmations
 - Dans la fiche d’un vélo, le site affiche « Réserver ce vélo ? » ou « Déverrouiller ce vélo ? » dans un encadré gris, dans la fiche elle-même. L’app ouvre une feuille par-dessus, dont le titre est la question avec le vélo (« Réserver le vélo 20449 ? », « Déverrouiller le vélo 20449 ? »), puis la phrase et Annuler / Confirmer. Le texte, les boutons, l’avertissement à plus de 200 m et les états d’erreur sont les mêmes.
-- Le site écrit « Réserver » et « Déverrouiller » en minuscules, côte à côte. L’app les écrit en capitales, qui ne tiennent pas côte à côte avec leurs icônes sur un iPhone : les deux boutons s’empilent alors sur toute la largeur, à la même taille, plutôt que de réduire « DÉVERROUILLER ».
+- Le site écrit « Réserver » et « Déverrouiller » en minuscules, côte à côte. L’app les écrit en capitales, qui ne tiennent pas côte à côte avec leurs icônes sur un iPhone : les deux boutons sont toujours empilés sur toute la largeur, à la même taille, plutôt que de réduire « DÉVERROUILLER ».
 - Les réglages à confirmer (utilisation automatique des points, renouvellement automatique) utilisent l’interrupteur natif d’iOS, en rouge. Le toucher ouvre seulement la confirmation, comme sur le site.
 - « Effacer » le Journal technique demande d’abord « Effacer le journal ? » (Effacer / Annuler), dans le menu natif d’iOS.
 - Les fenêtres du site sont des boîtes de dialogue centrées sur ordinateur, ou des feuilles en bas de l’écran sur téléphone. L’app utilise les feuilles iOS : on peut les baisser d’un geste, sauf pendant un envoi.
@@ -76,7 +76,7 @@ Avec VoiceOver, la Live Activity se lit en une phrase : « Vélo 20449 réservé
 Dans l’app, le bandeau du trajet en cours reprend le bandeau rouge de la réservation : le vélo dans un cercle blanc, le temps écoulé, puis « 15 minutes de plus ».
 
 ### Apparence propre à iOS
-- La barre d’onglets du bas, les boutons Actualiser et Compte de l’en-tête et la barre de recherche des Stations utilisent le matériau Liquid Glass d’iOS. Le site utilise des surfaces blanches avec un filet.
+- La barre d’onglets du bas, les boutons Actualiser et Compte de l’en-tête et la barre de recherche des Stations utilisent le matériau Liquid Glass d’iOS. Le site utilise des surfaces blanches avec un filet. Les pages qui défilent s’effacent juste au-dessus de la barre d’onglets, pour que le verre ne laisse pas transparaître une traînée rose sous un bouton ou une carte rouge.
 - Les filtres (Stations, type de vélo des Trajets, période des Statistiques) ouvrent le menu natif d’iOS en Liquid Glass (`Menu` avec un `Picker` intégré), où iOS coche le choix actuel. Les champs de formulaire (Pays, Objet, Trajet, Station pleine) ouvrent une feuille opaque en détente `.large` avec la liste des choix ; le choix actuel y est en texte rouge, sans coche, comme sur le site (`App/Design/SelectField.swift`). Le site garde sa liste blanche maison.
 - La règle du propriétaire est : pas de coche dans un menu ouvert, le choix actuel est simplement en rouge. La feuille de choix la suit. Le menu natif des filtres ne la suit pas encore, car iOS y dessine sa coche ; c’est un écart à corriger, pas une différence voulue.
 - L’app utilise la police des chiffres « Velov Glyphic Timer » pour les comptes à rebours des Live Activities.

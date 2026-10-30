@@ -10,6 +10,10 @@ final class StationSearchTests: XCTestCase {
         StationRanking(stations: stations, query: query, filter: filter, favorites: favorites, here: here).ranked().map(\.number)
     }
 
+    func testTheStationsFailureReadsLikeTheSite() {
+        XCTAssertEqual(Messages.stationsUnavailable, "Les stations sont momentanément indisponibles.")
+    }
+
     func testFavoritesComeFirstThenOpenStationsThenFrenchAlphabeticalOrder() {
         let stations = [station(1, "Zola"), station(2, "Écully"), station(3, "Ampère", open: false), station(4, "Opéra"), station(5, "Bellecour")]
         XCTAssertEqual(ranked(stations, favorites: [4]), [4, 5, 2, 1, 3])

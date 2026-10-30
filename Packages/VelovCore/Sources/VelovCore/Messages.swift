@@ -62,7 +62,7 @@ public enum Messages {
     public static let credentials = "Adresse e-mail ou code secret incorrect."
     public static let remoteLogoutUnconfirmed = "Déconnexion effectuée. Vélo’v ne l’a pas encore confirmée."
     public static let missing = "Indisponible pour le moment"
-    public static let stationsUnavailable = "Les disponibilités des stations sont momentanément indisponibles."
+    public static let stationsUnavailable = "Les stations sont momentanément indisponibles."
     public static let stationBikesUnavailable = "Les vélos de cette station sont momentanément indisponibles."
     public static let bikeUnavailable = "Ce vélo est momentanément indisponible."
     public static let refreshFailed = "Actualisation impossible pour le moment."

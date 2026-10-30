@@ -31,6 +31,7 @@ enum Concentric {
 extension EnvironmentValues {
     @Entry var floatingRadius: CGFloat = Concentric.fallback
     @Entry var tabBarBand: CGFloat = 0
+    @Entry var tabBarClearance: CGFloat = 0
 }
 
 struct SheetCorners: ViewModifier {

@@ -17,8 +17,8 @@ struct StationsPage: View {
     @State private var rankedFilter: StationFilter?
     @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var still
+    @Environment(\.tabBarClearance) private var clearance
     @FocusState private var searching: Bool
-    @State private var barBand: CGFloat = 0
     @State private var cardHeight: CGFloat = 0
     @State private var toolbarBand: CGFloat = 0
     @State private var filtered: [Station] = []
@@ -130,7 +130,8 @@ struct StationsPage: View {
                 selectedId = nil
             }
                 .safeAreaPadding(.top, toolbarBand)
-                .safeAreaPadding(.bottom, barBand + (selected == nil ? 0 : cardHeight + Concentric.gap))
+                .safeAreaPadding(.bottom, clearance + (selected == nil ? 0 : cardHeight + Concentric.gap))
+                .ignoresSafeArea(.container, edges: .bottom)
             VStack(alignment: .leading, spacing: Space.cards) {
                 toolbar
                     .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { toolbarBand = $0 + Space.cards }
@@ -143,7 +144,6 @@ struct StationsPage: View {
         }
         .ignoresSafeArea(.keyboard)
         .ignoresSafeArea(.container, edges: .bottom)
-        .onGeometryChange(for: CGFloat.self, of: { $0.safeAreaInsets.bottom }) { barBand = $0 }
         .overlay(alignment: .bottom) {
             if let station = selected {
                 StationCard(station: station, favorite: favorites.contains(station.number), distance: here.map { haversine($0, station.point) }) {
@@ -151,8 +151,8 @@ struct StationsPage: View {
                 }
                 .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { cardHeight = $0 }
                 .padding(.horizontal, Concentric.inset)
-                .padding(.bottom, Concentric.gap)
-                .ignoresSafeArea(.keyboard)
+                .padding(.bottom, clearance + Concentric.gap)
+                .ignoresSafeArea(edges: .bottom)
                 .transition(Motion.panelTransition(still: still))
             }
         }

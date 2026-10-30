@@ -41,13 +41,14 @@ struct Shell: View {
             case .via: ViaSheet()
             }
         }
-        .confirmationDialog("Ignorer les modifications\u{a0}?", isPresented: Binding(get: { model.leaving != nil }, set: { if !$0 { model.leaving = nil } }),
-                            titleVisibility: .visible, presenting: model.leaving) { intent in
+        .alert("Ignorer les modifications\u{a0}?", isPresented: Binding(get: { model.leaving != nil }, set: { if !$0 { model.leaving = nil } }),
+               presenting: model.leaving) { intent in
             Button("Ignorer", role: .destructive) { model.discard(intent) }
             Button("Continuer la saisie", role: .cancel) {}
         }
         .environment(\.floatingRadius, radius)
         .environment(\.tabBarBand, tabBarBand)
+        .environment(\.tabBarClearance, homeIndicator + tabBarBand)
     }
 
     private func screen(_ page: Page) -> some View {
@@ -58,7 +59,6 @@ struct Shell: View {
 struct TabStack: View {
     let page: Page
     @Environment(AppModel.self) private var model
-    @Environment(\.tabBarBand) private var tabBarBand
 
     var body: some View {
         @Bindable var model = model
@@ -73,7 +73,7 @@ struct TabStack: View {
 
     @ViewBuilder
     private var root: some View {
-        if page == .stations { StationsPage().safeAreaPadding(.bottom, tabBarBand) } else { PageScaffold(page: page) }
+        if page == .stations { StationsPage() } else { PageScaffold(page: page) }
     }
 
     @ViewBuilder

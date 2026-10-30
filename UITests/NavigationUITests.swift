@@ -104,13 +104,14 @@ final class NavigationUITests: XCTestCase {
         belgium.tap()
         XCTAssertTrue(app.buttons["Pays, Belgique"].waitForExistence(timeout: 5), "the form is edited")
         let ask = header(app, "Ignorer les modifications\u{a0}?")
-        let keep = { app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.1)).tap() }
+        let keep = { app.buttons["Continuer la saisie"].tap() }
 
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(ask.waitForExistence(timeout: 5), "the system back button asks before discarding")
+        XCTAssertTrue(app.buttons["Ignorer"].isHittable && app.buttons["Continuer la saisie"].isHittable, "both choices are shown")
         shot("leave-back")
         keep()
-        XCTAssertTrue(ask.waitForNonExistence(timeout: 5), "tapping outside keeps the edits")
+        XCTAssertTrue(ask.waitForNonExistence(timeout: 5), "Continuer la saisie keeps the edits")
         XCTAssertTrue(visible(app, "Modifier mes coordonnées"), "keeping the edits stays on the form")
 
         swipeBack(app)
@@ -121,9 +122,9 @@ final class NavigationUITests: XCTestCase {
 
         app.buttons["Accueil"].tap()
         XCTAssertTrue(ask.waitForExistence(timeout: 5), "switching tab asks before discarding")
-        shot("leave-tab")
         app.buttons["Ignorer"].tap()
         XCTAssertTrue(visible(app, "Vue d’ensemble"), "discarding goes to the tapped tab")
+        shot("leave-tab")
         app.buttons.matching(NSPredicate(format: "label == %@", "Compte")).firstMatch.tap()
         XCTAssertTrue(visible(app, "Compte"), "the discarded form is no longer on the Compte stack")
         XCTAssertFalse(visible(app, "Modifier mes coordonnées", timeout: 1))

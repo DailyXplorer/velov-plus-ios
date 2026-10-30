@@ -391,7 +391,12 @@ struct Header: View {
             }
         }
         .padding(.horizontal, Layout.margin).padding(.top, Layout.headerTop).padding(.bottom, Layout.headerBottom)
+        .opacity(toastShown ? 0 : 1)
+        .accessibilityHidden(toastShown)
+        .animation(Motion.standard, value: toastShown)
     }
+
+    private var toastShown: Bool { model.toasts.current != nil }
 }
 
 struct PageScaffold: View {

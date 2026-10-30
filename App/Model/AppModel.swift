@@ -46,13 +46,13 @@ enum SnapshotScreen: String {
     case tripEnded, tripEndedStars
     case ongoingBanner, profilePage, contactPage, journalPage, bikePage, logoutDialog, toggleDialog, choiceSheet
     case viaPick, viaReview, viaUncertain, inviteDialog, inviteCode, renewalToggle, renewalDialog, contactUncertain
-    case stationsSearch, stationsEmptyFilter, locationError, pageFailure, bikeListFailure, bikeOwnBooking, bigBalance, dockWhileBikes
+    case stationsSearch, stationsEmptyFilter, locationError, locationTimeout, pageFailure, bikeListFailure, bikeOwnBooking, bigBalance, dockWhileBikes
     case stats, statsCharts, statsTipFirst, statsTipMiddle, statsTipLast, statsHeatmap, statsHeatTip, statsDonut, statsRecords, statsBike, statsEnd
-    case login, guestStations, guestStationSheet, guestBikeSheet
+    case login, loginError, guestStations, guestStationSheet, guestBikeSheet
 
     var asGuest: Bool { [.guestStations, .guestStationSheet, .guestBikeSheet].contains(self) }
 
-    var signedOut: Bool { self == .login || asGuest }
+    var signedOut: Bool { self == .login || self == .loginError || asGuest }
 
     var isLiveActivity: Bool { [.liveActivityLock, .liveActivityIsland, .tripActivityLock, .tripActivityIsland].contains(self) }
 
@@ -93,6 +93,7 @@ final class AppModel {
     var ratedHere: Set<String> = []
     var contactRequested = false
     var foreground = true
+    private(set) var toasts = ToastSlot()
     private(set) var guestFavorites: [Int] = []
     private var docked: Set<String> = []
     private var openSheets = 0
@@ -135,7 +136,7 @@ final class AppModel {
         case .trips?, .tripSheet?, .rateCard?, .bikePage?: page = .trips
         case .stats?, .statsCharts?, .statsTipFirst?, .statsTipMiddle?, .statsTipLast?, .statsHeatmap?, .statsHeatTip?, .statsDonut?, .statsRecords?, .statsBike?, .statsEnd?: page = .trips
         case .points?, .toggleDialog?, .inviteDialog?, .inviteCode?: page = .points
-        case .stations?, .stationSheet?, .stationSheetLong?, .bikeList?, .bikeSheet?, .bookConfirm?, .stationsSearch?, .stationsEmptyFilter?, .locationError?,
+        case .stations?, .stationSheet?, .stationSheetLong?, .bikeList?, .bikeSheet?, .bookConfirm?, .stationsSearch?, .stationsEmptyFilter?, .locationError?, .locationTimeout?,
              .bikeListFailure?, .bikeOwnBooking?, .dockWhileBikes?: page = .stations
         case .account?, .accountEnd?, .accountEdit?, .profilePage?, .contactPage?, .journalPage?, .logoutDialog?, .choiceSheet?, .renewalToggle?, .renewalDialog?,
              .contactUncertain?: page = .account
@@ -208,6 +209,18 @@ final class AppModel {
         phase = .signedOut(nil)
     }
 
+    func showToast(_ message: String, action: ToastAction? = nil) {
+        toasts.show(message, action: action)
+    }
+
+    func showToast(_ failure: LocationFailure) {
+        showToast(failure.message, action: failure.action)
+    }
+
+    func dismissToast(_ id: Int) {
+        toasts.dismiss(id)
+    }
+
     func setGuestFavorite(_ number: Int, _ on: Bool) {
         guestFavorites = guestStore.setFavorite(number, on)
     }
@@ -242,7 +255,8 @@ final class AppModel {
             dockWatch.stop()
             phase = .signedOut(error.revoked ? error.message : "Votre session a expiré. Reconnectez-vous.")
         case .failure(let error):
-            phase = .failed(LoadFailure(error, "Votre compte est momentanément indisponible."))
+            let failure = LoadFailure(error, "Votre compte est momentanément indisponible.")
+            if dashboard == nil { phase = .failed(failure) } else { showToast(failure.message) }
         }
     }
 
@@ -251,7 +265,10 @@ final class AppModel {
         stationsPending = true
         defer { stationsPending = false }
         do { stations = .ready(try await service.stations()) }
-        catch { stations = .failed(LoadFailure(error, Messages.stationsUnavailable)) }
+        catch {
+            let failure = LoadFailure(error, Messages.stationsUnavailable)
+            if stations.value == nil { stations = .failed(failure) } else { showToast(failure.message) }
+        }
     }
 
     func loadBookings(force: Bool = false) async {

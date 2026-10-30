@@ -325,23 +325,21 @@ struct FloatingCircleButton<Content: View>: View {
 
 struct StateView: View {
     let message: String
-    var raw: String?
     var pending = false
     var retry: (() -> Void)?
 
-    init(_ message: String, raw: String? = nil, pending: Bool = false, retry: (() -> Void)? = nil) {
-        self.message = message; self.raw = raw; self.pending = pending; self.retry = retry
+    init(_ message: String, pending: Bool = false, retry: (() -> Void)? = nil) {
+        self.message = message; self.pending = pending; self.retry = retry
     }
 
     init(_ failure: LoadFailure, pending: Bool = false, retry: @escaping () -> Void) {
-        self.init(failure.message, raw: failure.raw, pending: pending, retry: retry)
+        self.init(failure.message, pending: pending, retry: retry)
     }
 
     var body: some View {
         VStack(spacing: 0) {
             Text(message).typo(.body(.base)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center).lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
-            if let raw, !raw.isEmpty { RawStatus(line: raw).multilineTextAlignment(.center).padding(.top, Space.pair) }
             if let retry {
                 PillButton("Réessayer", variant: .secondary, pending: pending, action: retry).padding(.top, Space.titleToContent)
             }
@@ -358,10 +356,7 @@ struct ErrorNotice: View {
     let retry: () -> Void
     var body: some View {
         HStack(spacing: Space.row) {
-            VStack(alignment: .leading, spacing: Space.pair) {
-                Text(failure.message).typo(.body(.base)).foregroundStyle(Palette.formError).fixedSize(horizontal: false, vertical: true)
-                if !failure.raw.isEmpty { RawStatus(line: failure.raw) }
-            }
+            Text(failure.message).typo(.body(.base)).foregroundStyle(Palette.formError).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             PillButton("Réessayer", variant: .secondary, pending: pending, action: retry)
         }

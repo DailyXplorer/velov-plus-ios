@@ -48,18 +48,6 @@ public func networkLine(_ error: Error) -> String {
     return "Erreur réseau · \(String(describing: type(of: error)))"
 }
 
-private extension Array {
-    func appending(_ element: Element) -> [Element] { self + [element] }
-}
-
-public func failureLine(_ error: Error) -> String {
-    switch error {
-    case let error as VelovError: (error.status.map { ["HTTP \($0)"] } ?? []).appending("Code local.\(error.code.rawValue)").joined(separator: " · ")
-    case is ShapeError: "Réponse illisible"
-    default: networkLine(error)
-    }
-}
-
 public struct JournalEntry: Codable, Equatable, Sendable {
     public var at: Date
     public var method: String

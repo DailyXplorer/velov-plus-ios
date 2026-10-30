@@ -353,16 +353,16 @@ final class Review3Tests: XCTestCase {
         XCTAssertEqual(redactedOperation("autoSpend"), "autoSpend")
     }
 
-    func testARatingThatGotNoAnswerShowsTheNetworkCodeAndDuration() async throws {
+    func testARatingThatGotNoAnswerKeepsThePlainMessageAndTheNetworkDetail() async throws {
         let ticks = Ticks()
         let server = MockServer { _, _ in .failure(.timedOut) }
         let transport = JournalTransport(server.transport, journal: journal(), clock: { ticks.tick() })
-        let sent = try await Writes.rate(WriteAuth(accountId: accountId, token: "app", identity: "user"), tripId: "trip-1", bikeNumber: 20449, vote: .warn(2), http: transport)
-        XCTAssertEqual(ratingLine(ratingOutcome(sent)), "HTTP aucune réponse · Délai dépassé après 30\u{a0}s · NSURLErrorTimedOut (-1001)")
-        XCTAssertEqual(ratingLine(Outcome(ok: false, httpStatus: 400, code: "trips.exception.already.rated")), "HTTP 400 · Code trips.exception.already.rated")
+        let sent = ratingOutcome(try await Writes.rate(WriteAuth(accountId: accountId, token: "app", identity: "user"), tripId: "trip-1", bikeNumber: 20449, vote: .warn(2), http: transport))
+        XCTAssertEqual(sent.message, Messages.ratingUnconfirmed)
+        XCTAssertEqual(sent.detail, "Délai dépassé après 30\u{a0}s · NSURLErrorTimedOut (-1001)")
     }
 
-    func testAPointsCheckThatFailsShowsWhyItFailed() async {
+    func testAPointsCheckThatFailsKeepsTheNetworkFailure() async {
         let ticks = Ticks()
         let accountId = accountId
         let server = MockServer { call, _ in
@@ -375,10 +375,7 @@ final class Review3Tests: XCTestCase {
             _ = try await api.rewardLedger(identity)
             XCTFail("no error")
         } catch {
-            XCTAssertEqual(failureLine(error), "Délai dépassé après 30\u{a0}s · NSURLErrorTimedOut (-1001)")
+            XCTAssertEqual((error as? NetworkFailure)?.line, "Délai dépassé après 30\u{a0}s · NSURLErrorTimedOut (-1001)")
         }
-        XCTAssertEqual(failureLine(ShapeError("history")), "Réponse illisible")
-        XCTAssertEqual(failureLine(VelovError(.expired, Messages.sessionToRenew)), "Code local.expired")
-        XCTAssertEqual(failureLine(VelovError(.unavailable, Messages.stationsUnavailable, status: 502)), "HTTP 502 · Code local.unavailable")
     }
 }

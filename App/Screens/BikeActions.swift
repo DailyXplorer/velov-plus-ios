@@ -93,7 +93,7 @@ struct BikeActionSheet: View {
             if let notice { FormError(notice) }
             if let failure {
                 FailureBlock(message: failure.message ?? (action == .book ? "Réservation impossible." : "Déverrouillage impossible."),
-                             raw: rawLine(failure, withState: true), uncertain: uncertain, unlock: action == .unlock)
+                             uncertain: uncertain, unlock: action == .unlock)
             }
         } actions: {
             if uncertain {

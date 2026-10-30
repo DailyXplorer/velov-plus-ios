@@ -5,17 +5,10 @@ import VelovCore
 final class Locator: NSObject, CLLocationManagerDelegate {
     static let shared = Locator()
 
-    struct Failure: Error {
-        let reason: LocationFailure
-        let raw: String
-        var message: String { reason.message }
-    }
-
     private let manager = CLLocationManager()
     private var request = LocationRequest<CLLocation>()
     private var waiting: [CheckedContinuation<CLLocation, Error>] = []
     private var timeout: Task<Void, Never>?
-    private var servicesEnabled = true
 
     private override init() {
         super.init()
@@ -30,7 +23,6 @@ final class Locator: NSObject, CLLocationManagerDelegate {
         let services = await Task.detached { CLLocationManager.locationServicesEnabled() }.value
         return try await withCheckedThrowingContinuation { continuation in
             waiting.append(continuation)
-            servicesEnabled = services
             apply(request.start(servicesEnabled: services, auth: LocationAuth(manager.authorizationStatus)))
         }
     }
@@ -48,9 +40,7 @@ final class Locator: NSObject, CLLocationManagerDelegate {
                 apply(request.timedOut())
             }
         case .succeed(let location): finish(.success(location))
-        case .fail(let reason):
-            let raw = locationRawLine(errorCode: request.errorCode, auth: LocationAuth(manager.authorizationStatus), servicesEnabled: servicesEnabled)
-            finish(.failure(Failure(reason: reason, raw: raw)))
+        case .fail(let reason): finish(.failure(reason))
         }
     }
 

@@ -84,25 +84,9 @@ public func accountOutcome(httpStatus: Int, code: String?, detail: String?, fail
     return Outcome(ok: ok, httpStatus: httpStatus, code: code, message: message, detail: detail)
 }
 
-public func ratingLine(_ outcome: Outcome) -> String {
-    let code = outcome.code.flatMap { $0.hasPrefix("local.") || $0 == "network" ? nil : "Code \($0)" }
-    let detail = outcome.detail.flatMap { $0.isEmpty ? nil : capitalize($0) }
-    return ["HTTP \(outcome.httpStatus == 0 ? "aucune réponse" : String(outcome.httpStatus))", code, detail].compactMap { $0 }.joined(separator: " · ")
-}
-
 public func ratingOutcome(_ outcome: Outcome) -> Outcome {
     guard !outcome.ok, outcome.code?.hasPrefix("local.") != true else { return outcome }
     var rated = outcome
     rated.message = outcome.httpStatus == 0 ? Messages.ratingUnconfirmed : outcome.isUncertain ? Messages.ratingUncertain : Messages.ratingRefused
     return rated
-}
-
-public func rawLine(_ outcome: Outcome, extra: String? = nil, withState: Bool = true) -> String {
-    var parts: [String] = []
-    if withState, let state = outcome.transactionState { parts.append("TransactionState \(state)") }
-    let http = "HTTP \(outcome.httpStatus == 0 ? "aucune réponse" : String(outcome.httpStatus))"
-    let code = "Code \(outcome.code ?? "—")"
-    parts += withState ? [code, http] : [http, code]
-    parts += [outcome.detail, extra].compactMap { $0?.isEmpty == false ? $0 : nil }.map(capitalize)
-    return parts.joined(separator: " · ")
 }

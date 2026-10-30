@@ -11,11 +11,7 @@ struct StationsPage: View {
     @State private var camera = StationMapView.lyon
     @State private var position: CLLocation?
     @State private var locating = false
-    @State private var locationError = ""
-    @State private var locationRaw = ""
-    @State private var locationReason: LocationFailure?
     @State private var rankedFilter: StationFilter?
-    @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var still
     @Environment(\.tabBarClearance) private var clearance
     @Environment(\.floatingFloor) private var floor
@@ -36,19 +32,6 @@ struct StationsPage: View {
             Header(title: "Stations")
             Group {
                 BookingBanners(bottom: Space.cards)
-                if !locationError.isEmpty {
-                    VStack(alignment: .leading, spacing: Space.pair) {
-                        FormError(locationError)
-                        if !locationRaw.isEmpty { RawStatus(line: locationRaw) }
-                        if locationReason == .denied || locationReason == .servicesOff {
-                            PillButton("Ouvrir Réglages", variant: .secondary) {
-                                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                            }
-                            .padding(.top, Space.label)
-                        }
-                    }
-                    .padding(.bottom, Space.cards)
-                }
                 if case .failed(let failure) = model.stations {
                     ErrorNotice(failure: failure, pending: model.stationsPending) { Task { await model.loadStations() } }
                         .padding(.bottom, Space.cards)
@@ -75,10 +58,8 @@ struct StationsPage: View {
             switch model.snapshot {
             case .stationsSearch?: query = "Part"
             case .stationsEmptyFilter?: filter = .favorites
-            case .locationError?:
-                locationReason = .denied
-                locationError = LocationFailure.denied.message
-                locationRaw = locationRawLine(errorCode: 1, auth: .denied, servicesEnabled: true)
+            case .locationError?: model.showToast(.denied)
+            case .locationTimeout?: model.showToast(.timedOut)
             default: break
             }
             if model.snapshot == .stationSheetLong {
@@ -214,22 +195,14 @@ struct StationsPage: View {
     }
 
     private func locate() {
-        locationError = ""
-        locationRaw = ""
-        locationReason = nil
         locating = true
         Task {
             defer { locating = false }
             do {
                 let location = try await Locator.shared.locate()
                 located(location)
-            } catch let error as Locator.Failure {
-                locationReason = error.reason
-                locationError = error.message
-                locationRaw = error.raw
             } catch {
-                locationReason = .unavailable
-                locationError = LocationFailure.unavailable.message
+                model.showToast(error as? LocationFailure ?? .unavailable)
             }
         }
     }
@@ -241,7 +214,7 @@ struct StationsPage: View {
         let open = stations.filter { $0.open && $0.matches(filter, favorites: favorites) }.sorted { haversine(here, $0.point) < haversine(here, $1.point) }
         let supplied = open.filter { filter == .stands ? $0.stands > 0 : $0.bikes > 0 }.prefix(3)
         guard let nearest = supplied.first else {
-            locationError = "Aucune station ouverte ne correspond à ce filtre."
+            model.showToast("Aucune station ouverte ne correspond à ce filtre.")
             return
         }
         selectedId = nearest.id

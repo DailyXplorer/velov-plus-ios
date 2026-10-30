@@ -178,29 +178,22 @@ struct ReceiptRow: View {
     let receipt: Receipt
     @Environment(AppModel.self) private var model
     @State private var pending = false
-    @State private var failed: Outcome?
     @State private var file: URL?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Space.label) {
-            HStack(spacing: Space.cards) {
-                VStack(alignment: .leading, spacing: Space.pair) {
-                    Text(receipt.title).typo(.body(.base, medium: true)).foregroundStyle(Palette.ink)
-                    Text(periodLabel(receipt)).typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
-                }
-                Spacer()
-                if let file {
-                    ShareLink(item: file) { PillLabel(variant: .secondary) { ButtonIcon(.share); Text("Partager") } }
-                        .buttonStyle(.press)
-                        .accessibilityLabel("Partager le reçu, \(periodLabel(receipt))")
-                } else {
-                    PillButton(variant: .secondary, pending: pending, action: download) { ButtonIcon(.downloadSimple); Text("Reçu") }
-                        .accessibilityLabel("Télécharger le reçu, \(periodLabel(receipt))")
-                }
+        HStack(spacing: Space.cards) {
+            VStack(alignment: .leading, spacing: Space.pair) {
+                Text(receipt.title).typo(.body(.base, medium: true)).foregroundStyle(Palette.ink)
+                Text(periodLabel(receipt)).typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
             }
-            if let failed {
-                FormError(failed.message ?? "Le reçu n’a pas pu être téléchargé.")
-                RawStatus(outcome: failed)
+            Spacer()
+            if let file {
+                ShareLink(item: file) { PillLabel(variant: .secondary) { ButtonIcon(.share); Text("Partager") } }
+                    .buttonStyle(.press)
+                    .accessibilityLabel("Partager le reçu, \(periodLabel(receipt))")
+            } else {
+                PillButton(variant: .secondary, pending: pending, action: download) { ButtonIcon(.downloadSimple); Text("Reçu") }
+                    .accessibilityLabel("Télécharger le reçu, \(periodLabel(receipt))")
             }
         }
         .padding(.vertical, Space.cards)
@@ -210,7 +203,6 @@ struct ReceiptRow: View {
     private func download() {
         guard !pending else { return }
         pending = true
-        failed = nil
         Task {
             defer { pending = false }
             var pdf: Data?, name: String?
@@ -219,13 +211,13 @@ struct ReceiptRow: View {
                 (pdf, name) = (answer.pdf, answer.filename)
                 return answer.outcome
             }
-            guard outcome.ok, let pdf else { failed = outcome; return }
+            guard outcome.ok, let pdf else { return model.showToast(outcome.message ?? "Le reçu n’a pas pu être téléchargé.") }
             let url = FileManager.default.temporaryDirectory.appending(path: name ?? "recu-velov.pdf")
             do {
                 try pdf.write(to: url, options: .atomic)
                 file = url
             } catch {
-                failed = Outcome(ok: false, httpStatus: outcome.httpStatus, code: "local.receipt.file", message: "Le reçu n’a pas pu être enregistré sur ce téléphone.")
+                model.showToast("Le reçu n’a pas pu être enregistré sur ce téléphone.")
             }
         }
     }

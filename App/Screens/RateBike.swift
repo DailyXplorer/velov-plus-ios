@@ -63,7 +63,7 @@ struct RateBike: View {
                 .typo(.body(.lead)).foregroundStyle(stars == nil ? Palette.inkSoft : Palette.ink)
                 .frame(minHeight: 22).padding(.top, Space.pair)
             if let failure {
-                FailureBlock(message: failure.message ?? Messages.ratingUnconfirmed, raw: ratingLine(failure), uncertain: uncertain != nil)
+                FailureBlock(message: failure.message ?? Messages.ratingUnconfirmed, uncertain: uncertain != nil)
                     .padding(.top, Space.label)
             }
             if let notice { FormError(notice).frame(maxWidth: .infinity, alignment: .leading).padding(.top, Space.label) }

@@ -88,15 +88,12 @@ func attempt(_ run: () async throws -> Outcome) async -> Outcome {
 
 struct LoadFailure: Equatable {
     let message: String
-    let raw: String
 
     init(_ error: Error, _ fallback: String) {
         message = (error as? VelovError)?.message ?? fallback
-        raw = failureLine(error)
     }
 
-    init(message: String, raw: String = "") {
+    init(message: String) {
         self.message = message
-        self.raw = raw
     }
 }

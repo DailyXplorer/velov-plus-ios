@@ -78,12 +78,14 @@ shot contactUncertain 34-contact-uncertain 9
 shot stationsSearch 35-stations-search 8
 shot stationsEmptyFilter 36-stations-empty-filter 8
 shot locationError 37-location-error 8
+shot locationTimeout 37b-location-timeout 8
 shot pageFailure 38-page-failure 6
 shot bikeListFailure 39-bike-list-failure 9
 shot bikeOwnBooking 40-bike-own-booking 10
 shot bigBalance 41-overview-big-balance 7
 shot dockWhileBikes 42-dock-while-bikes 13
 shot login 43-login 5
+shot loginError 43b-login-error 5
 shot guestStations 44-guest-stations 8
 shot guestStationSheet 45-guest-station-sheet 9
 shot guestBikeSheet 46-guest-bike-sheet 10

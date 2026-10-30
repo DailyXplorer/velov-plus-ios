@@ -6,21 +6,24 @@ public enum LocationAuth: String, Sendable {
     public var allowed: Bool { self == .authorizedWhenInUse || self == .authorizedAlways }
 }
 
-public enum LocationFailure: Equatable, Sendable {
+public enum LocationFailure: Error, Equatable, Sendable {
     case servicesOff, denied, timedOut, unavailable
 
     public var message: String {
         switch self {
         case .servicesOff: "Le service de localisation est désactivé sur ce téléphone."
-        case .denied: "Localisation refusée. Autorisez-la dans Réglages › Vélo’v+ › Position."
+        case .denied: "Autorisez la localisation dans Réglages pour trouver les stations autour de vous."
         case .timedOut: "La localisation a pris trop de temps. Réessayez."
-        case .unavailable: "Impossible de vous localiser pour le moment."
+        case .unavailable: "Position introuvable pour le moment."
         }
     }
-}
 
-public func locationRawLine(errorCode: Int?, auth: LocationAuth, servicesEnabled: Bool) -> String {
-    "CLError \(errorCode.map(String.init) ?? "—") · auth \(auth.rawValue) · services \(servicesEnabled ? "on" : "off")"
+    public var action: ToastAction? {
+        switch self {
+        case .servicesOff, .denied: .openSettings
+        case .timedOut, .unavailable: nil
+        }
+    }
 }
 
 public enum LocationErrorCode {
@@ -39,13 +42,11 @@ public struct LocationRequest<Fix> {
     }
 
     public private(set) var phase = Phase.idle
-    public private(set) var errorCode: Int?
 
     public init() {}
 
     public mutating func start(servicesEnabled: Bool, auth: LocationAuth) -> Effect? {
         guard phase == .idle else { return nil }
-        errorCode = nil
         if !servicesEnabled { return .fail(.servicesOff) }
         switch auth {
         case .denied, .restricted: return .fail(.denied)
@@ -71,7 +72,6 @@ public struct LocationRequest<Fix> {
 
     public mutating func failed(code: Int) -> Effect? {
         guard phase != .idle else { return nil }
-        errorCode = code
         switch code {
         case LocationErrorCode.locationUnknown: return nil
         case LocationErrorCode.denied: return end(.fail(.denied))

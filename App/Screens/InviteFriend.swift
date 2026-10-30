@@ -17,7 +17,6 @@ struct InviteFriend: View {
     @State private var asking = false
     @State private var outcome: Outcome?
     @State private var verification: Verification?
-    @State private var verifyLine: String?
     @State private var copied: String?
 
     private var operationKey: String? { model.operations.digest.map(OperationKey.invite) }
@@ -97,7 +96,7 @@ struct InviteFriend: View {
                     if shown.ok {
                         Text("Code créé. Copiez-le pour l’envoyer à votre ami.").typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
                     } else {
-                        FailureBlock(message: shown.message ?? "Le code n’a pas pu être créé.", raw: messageLine(shown), uncertain: shown.isUncertain)
+                        FailureBlock(message: shown.message ?? "Le code n’a pas pu être créé.", uncertain: shown.isUncertain)
                     }
                     codeList.padding(.top, Space.label)
                 }
@@ -105,7 +104,7 @@ struct InviteFriend: View {
             switch verification {
             case .notDebited?: Note(text: "Votre historique complet ne montre aucun débit de \(formatNumber(operationCost)) points depuis la demande.")
             case .unknown?: Note(text: "Votre historique de points ne permet pas encore d’exclure un débit. Vérifiez de nouveau dans quelques minutes ou écrivez au service client.")
-            case .failed?: FailureBlock(message: "Votre historique de points n’a pas pu être lu. Réessayez dans un instant.", raw: verifyLine ?? "")
+            case .failed?: FailureBlock(message: "Votre historique de points n’a pas pu être lu. Réessayez dans un instant.")
             default: EmptyView()
             }
             if uncertain != nil || verification == .debited { TextLink(title: "Écrire au service client", action: contact) }
@@ -192,7 +191,6 @@ struct InviteFriend: View {
         guard let operation, operation.status == .uncertain, let operationKey, verification != .checking else { return }
         let before = DebitBefore(at: operation.at, cost: operationCost)
         verification = .checking
-        verifyLine = nil
         let model = model
         Task {
             do {
@@ -205,7 +203,6 @@ struct InviteFriend: View {
                 case .unknown: .unknown
                 }
             } catch {
-                verifyLine = failureLine(error)
                 verification = .failed
             }
         }
@@ -226,7 +223,6 @@ struct InviteFriend: View {
     private func closed() {
         if outcome != nil || verification != nil { Task { await model.loadDashboard() } }
         verification = nil
-        verifyLine = nil
     }
 
     private func copy(_ code: String) {

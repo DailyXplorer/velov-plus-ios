@@ -7,7 +7,6 @@ struct LoginView: View {
     @State private var email = ""
     @State private var code = ""
     @State private var pending = false
-    @State private var failure: LoadFailure?
     @FocusState private var focus: Field?
 
     enum Field { case email, code }
@@ -35,13 +34,6 @@ struct LoginView: View {
                     PillButton("Se connecter", pending: pending, fullWidth: true) { submit() }
                         .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty || code.count != 6)
                         .padding(.top, Space.pair)
-                    VStack(alignment: .leading, spacing: Space.pair) {
-                        if let failure {
-                            FormError(failure.message)
-                            if !failure.raw.isEmpty { RawStatus(line: failure.raw) }
-                        }
-                    }
-                    .frame(maxWidth: .infinity, minHeight: Space.state, alignment: .topLeading)
                     PillButton(variant: .ghost, fullWidth: true, action: { model.continueAsGuest() }) {
                         ButtonIcon(.mapPin)
                         Text("Continuer sans compte")
@@ -58,6 +50,9 @@ struct LoginView: View {
             }
         }
         .background(Palette.white)
+        .task {
+            if model.snapshot == .loginError { model.showToast(Messages.credentials) }
+        }
     }
 
     private func field<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
@@ -71,7 +66,6 @@ struct LoginView: View {
     private func submit() {
         guard !pending else { return }
         pending = true
-        failure = nil
         focus = nil
         Task {
             defer { pending = false }
@@ -80,7 +74,7 @@ struct LoginView: View {
                 code = ""
             } catch {
                 Haptics.refused()
-                failure = LoadFailure(error, "Connexion impossible. Vérifiez votre connexion Internet.")
+                model.showToast(LoadFailure(error, "Connexion impossible. Vérifiez votre connexion Internet.").message)
             }
         }
     }

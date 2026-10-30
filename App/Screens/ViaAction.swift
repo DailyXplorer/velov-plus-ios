@@ -8,8 +8,6 @@ struct ViaSheet: View {
     @State private var selected: Int?
     @State private var position: GeoPoint?
     @State private var locating = false
-    @State private var locationError = ""
-    @State private var locationRaw = ""
     @State private var reviewing = false
     @State private var refused: Outcome?
     @State private var notice: String?
@@ -62,7 +60,7 @@ struct ViaSheet: View {
         } extra: {
             if let failure {
                 FailureBlock(message: failure.message ?? "Les 15 minutes supplémentaires n’ont pas été accordées.",
-                             raw: messageLine(failure), uncertain: failure.isUncertain)
+                             uncertain: failure.isUncertain)
             }
             if failure?.isUncertain == true { TextLink(title: "Écrire au service client", action: contact) }
             if let notice { FormError(notice) }
@@ -87,9 +85,6 @@ struct ViaSheet: View {
                     .fieldPill()
             }
             PillButton(variant: .ghost, pending: locating, action: locate) { ButtonIcon(.navigationArrow); Text("Les plus proches") }
-            if !locationError.isEmpty {
-                FailureBlock(message: locationError, raw: locationRaw)
-            }
             switch model.stations {
             case .loading:
                 VStack(alignment: .leading, spacing: Space.label) {
@@ -135,14 +130,8 @@ struct ViaSheet: View {
             do {
                 let here = try await Locator.shared.locate()
                 position = GeoPoint(lat: here.coordinate.latitude, lon: here.coordinate.longitude)
-                locationError = ""
-                locationRaw = ""
-            } catch let error as Locator.Failure {
-                locationError = error.message
-                locationRaw = error.raw
             } catch {
-                locationError = LocationFailure.unavailable.message
-                locationRaw = ""
+                model.showToast(error as? LocationFailure ?? .unavailable)
             }
         }
     }

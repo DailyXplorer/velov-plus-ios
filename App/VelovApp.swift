@@ -24,6 +24,7 @@ struct VelovApp: App {
                 .environment(model)
                 .preferredColorScheme(model.snapshot?.isLiveActivity == true ? .dark : .light)
                 .tint(Palette.red)
+                .toastWindow(model)
                 .task { await model.start() }
         }
         .onChange(of: scenePhase) { _, phase in

@@ -6,7 +6,6 @@ final class LocationRequestTests: XCTestCase {
         var request = LocationRequest<String>()
         XCTAssertEqual(request.start(servicesEnabled: false, auth: .notDetermined), .fail(.servicesOff))
         XCTAssertEqual(request.phase, .idle)
-        XCTAssertEqual(LocationFailure.servicesOff.message, "Le service de localisation est désactivé sur ce téléphone.")
     }
 
     func testDeniedOrRestrictedFailsWithTheSettingsPath() {
@@ -14,7 +13,6 @@ final class LocationRequestTests: XCTestCase {
             var request = LocationRequest<String>()
             XCTAssertEqual(request.start(servicesEnabled: true, auth: auth), .fail(.denied))
         }
-        XCTAssertEqual(LocationFailure.denied.message, "Localisation refusée. Autorisez-la dans Réglages > Vélo’v+ > Position.")
     }
 
     func testNoTimeoutWhileThePermissionPromptIsPending() {
@@ -51,7 +49,6 @@ final class LocationRequestTests: XCTestCase {
         _ = request.start(servicesEnabled: true, auth: .authorizedWhenInUse)
         XCTAssertNil(request.failed(code: LocationErrorCode.locationUnknown))
         XCTAssertEqual(request.timedOut(), .fail(.timedOut))
-        XCTAssertEqual(request.errorCode, LocationErrorCode.locationUnknown)
     }
 
     func testDeniedAndOtherErrorsFail() {
@@ -59,9 +56,7 @@ final class LocationRequestTests: XCTestCase {
         _ = request.start(servicesEnabled: true, auth: .authorizedWhenInUse)
         XCTAssertEqual(request.failed(code: LocationErrorCode.denied), .fail(.denied))
         _ = request.start(servicesEnabled: true, auth: .authorizedWhenInUse)
-        XCTAssertNil(request.errorCode)
         XCTAssertEqual(request.failed(code: 2), .fail(.unavailable))
-        XCTAssertEqual(request.errorCode, 2)
     }
 
     func testASecondCallerJoinsTheRunningRequest() {
@@ -81,10 +76,14 @@ final class LocationRequestTests: XCTestCase {
         XCTAssertNil(request.authorizationChanged(.denied))
     }
 
-    func testRawLine() {
-        XCTAssertEqual(locationRawLine(errorCode: 0, auth: .authorizedWhenInUse, servicesEnabled: true),
-                       "CLError 0 · auth authorizedWhenInUse · services on")
-        XCTAssertEqual(locationRawLine(errorCode: nil, auth: .notDetermined, servicesEnabled: false),
-                       "CLError — · auth notDetermined · services off")
+    func testEachFailureHasItsOwnPlainMessage() {
+        XCTAssertEqual(LocationFailure.denied.message, "Autorisez la localisation dans Réglages pour trouver les stations autour de vous.")
+        XCTAssertEqual(LocationFailure.timedOut.message, "La localisation a pris trop de temps. Réessayez.")
+        XCTAssertEqual(LocationFailure.unavailable.message, "Position introuvable pour le moment.")
+        XCTAssertEqual(LocationFailure.servicesOff.message, "Le service de localisation est désactivé sur ce téléphone.")
+        XCTAssertEqual(LocationFailure.denied.action, .openSettings)
+        XCTAssertEqual(LocationFailure.servicesOff.action, .openSettings)
+        XCTAssertNil(LocationFailure.timedOut.action)
+        XCTAssertNil(LocationFailure.unavailable.action)
     }
 }

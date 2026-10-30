@@ -2,20 +2,6 @@ import SwiftUI
 import UIKit
 import VelovCore
 
-struct RawStatus: View {
-    let line: String
-    init(outcome: Outcome, withState: Bool = false) { line = rawLine(outcome, withState: withState) }
-    init(line: String) { self.line = line }
-    var body: some View {
-        Text(line).typo(.label(.meta)).foregroundStyle(Palette.inkSoft)
-            .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-    }
-}
-
-func messageLine(_ outcome: Outcome) -> String {
-    "HTTP \(outcome.httpStatus == 0 ? "aucune réponse" : String(outcome.httpStatus)) · Code \(outcome.code ?? "—") · \(capitalize(outcome.detail ?? outcome.message ?? "—"))"
-}
-
 extension View {
     func announced(_ text: String) -> some View {
         onAppear { AccessibilityNotification.Announcement(text).post() }
@@ -40,14 +26,12 @@ struct UncertainNote: View {
 
 struct FailureBlock: View {
     let message: String
-    let raw: String
     var uncertain = false
     var unlock = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             FormError(message)
-            if !raw.isEmpty { RawStatus(line: raw).padding(.top, Space.pair) }
             if uncertain { UncertainNote(unlock: unlock).padding(.top, Space.label) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -245,7 +229,7 @@ struct WriteDialog<Question: View>: View {
         } extra: {
             if let failure {
                 FailureBlock(message: failure.message ?? (failure.isUncertain ? Messages.unverified : "La modification n’a pas abouti."),
-                             raw: rawLine(failure, withState: false), uncertain: uncertain)
+                             uncertain: uncertain)
             }
             if uncertain, check == nil, let restart {
                 Text(restart.note).typo(.body(.base)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)

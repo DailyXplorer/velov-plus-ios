@@ -56,7 +56,7 @@ struct ViaSheet: View {
 
     private func review(_ station: (number: Int, name: String)) -> some View {
         ConfirmScaffold(title: "15 minutes de plus", closeDisabled: blocked, close: { close() }) {
-            Text("La station ") + Text(verbatim: "\(station.name) (n°\u{a0}\(station.number))").fontWeight(.semibold)
+            Text("La station ") + Text(verbatim: "\(station.name) (N°\u{a0}\(station.number))").fontWeight(.semibold)
                 + Text(" est pleine. Demander 15 minutes de plus pour rejoindre une autre station\u{a0}?")
         } extra: {
             if let failure {

@@ -101,6 +101,21 @@ final class WriteFlowsTests: XCTestCase {
         XCTAssertEqual(writes(none).count, 0)
     }
 
+    func testAReadThatFailsBeforeTheWriteIsACertainRefusalAndNothingIsSent() async throws {
+        for reply in [Reply.failure(.timedOut), .json(["x": 1])] {
+            let via = cyclocity { $0.url.hasSuffix("/rentbike") ? reply : nil }
+            let extra = await attempt { try await self.api(via).requestExtraTime(self.identity, stationNumber: 2002) }
+            let unlock = cyclocity { $0.url.contains("/subscriptions?periods=CURRENT") ? reply : nil }
+            let unlocked = await attempt { try await self.api(unlock).unlock(self.identity, stationNumber: 2002, standNumber: 12, bikeNumber: 20449).outcome }
+            for (outcome, server) in [(extra, via), (unlocked, unlock)] {
+                XCTAssertFalse(outcome.isUncertain, "\(reply)")
+                XCTAssertEqual(outcome.code, "local.unavailable")
+                XCTAssertEqual(outcome.message, "Vélo’v ne répond pas. Rien n’a été envoyé.")
+                XCTAssertEqual(writes(server).count, 0)
+            }
+        }
+    }
+
     func testTheAccountWritesGoOutOnceToTheAccount() async throws {
         let server = cyclocity(write: .json(["autoSpend": false]))
         let api = api(server)

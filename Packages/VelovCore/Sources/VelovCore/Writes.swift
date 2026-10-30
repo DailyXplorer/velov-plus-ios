@@ -22,6 +22,26 @@ struct ErrorReply {
     }
 }
 
+public func attempt(_ run: () async throws -> Outcome) async -> Outcome {
+    do {
+        return try await run()
+    } catch let error as VelovError {
+        return Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: "local.\(error.code.rawValue)", message: error.message)
+    } catch {
+        return Outcome(ok: false, httpStatus: 0, code: "network", message: "Le serveur ne répond pas. Actualisez avant de réessayer.", detail: networkLine(error))
+    }
+}
+
+public func beforeSending<T>(_ run: () async throws -> T) async throws -> T {
+    do {
+        return try await run()
+    } catch let error as VelovError {
+        throw error
+    } catch {
+        throw VelovError(.unavailable, Messages.notSent)
+    }
+}
+
 func accountURL(_ accountId: String) -> String { "\(Cyclocity.base)/accounts/\(pathSegment(accountId))" }
 
 func orderedJSON(_ pairs: [(String, Any?)]) -> Data {

@@ -35,6 +35,7 @@ public enum Messages {
     ]
 
     public static let unlockNoAnswer = "Vélo’v ne répond pas. Le vélo est peut-être déverrouillé."
+    public static let notSent = "Vélo’v ne répond pas. Rien n’a été envoyé."
     public static let uncertain = "Le résultat est incertain : vérifiez avant de réessayer."
     public static let uncertainUnlock = "Le résultat est incertain : vérifiez la borne avant de réessayer."
     public static let busy = "Une autre action est en cours. Attendez sa réponse avant de recommencer."

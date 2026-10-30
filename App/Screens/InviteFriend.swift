@@ -159,12 +159,8 @@ struct InviteFriend: View {
                 let answer: PromoResult
                 do {
                     answer = try await model.service.consumePromoCode(expectedCost: cost)
-                } catch let error as VelovError {
-                    answer = PromoResult(outcome: Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: "local.\(error.code.rawValue)", message: error.message), promoCode: nil)
                 } catch {
-                    var lost = noAnswer("Vélo’v ne répond pas. Vos points ont peut-être été débités.")
-                    lost.detail = networkLine(error)
-                    answer = PromoResult(outcome: lost, promoCode: nil)
+                    answer = PromoResult(outcome: await attempt { throw error }, promoCode: nil)
                 }
                 if let code = answer.promoCode {
                     do { codes = try PromoStore.save(model.promoBacking, key: key, code: code) } catch {

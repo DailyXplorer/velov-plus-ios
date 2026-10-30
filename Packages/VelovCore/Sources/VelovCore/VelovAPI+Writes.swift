@@ -5,7 +5,7 @@ private let noSubscription = Outcome.refusal("local.no.subscription", "Aucun abo
 
 extension VelovAPI {
     public func writer(_ identity: Identity) async throws -> WriteAuth {
-        WriteAuth(accountId: try await accountId(identity), token: try await appToken.get(), identity: identity.accessToken)
+        try await beforeSending { WriteAuth(accountId: try await accountId(identity), token: try await appToken.get(), identity: identity.accessToken) }
     }
 
     private var http: HTTPTransport { writes }
@@ -29,11 +29,13 @@ extension VelovAPI {
     }
 
     public func book(_ identity: Identity, stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?) {
-        let account = "/accounts/\(try await accountId(identity))"
-        async let subscription = currentSubscriptionId(account, identity)
-        async let stationId = stationUUID(stationNumber)
-        async let bikes = rawBikes("stationNumber=\(stationNumber)", unavailable: Messages.stationBikesUnavailable)
-        let (subscriptionId, station, list) = try await (subscription, stationId, bikes)
+        let (subscriptionId, station, list) = try await beforeSending {
+            let account = "/accounts/\(try await accountId(identity))"
+            async let subscription = currentSubscriptionId(account, identity)
+            async let stationId = stationUUID(stationNumber)
+            async let bikes = rawBikes("stationNumber=\(stationNumber)", unavailable: Messages.stationBikesUnavailable)
+            return try await (subscription, stationId, bikes)
+        }
         let bike = list.first { $0.number == bikeNumber }
         guard let subscriptionId else { return (noSubscription, nil) }
         guard let bike, bike.status == "AVAILABLE" else { return (.refusal("local.bike.gone", "Ce vélo n’est plus disponible à cette station."), nil) }
@@ -51,7 +53,7 @@ extension VelovAPI {
     public func unlock(_ identity: Identity, stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?) {
         let auth = try await writer(identity)
         let account = "/accounts/\(auth.accountId)"
-        guard let subscriptionId = try await currentSubscriptionId(account, identity) else { return (noSubscription, nil) }
+        guard let subscriptionId = try await beforeSending({ try await currentSubscriptionId(account, identity) }) else { return (noSubscription, nil) }
         let outcome = try await Writes.release(auth, subscriptionId: subscriptionId, stationNumber: stationNumber, standNumber: standNumber, bikeNumber: bikeNumber, http: http)
         if outcome.httpStatus == 0 { return (outcome, nil) }
         await client.pause(2)
@@ -99,7 +101,7 @@ extension VelovAPI {
         let auth = try await writer(identity)
         let account = "/accounts/\(pathSegment(auth.accountId))"
         let readState = { [self] in renewalState(of: try await currentSubscriptionList(account, identity).first { $0["id"]?.string == subscriptionId }) }
-        let before = try await readState()
+        let before = try await beforeSending(readState)
         guard before.allowed, before.autoRenewal != nil else {
             return AutoRenewalResult(outcome: .refusal("local.renewal.not.allowed", "Le renouvellement automatique ne peut pas être modifié pour cet abonnement."),
                                      autoRenewal: before.autoRenewal, autoRenewalAllowed: before.allowed, verified: true)
@@ -113,23 +115,29 @@ extension VelovAPI {
     public func requestExtraTime(_ identity: Identity, stationNumber: Int) async throws -> Outcome {
         let auth = try await writer(identity)
         let account = "/accounts/\(auth.accountId)"
-        let candidates = try await currentSubscriptionList(account, identity, accept: Guesses.viaMediaType).compactMap { item -> String? in
-            item["isLocked"]?.bool == true ? nil : item["id"]?.string
-        }
-        var renting: [String] = []
-        for id in candidates {
-            guard let ongoing = try await read("\(account)/subscriptions/\(pathSegment(id))/rentbike", identity, accept: Guesses.viaMediaType).bool else {
-                throw ShapeError("rentbike is not a boolean")
+        let renting: [String] = try await beforeSending {
+            let candidates = try await currentSubscriptionList(account, identity, accept: Guesses.viaMediaType).compactMap { item -> String? in
+                item["isLocked"]?.bool == true ? nil : item["id"]?.string
             }
-            if ongoing { renting.append(id) }
+            var renting: [String] = []
+            for id in candidates {
+                guard let ongoing = try await read("\(account)/subscriptions/\(pathSegment(id))/rentbike", identity, accept: Guesses.viaMediaType).bool else {
+                    throw ShapeError("rentbike is not a boolean")
+                }
+                if ongoing { renting.append(id) }
+            }
+            return renting
         }
         guard renting.count == 1 else {
             return .refusal("local.via.trip", renting.isEmpty ? "Vous n’avez aucun trajet en cours."
                                                               : "Vous avez plusieurs trajets en cours. Utilisez l’app Vélo’v.")
         }
-        let station = try await read("/stations/\(stationNumber)", identity, accept: "application/vnd.station.v4+json")
-        guard let uuid = station["id"]?.string, let number = station["number"]?.int, let open = station["open"]?.bool,
-              let stands = station["availabilities"]?["main"]?["stands"]?.number else { throw ShapeError("station v4") }
+        let (uuid, number, open, stands) = try await beforeSending {
+            let station = try await read("/stations/\(stationNumber)", identity, accept: "application/vnd.station.v4+json")
+            guard let uuid = station["id"]?.string, let number = station["number"]?.int, let open = station["open"]?.bool,
+                  let stands = station["availabilities"]?["main"]?["stands"]?.number else { throw ShapeError("station v4") }
+            return (uuid, number, open, stands)
+        }
         guard number == stationNumber, open, stands == 0 else {
             return .refusal("local.via.not.full", "Cette station n’est plus pleine ou est fermée. Choisissez-en une autre.")
         }
@@ -144,10 +152,13 @@ extension VelovAPI {
 
     public func consumePromoCode(_ identity: Identity, expectedCost: Int) async throws -> PromoResult {
         let auth = try await writer(identity)
-        async let configuration = read("/rewards/configurations", identity, accept: Guesses.promocodeAccept)
-        async let rewards = read("/accounts/\(auth.accountId)/rewards", identity, accept: Guesses.promocodeAccept)
-        let (rules, account) = try await (configuration, rewards)
-        guard let list = rules.array, let balance = account["balance"]?.number else { throw ShapeError("rewards") }
+        let (list, balance) = try await beforeSending {
+            async let configuration = read("/rewards/configurations", identity, accept: Guesses.promocodeAccept)
+            async let rewards = read("/accounts/\(auth.accountId)/rewards", identity, accept: Guesses.promocodeAccept)
+            let (rules, account) = try await (configuration, rewards)
+            guard let list = rules.array, let balance = account["balance"]?.number else { throw ShapeError("rewards") }
+            return (list, balance)
+        }
         let rule = list.first { $0["name"]?.string == Guesses.promocodeReward && $0["enable"]?.bool == true }
         guard let cost = rule?["reward"]?.number, cost == Double(expectedCost) else {
             return PromoResult(outcome: .refusal("local.promo.price.changed", "L’offre a changé. Actualisez avant de confirmer."), promoCode: nil)

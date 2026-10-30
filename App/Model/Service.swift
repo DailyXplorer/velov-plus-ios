@@ -40,6 +40,7 @@ final class LiveService: VelovService {
     }
 
     private func identity() async throws -> Identity { try await session.identity() }
+    private func writer() async throws -> Identity { try await beforeSending { try await session.identity() } }
 
     func hasSession() async -> Bool { await session.isSignedIn }
     func signIn(email: String, code: String) async throws { try await session.signIn(email: email, code: code) }
@@ -54,38 +55,28 @@ final class LiveService: VelovService {
     func rewardLedger() async throws -> RewardLedger { try await api.rewardLedger(try await identity()) }
 
     func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?) {
-        try await api.book(try await identity(), stationNumber: stationNumber, bikeNumber: bikeNumber)
+        try await api.book(try await writer(), stationNumber: stationNumber, bikeNumber: bikeNumber)
     }
     func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?) {
-        try await api.unlock(try await identity(), stationNumber: stationNumber, standNumber: standNumber, bikeNumber: bikeNumber)
+        try await api.unlock(try await writer(), stationNumber: stationNumber, standNumber: standNumber, bikeNumber: bikeNumber)
     }
     func watchUnlock(bikeNumber: Int) async throws -> Trip? { try await api.watchUnlock(try await identity(), bikeNumber: bikeNumber) }
     func tripCheck() async throws -> TripCheck { try await api.tripCheck(try await identity()) }
     func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome {
-        try await api.rate(try await identity(), tripId: tripId, bikeNumber: bikeNumber, vote: vote)
+        try await api.rate(try await writer(), tripId: tripId, bikeNumber: bikeNumber, vote: vote)
     }
-    func setAutoSpend(_ value: Bool) async throws -> (outcome: Outcome, autoSpend: Bool?) { try await api.setAutoSpend(try await identity(), value) }
-    func setFavorite(station: Int, on: Bool) async throws -> Outcome { try await api.setFavorite(try await identity(), station: station, on: on) }
+    func setAutoSpend(_ value: Bool) async throws -> (outcome: Outcome, autoSpend: Bool?) { try await api.setAutoSpend(try await writer(), value) }
+    func setFavorite(station: Int, on: Bool) async throws -> Outcome { try await api.setFavorite(try await writer(), station: station, on: on) }
     func receipt(subscriptionId: String, periodId: String) async throws -> (outcome: Outcome, filename: String?, pdf: Data?) {
-        try await api.receipt(try await identity(), subscriptionId: subscriptionId, periodId: periodId)
+        try await api.receipt(try await writer(), subscriptionId: subscriptionId, periodId: periodId)
     }
-    func updateProfile(_ body: ProfileBody) async throws -> Outcome { try await api.updateProfile(try await identity(), body) }
+    func updateProfile(_ body: ProfileBody) async throws -> Outcome { try await api.updateProfile(try await writer(), body) }
     func setAutoRenewal(subscriptionId: String, autoRenewal: Bool) async throws -> AutoRenewalResult {
-        try await api.setAutoRenewal(try await identity(), subscriptionId: subscriptionId, autoRenewal: autoRenewal)
+        try await api.setAutoRenewal(try await writer(), subscriptionId: subscriptionId, autoRenewal: autoRenewal)
     }
-    func requestExtraTime(stationNumber: Int) async throws -> Outcome { try await api.requestExtraTime(try await identity(), stationNumber: stationNumber) }
-    func contactSupport(_ body: ContactBody) async throws -> Outcome { try await api.contactSupport(try await identity(), body) }
-    func consumePromoCode(expectedCost: Int) async throws -> PromoResult { try await api.consumePromoCode(try await identity(), expectedCost: expectedCost) }
-}
-
-func attempt(_ run: () async throws -> Outcome) async -> Outcome {
-    do {
-        return try await run()
-    } catch let error as VelovError {
-        return Outcome(ok: false, httpStatus: error.code == .expired ? 401 : 0, code: "local.\(error.code.rawValue)", message: error.message)
-    } catch {
-        return Outcome(ok: false, httpStatus: 0, code: "network", message: "Le serveur ne répond pas. Actualisez avant de réessayer.", detail: networkLine(error))
-    }
+    func requestExtraTime(stationNumber: Int) async throws -> Outcome { try await api.requestExtraTime(try await writer(), stationNumber: stationNumber) }
+    func contactSupport(_ body: ContactBody) async throws -> Outcome { try await api.contactSupport(try await writer(), body) }
+    func consumePromoCode(expectedCost: Int) async throws -> PromoResult { try await api.consumePromoCode(try await writer(), expectedCost: expectedCost) }
 }
 
 struct LoadFailure: Equatable {

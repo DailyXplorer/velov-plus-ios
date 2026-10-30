@@ -2,102 +2,70 @@ import SwiftUI
 import UIKit
 import VelovCore
 
-struct TripSheet: View {
+struct TripPage: View {
     let trip: Trip
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(AppModel.self) private var model
     @State private var copied = false
+    @State private var addressCopied = false
 
     private var sameStation: Bool { trip.startStationNumber != nil && trip.startStationNumber == trip.endStationNumber }
     private var rated: Bool { trip.isRated == true || model.ratedHere.contains(trip.id) }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack {
-                        Text("Trajet").typo(.title(.section)).foregroundStyle(Palette.ink)
-                        Spacer()
-                        IconButton(icon: .x, label: "Fermer les détails") { dismiss() }.bleed(.trailing).disabled(model.operations.sending)
-                    }
-                    times.padding(.top, 6)
-                    VStack(alignment: .leading, spacing: 14) {
-                        stop("Départ", trip.startStation, trip.startStand)
-                        stop("Arrivée", trip.endStation, trip.endStand)
-                    }
-                    .padding(.top, 22)
-                    facts.padding(.top, 22)
-                    if let points = pointsLine { Text(points).typo(.label(.small)).foregroundStyle(Palette.inkSoft).padding(.top, 10) }
-                    if trip.litigious { litigious }
-                    if let bike = trip.bikeNumber, !rated, canRate(trip) {
-                        RateBike(trip: trip, bikeNumber: bike) {
-                            model.closeEnded(trip)
-                            dismiss()
-                        }
-                    }
-                    details
+        PushedPage(title: "Trajet") {
+            VStack(alignment: .leading, spacing: Space.label) {
+                PageTitle(title: "Trajet")
+                tripTimes(trip)
+            }
+        } content: {
+            VStack(alignment: .leading, spacing: Space.row) {
+                stop("Départ", trip.startStation, trip.startStand)
+                stop("Arrivée", trip.endStation, trip.endStand)
+            }
+            facts.padding(.top, Layout.headerBottom)
+            if let points = pointsLine { Text(points).typo(.label(.small)).foregroundStyle(Palette.inkSoft).padding(.top, Space.cards) }
+            if trip.litigious { litigious }
+            if let bike = trip.bikeNumber, !rated, canRate(trip) {
+                RateBike(trip: trip, bikeNumber: bike) {
+                    model.closeEnded(trip)
+                    dismiss()
                 }
-                .padding(.horizontal, 22).padding(.top, 20).padding(.bottom, 28)
+                .padding(.top, Space.cards)
             }
-            .scrollIndicators(.hidden)
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: BikeRoute.self) { route in BikeDetail(route: route) }
+            details.padding(.top, Space.label)
         }
-        .presentationDetents(model.snapshot == .rateCard ? [.large] : [.medium, .large])
-        .interactiveDismissDisabled(model.operations.sending)
-        .presentationBackground(Palette.white)
-        .presentationDragIndicator(.visible)
-        .sheetCorners()
-    }
-
-    private var times: some View {
-        HStack(spacing: 0) {
-            if let start = trip.startedAt {
-                Text(verbatim: "\(formatDate(start, .dayLongMonthYear)) · ").typo(.body(.base))
-                Text(formatDate(start, .time) + (trip.endedAt.map { " → \(formatDate($0, .time))" } ?? "")).typo(.body(.base))
-            } else {
-                Text("Date indisponible").typo(.body(.base))
-            }
-        }
-        .foregroundStyle(Palette.inkSoft)
     }
 
     private func stop(_ label: String, _ station: String?, _ stand: Int?) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Space.pair) {
             Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: Space.label) {
                 Text(station ?? "Non renseignée").typo(.body(.lead)).foregroundStyle(Palette.ink)
                 if let stand { Text(verbatim: "Borne \(stand)").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize() }
             }
         }
+        .accessibilityElement(children: .combine)
     }
 
     private var facts: some View {
         VStack(spacing: 0) {
             Hairline()
-            HStack(alignment: .top, spacing: 10) {
-                fact("Durée", trip.duration.map(formatMinutes) ?? "—")
-                fact("Distance", trip.distance.flatMap { sameStation ? nil : "≈ \(formatDistance(Double($0)))" } ?? "—")
+            HStack(alignment: .top, spacing: Space.cards) {
+                TripFact(label: "Durée", value: trip.duration.map(formatMinutes) ?? "—")
+                TripFact(label: "Distance", value: trip.distance.flatMap { sameStation ? nil : "≈ \(formatDistance(Double($0)))" } ?? "—")
                 VStack(alignment: .leading, spacing: 0) {
-                    fact("Payé", trip.price.map(formatPrice) ?? "—")
+                    TripFact(label: "Payé", value: trip.price.map(formatPrice) ?? "—")
                     if trip.discount > 0, let full = trip.fullPrice {
-                        Text(verbatim: "Prix \(formatPrice(full)) · Remise \(formatPrice(trip.discount))").typo(.label(.meta)).foregroundStyle(Palette.inkSoft).padding(.top, 5)
+                        Text(verbatim: "Prix \(formatPrice(full)) · Remise \(formatPrice(trip.discount))").typo(.label(.meta)).foregroundStyle(Palette.inkSoft).padding(.top, Space.pair)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.vertical, 18)
+            .padding(.vertical, Space.row)
             Hairline()
         }
-    }
-
-    private func fact(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1)
-            Text(value.glyphic).typo(.title(.card)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var pointsLine: String? {
@@ -111,20 +79,27 @@ struct TripSheet: View {
 
     private var litigious: some View {
         let subject = "Trajet litigieux\(trip.token.map { " \($0)" } ?? "")"
-        return HStack(spacing: 12) {
+        return VStack(alignment: .leading, spacing: 0) {
             Text("Vélo’v a signalé ce trajet comme litigieux.").typo(.body(.small)).foregroundStyle(Palette.ink)
-            Spacer(minLength: 0)
             TextLink(title: "Contacter le service client", hint: "Ouvre Mail") {
                 var components = URLComponents()
                 components.scheme = "mailto"
                 components.path = Support.address
                 components.queryItems = [URLQueryItem(name: "subject", value: subject)]
-                if let url = components.url { openURL(url) }
+                guard let url = components.url else { return }
+                openURL(url) { opened in
+                    guard !opened else { return }
+                    UIPasteboard.general.string = Support.address
+                    addressCopied = true
+                    Haptics.success()
+                }
             }
+            if addressCopied { Note(text: "Adresse copiée\u{a0}: \(Support.address)") }
         }
-        .padding(.horizontal, 14).padding(.vertical, 8)
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Palette.red, lineWidth: 1))
-        .padding(.top, 14)
+        .padding(.horizontal, Space.row).padding(.vertical, Space.cards)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Palette.red, lineWidth: 1))
+        .padding(.top, Space.titleToContent)
     }
 
     private var details: some View {
@@ -135,13 +110,13 @@ struct TripSheet: View {
                             text: trip.bikeType == .electrical ? "Électrique" : trip.bikeType == .mechanical ? "Mécanique" : "Vélo’v")
                     Spacer()
                     if let number = trip.bikeNumber {
-                        NavigationLink(value: BikeRoute(number: number, station: nil)) {
+                        NavigationLink(value: Route.bike(BikeRoute(number: number, station: nil))) {
                             TextLinkLabel(title: "Vélo \(number)", trailing: .caret)
                         }
                         .buttonStyle(.press)
                     }
                 }
-                .padding(.top, 16)
+                .padding(.top, Space.label)
                 VStack(spacing: 0) {
                     if rated { DetailRow("Note du vélo", "Déjà noté") }
                     if let token = trip.token {
@@ -151,7 +126,7 @@ struct TripSheet: View {
                                 IconButton(icon: copied ? .check : .copy, weight: copied ? .bold : .light, size: 16, label: copied ? "Code copié" : "Copier le code du trajet") {
                                     UIPasteboard.general.string = token
                                     Haptics.success()
-                                    copied = true
+                                    withAnimation(Motion.standard) { copied = true }
                                 }
                                 .bleed(.trailing)
                             }
@@ -159,8 +134,26 @@ struct TripSheet: View {
                     }
                     if trip.status != "FINISHED" { DetailRow("Statut", Messages.tripStatuses[trip.status] ?? trip.status) }
                 }
-                .padding(.top, 12)
+                .padding(.top, Space.label)
             }
         }
+        .task(id: copied) {
+            guard copied else { return }
+            try? await Task.sleep(for: .seconds(2))
+            withAnimation(Motion.standard) { copied = false }
+        }
+    }
+}
+
+struct TripFact: View {
+    let label: String
+    let value: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.label) {
+            Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1)
+            Text(value.glyphic).typo(.title(.card)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }

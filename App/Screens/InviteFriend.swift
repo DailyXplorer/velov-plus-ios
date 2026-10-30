@@ -35,20 +35,19 @@ struct InviteFriend: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: Space.label) {
-                    Text("Inviter un ami").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
-                    Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(.small)).foregroundStyle(Palette.inkSoft)
-                    if cost == nil {
-                        Note(text: "L’offre est momentanément indisponible.")
-                    } else if let cost, let balance, balance < cost {
-                        Note(text: "Il vous manque \(formatNumber(cost - balance)) points.")
-                    }
+            VStack(alignment: .leading, spacing: Space.label) {
+                Text("Inviter un ami").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
+                Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(.small)).foregroundStyle(Palette.inkSoft)
+                if cost == nil {
+                    Note(text: "L’offre est momentanément indisponible.")
+                } else if let cost, let balance, balance < cost {
+                    Note(text: "Il vous manque \(formatNumber(cost - balance)) points.")
                 }
-                Spacer(minLength: 0)
                 PillButton(variant: .secondary, action: open) { ButtonIcon(.ticket); Text(codes.isEmpty ? "Obtenir un code" : "Obtenir un autre code") }
                     .disabled(operation == nil && !canObtain)
+                    .padding(.top, Space.label)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .card(.mist)
             codeList.padding(.top, 16)
             if !asking, let warning { FormError(warning).padding(.top, 10) }

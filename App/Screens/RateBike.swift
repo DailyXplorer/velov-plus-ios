@@ -29,7 +29,7 @@ struct RateBike: View {
 
     private var card: some View {
         VStack(spacing: 0) {
-            Text("Noter ce vélo").typo(.caps(.label)).foregroundStyle(Palette.ink).frame(maxWidth: .infinity, alignment: .leading)
+            Text("Évaluation du vélo").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: 2) {
                 ForEach(1...5, id: \.self) { value in
                     let on = stars.map { value <= $0 } ?? false
@@ -66,10 +66,9 @@ struct RateBike: View {
                     if !sending { TextLink(title: "Plus tard", action: onLater) }
                 }
             }
-            .padding(.top, 14)
+            .padding(.top, Space.cards)
         }
         .card(.mist, compact: true)
-        .padding(.top, 14)
         .task { if model.snapshot == .tripEndedStars { stars = 4 } }
     }
 
@@ -142,8 +141,8 @@ struct TripEndedSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: "Trajet terminé", closeDisabled: rating) { dismiss() }
             tripTimes(trip).padding(.top, 4)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Station d’arrivée").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
+            VStack(alignment: .leading, spacing: Space.pair) {
+                Text("Arrivée").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(trip.endStation ?? "Non renseignée").typo(.body(.lead)).foregroundStyle(Palette.ink)
                     if let stand = trip.endStand { Text(verbatim: "Borne \(stand)").typo(.caps(.label)).foregroundStyle(Palette.inkSoft).fixedSize() }
@@ -152,16 +151,16 @@ struct TripEndedSheet: View {
             .padding(.top, 20)
             VStack(spacing: 0) {
                 Hairline()
-                HStack(alignment: .top, spacing: 10) {
-                    fact("Durée", trip.duration.map(formatMinutes) ?? "—")
-                    fact("Prix", trip.price.map(formatPrice) ?? "—")
+                HStack(alignment: .top, spacing: Space.cards) {
+                    TripFact(label: "Durée", value: trip.duration.map(formatMinutes) ?? "—")
+                    TripFact(label: "Payé", value: trip.price.map(formatPrice) ?? "—")
                 }
-                .padding(.vertical, 16)
+                .padding(.vertical, Space.row)
                 Hairline()
             }
             .padding(.top, 18)
             if rateable ?? isRateable, let bike = trip.bikeNumber {
-                RateBike(trip: trip, bikeNumber: bike, onRated: { dismiss() }, onLater: { dismiss() })
+                RateBike(trip: trip, bikeNumber: bike, onRated: { dismiss() }, onLater: { dismiss() }).padding(.top, Space.titleToContent)
             } else {
                 PillButton("Fermer", variant: .secondary, fullWidth: true) { dismiss() }.padding(.top, 22)
             }
@@ -176,13 +175,6 @@ struct TripEndedSheet: View {
 
     private var isRateable: Bool { trip.isRated != true && !model.ratedHere.contains(trip.id) && canRate(trip) }
 
-    private func fact(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label).typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
-            Text(value.glyphic).typo(.title(.card)).foregroundStyle(Palette.ink).lineLimit(1).minimumScaleFactor(0.7)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
 }
 
 func tripTimes(_ trip: Trip) -> some View {

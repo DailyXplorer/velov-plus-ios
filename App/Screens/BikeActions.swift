@@ -37,6 +37,7 @@ struct BikeActionSheet: View {
     let place: Place
     let chosen: BikeAction
     let bookingId: String?
+    var done: (BikeAction) -> Void = { _ in }
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var refused: Outcome?
@@ -44,9 +45,10 @@ struct BikeActionSheet: View {
     @State private var checking = false
     @State private var distance: Double?
 
-    init(place: Place, bookingId: String? = nil, action: BikeAction) {
+    init(place: Place, bookingId: String? = nil, action: BikeAction, done: @escaping (BikeAction) -> Void = { _ in }) {
         self.place = place
         self.bookingId = bookingId
+        self.done = done
         chosen = action
     }
 
@@ -150,6 +152,7 @@ struct BikeActionSheet: View {
             Haptics.result(outcome)
             if outcome.ok {
                 if action == .book { model.booked(booking) } else { model.unlocked(bookingId: bookingId, ride: place.ride(ongoing?.first)) }
+                done(action)
                 dismiss()
             } else if !outcome.isUncertain {
                 refused = outcome
@@ -184,6 +187,7 @@ struct BikeActionSheet: View {
             case .done?:
                 Haptics.success()
                 if action == .unlock, let trip { model.unlocked(bookingId: bookingId, ride: place.ride(trip)) } else { await model.loadBookings(force: true) }
+                done(action)
                 dismiss()
             case .refused(let answer)?:
                 Haptics.refused()

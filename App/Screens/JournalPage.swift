@@ -2,42 +2,37 @@ import SwiftUI
 import VelovCore
 
 struct JournalLink: View {
-    @State private var open = false
+    @Environment(AppModel.self) private var model
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Space.titleToContent) {
             Text("Les \(TechnicalJournal.capacity) dernières requêtes envoyées à Vélo’v, sans jeton ni donnée personnelle.")
                 .typo(.body(.base)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
-            PillButton("Ouvrir le journal", variant: .secondary) { open = true }
+            PillButton(variant: .secondary, action: { model.push(.journal, on: .account) }) { ButtonIcon(.file); Text("Ouvrir le journal") }
         }
-        .sheet(isPresented: $open) { JournalSheet() }
     }
 }
 
-struct JournalSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var entries = TechnicalJournal.shared.entries
+struct JournalPage: View {
+    @Environment(AppModel.self) private var model
+    @State private var entries: [JournalEntry] = []
     @State private var clearing = false
 
+    private var journal: TechnicalJournal { model.snapshot == nil ? .shared : SampleData.journal }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: "Journal technique") { dismiss() }
+        PushedPage("Journal technique") {
             if entries.isEmpty {
                 StateView("Aucune requête enregistrée.")
-                Spacer(minLength: 0)
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(entries.indices, id: \.self) { JournalRow(entry: entries[$0]) }
-                    }
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(entries.indices, id: \.self) { JournalRow(entry: entries[$0]) }
                 }
-                .scrollIndicators(.visible)
-                .padding(.top, 10)
             }
             PairedActions {
                 PillButton("Effacer", variant: .ghost, fullWidth: true) { clearing = true }
                     .disabled(entries.isEmpty)
-                ShareLink(item: TechnicalJournal.shared.export()) {
+                ShareLink(item: journal.export()) {
                     HStack(spacing: 10) { ButtonIcon(.share); Text("Partager") }
                         .typo(.caps(.button)).foregroundStyle(entries.isEmpty ? Palette.inkSoft : Palette.white)
                         .frame(maxWidth: .infinity, minHeight: Layout.control)
@@ -48,19 +43,15 @@ struct JournalSheet: View {
                 .disabled(entries.isEmpty)
             }
             .padding(.top, Space.actions)
-            .confirmationDialog("Effacer le journal\u{a0}?", isPresented: $clearing, titleVisibility: .visible) {
-                Button("Effacer", role: .destructive) {
-                    TechnicalJournal.shared.clear()
-                    entries = []
-                }
-                Button("Annuler", role: .cancel) {}
-            }
         }
-        .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
-        .presentationDetents([.large])
-        .presentationBackground(Palette.white)
-        .presentationDragIndicator(.hidden)
-        .sheetCorners()
+        .task { entries = journal.entries }
+        .confirmationDialog("Effacer le journal\u{a0}?", isPresented: $clearing, titleVisibility: .visible) {
+            Button("Effacer", role: .destructive) {
+                journal.clear()
+                entries = []
+            }
+            Button("Annuler", role: .cancel) {}
+        }
     }
 }
 
@@ -68,8 +59,8 @@ private struct JournalRow: View {
     let entry: JournalEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+        VStack(alignment: .leading, spacing: Space.pair) {
+            HStack(alignment: .firstTextBaseline, spacing: Space.label) {
                 Text(entry.at.formatted(Date.FormatStyle(date: .numeric, time: .standard).locale(Locale(identifier: "fr_FR"))))
                     .typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
                 Spacer(minLength: 0)
@@ -80,7 +71,7 @@ private struct JournalRow: View {
             Text(verbatim: ([entry.milliseconds] + [entry.operation].compactMap { $0 }).joined(separator: " · "))
                 .typo(.body(.meta)).foregroundStyle(Palette.inkSoft)
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, Space.cards)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) { Hairline() }
     }

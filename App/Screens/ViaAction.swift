@@ -1,16 +1,7 @@
 import SwiftUI
 import VelovCore
 
-struct ViaAction: View {
-    @State private var open = false
-
-    var body: some View {
-        PillButton(variant: .secondary, action: { open = true }) { ButtonIcon(.timer); Text("15 minutes de plus") }
-        .sheet(isPresented: $open) { ViaSheet() }
-    }
-}
-
-private struct ViaSheet: View {
+struct ViaSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
@@ -127,7 +118,7 @@ private struct ViaSheet: View {
                 locationError = error.message
                 locationRaw = error.raw
             } catch {
-                locationError = "Localisation indisponible. Recherchez une station par son nom."
+                locationError = LocationFailure.unavailable.message
             }
         }
     }

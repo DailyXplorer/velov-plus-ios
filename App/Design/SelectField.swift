@@ -15,6 +15,7 @@ struct SelectField<Value: Hashable>: View {
     @Binding var value: Value
     let options: [SelectOption<Value>]
     var layout = Placement.row
+    var autoOpen = false
     @State private var choosing = false
 
     private var selected: SelectOption<Value>? { options.first { $0.value == value } ?? options.first }
@@ -45,10 +46,16 @@ struct SelectField<Value: Hashable>: View {
             Button { choosing = true } label: { pill(chevron: 0) }
                 .buttonStyle(.press)
                 .accessibilityLabel("\(label), \(selected?.label ?? "")")
+                .task {
+                    guard autoOpen else { return }
+                    try? await Task.sleep(for: .seconds(1))
+                    choosing = true
+                }
                 .sheet(isPresented: $choosing) {
                     ChoiceList(title: label, value: $value, options: options)
                         .presentationDetents([.large])
                         .sheetCorners()
+                        .modifier(SheetPresence())
                 }
         } else {
             Menu {

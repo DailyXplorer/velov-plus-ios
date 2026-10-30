@@ -104,6 +104,13 @@ private struct FitSheet: ViewModifier {
     }
 }
 
+struct SheetPresence: ViewModifier {
+    @Environment(AppModel.self) private var model
+    func body(content: Content) -> some View {
+        content.onAppear { model.sheetAppeared() }.onDisappear { model.sheetDisappeared() }
+    }
+}
+
 private struct VelovSheet: ViewModifier {
     let detent: SheetDetent
     let closeDisabled: Bool
@@ -119,6 +126,7 @@ private struct VelovSheet: ViewModifier {
         .presentationDragIndicator(.hidden)
         .sheetCorners()
         .interactiveDismissDisabled(closeDisabled)
+        .modifier(SheetPresence())
     }
 }
 

@@ -11,7 +11,7 @@ struct VelovApp: App {
         let defaults = UserDefaults.standard
         let snapshot = defaults.string(forKey: "VelovScreen").flatMap(SnapshotScreen.init)
         let sample = defaults.bool(forKey: "VelovSample") || snapshot != nil
-        let service: VelovService = sample ? SampleService(booking: snapshot?.withBooking == true ? SampleData.booking() : nil, failUnlock: snapshot == .unlockUncertain) : LiveService()
+        let service: VelovService = sample ? SampleService(booking: snapshot?.withBooking == true ? SampleData.booking() : nil, failUnlock: snapshot == .unlockUncertain, riding: snapshot == .ongoingBanner, slow: defaults.bool(forKey: "VelovSlow")) : LiveService()
         let promos: PromoBacking = sample ? InMemoryPromoBacking() : FilePromoBacking(directory: AppModel.promoDirectory())
         let operations: OperationBacking = sample ? InMemoryOperationBacking() : DefaultsOperationBacking()
         _model = State(initialValue: AppModel(service: service, snapshot: snapshot, promoBacking: promos, operationBacking: operations))

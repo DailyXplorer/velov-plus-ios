@@ -19,44 +19,78 @@ struct ProfileReview: Identifiable {
 struct ProfileCoordinates: View {
     let profile: Profile
     @Environment(AppModel.self) private var model
-    @State private var draft: ProfileDraft?
-    @State private var error: String?
-    @State private var review: ProfileReview?
-    @FocusState private var focus: ProfileField?
 
     var body: some View {
-        Group {
-            if draft != nil { form } else { summary }
-        }
-        .task { if model.snapshot == .accountEdit, draft == nil { draft = ProfileDraft(profile) } }
-        .sheet(item: $review) { review in
-            WriteDialog(title: "Enregistrer les modifications ?", key: OperationKey.profile, intent: profileIntent(review.body), run: {
-                let outcome = await attempt { try await model.service.updateProfile(review.body) }
-                if outcome.ok { saved() }
-                return outcome
-            }, check: { intent in
-                profileCheck(intent, after: try await model.service.dashboard().profile)
-            }, verified: { _ in saved() })
-        }
-    }
-
-    private func saved() {
-        draft = nil
-        Task { await model.loadDashboard() }
-    }
-
-    private var summary: some View {
         let address = [profile.address, profile.addressComplement].compactMap { $0 }.joined(separator: ", ")
         let place = [profile.zipCode, profile.city].compactMap { $0 }.joined(separator: " ")
         let country = profile.country.map { "\(place.isEmpty ? "" : " · ")\(countryName($0) ?? $0)" } ?? ""
-        return VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             DetailRow(label: "Adresse") { StackedValue(value: address.isEmpty ? "Non renseignée" : address, small: place + country) }
             DetailRow("Téléphone", profile.phoneNumber.map(formatPhone) ?? "Non renseigné", last: true)
-            PillButton("Modifier mes coordonnées", variant: .secondary) { error = nil; draft = ProfileDraft(profile) }.padding(.top, 16)
+            PillButton(variant: .secondary, action: { model.push(.profile, on: .account) }) { ButtonIcon(.pencil); Text("Modifier mes coordonnées") }
+                .padding(.top, Space.titleToContent)
+        }
+    }
+}
+
+struct LeaveGuard: ViewModifier {
+    let dirty: Bool
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State private var asking = false
+
+    func body(content: Content) -> some View {
+        content
+            .toolbar {
+                if dirty, !model.operations.sending {
+                    ToolbarItem(placement: .topBarLeading) {
+                        IconButton(icon: .arrowLeft, color: Palette.ink, label: "Retour") { asking = true }
+                    }
+                }
+            }
+            .confirmationDialog("Ignorer les modifications\u{a0}?", isPresented: $asking, titleVisibility: .visible) {
+                Button("Ignorer", role: .destructive) { dismiss() }
+                Button("Continuer la saisie", role: .cancel) {}
+            }
+    }
+}
+
+struct ProfilePage: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    @State private var draft: ProfileDraft?
+    @State private var error: String?
+    @State private var review: ProfileReview?
+    @State private var saved = false
+    @FocusState private var focus: ProfileField?
+
+    private var profile: Profile? { model.dashboard?.profile }
+    private var dirty: Bool { profile.flatMap { profile in draft.map { reviewProfile(profile, $0) != nil } } ?? false }
+
+    var body: some View {
+        PushedPage("Modifier mes coordonnées", held: dirty) {
+            if let profile, draft != nil { form(profile) }
+        }
+        .modifier(LeaveGuard(dirty: dirty))
+        .task { if draft == nil, let profile { draft = ProfileDraft(profile) } }
+        .sheet(item: $review, onDismiss: { if saved { dismiss() } }) { review in
+            WriteDialog(title: "Enregistrer les modifications\u{a0}?", key: OperationKey.profile, intent: profileIntent(review.body), run: {
+                let outcome = await attempt { try await model.service.updateProfile(review.body) }
+                if outcome.ok { done() }
+                return outcome
+            }, check: { intent in
+                profileCheck(intent, after: try await model.service.dashboard().profile)
+            }, verified: { _ in done() })
         }
     }
 
-    private var form: some View {
+    private func done() {
+        saved = true
+        if let profile { draft = ProfileDraft(profile) }
+        Task { await model.loadDashboard() }
+    }
+
+    private func form(_ profile: Profile) -> some View {
         let binding = { (key: WritableKeyPath<ProfileDraft, String>) in
             Binding<String>(get: { draft?[keyPath: key] ?? "" }, set: { draft?[keyPath: key] = $0 })
         }
@@ -72,20 +106,18 @@ struct ProfileCoordinates: View {
             }
             SelectField(label: "Pays", value: binding(\.country),
                         options: countries.contains { $0.value == country } ? countries : countries + [.init(value: country, label: country)],
-                        layout: .stacked)
-                .zIndex(2)
+                        layout: .stacked, autoOpen: model.snapshot == .choiceSheet)
             FormField(label: "Téléphone", text: binding(\.phone), maxLength: 20, keyboard: .phonePad, content: .telephoneNumber, focus: $focus, field: .phone)
             if let error { FormError(error) }
             PairedActions {
-                PillButton("Annuler", variant: .ghost, fullWidth: true) { draft = nil }
-                PillButton("Enregistrer", fullWidth: true) { submit() }
+                PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }
+                PillButton("Enregistrer", fullWidth: true) { submit(profile) }
             }
             .padding(.top, Space.actions - Space.field)
         }
-        .padding(.top, 16)
     }
 
-    private func submit() {
+    private func submit(_ profile: Profile) {
         guard let draft else { return }
         switch reviewProfile(profile, draft) {
         case nil: error = "Vous n’avez rien modifié."
@@ -220,57 +252,93 @@ struct ShareSheet: UIViewControllerRepresentable {
 
 private let subjects: [SelectOption<String>] = zip(Guesses.mailComplaintTypes, ["Un trajet", "Mon abonnement", "Mes paiements", "Un parking"]).map { .init(value: $0, label: $1) }
 
-struct ContactSupport: View {
-    let trips: [Trip]?
+private struct ContactDialog: View {
+    let draft: ContactBody?
+    let sent: () -> Void
+    let writeAgain: () -> Void
     @Environment(AppModel.self) private var model
-    @State private var open = false
+
+    var body: some View {
+        WriteDialog(title: "Envoyer au service client ?", key: model.operations.digest.map(OperationKey.contact), ready: draft != nil, run: { [draft] in
+            guard let draft else { return Outcome.refusal("local.empty", "Votre message est vide ou trop long.") }
+            let outcome = await attempt { try await model.service.contactSupport(draft) }
+            if outcome.ok { sent() }
+            return outcome
+        }, restart: Restart(title: "Écrire un nouveau message", action: writeAgain))
+    }
+}
+
+struct ContactSupport: View {
+    @Environment(AppModel.self) private var model
+    @State private var asking = false
+
+    private var operationKey: String? { model.operations.digest.map(OperationKey.contact) }
+
+    var body: some View {
+        PillButton(variant: .secondary, action: start) { ButtonIcon(.envelopeSimple); Text("Écrire au service client") }
+            .onChange(of: model.contactRequested, initial: true) { _, requested in
+                guard requested else { return }
+                model.contactRequested = false
+                start()
+            }
+            .sheet(isPresented: $asking) {
+                ContactDialog(draft: nil, sent: {}, writeAgain: writeAgain)
+            }
+    }
+
+    private func start() {
+        if operationKey.flatMap({ model.operations.get($0) }) != nil { asking = true } else { model.push(.contact, on: .account) }
+    }
+
+    private func writeAgain() {
+        if let operationKey { model.operations.clear(operationKey) }
+        asking = false
+        model.push(.contact, on: .account)
+    }
+}
+
+struct ContactPage: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
     @State private var subject = Guesses.mailComplaintTypes[0]
     @State private var message = ""
     @State private var tripId = "none"
     @State private var error: String?
     @State private var draft: ContactBody?
     @State private var asking = false
+    @State private var sent = false
 
-    private var recent: [Trip] { Array((trips ?? []).filter { $0.token != nil }.prefix(15)) }
+    private var recent: [Trip] { Array((model.dashboard?.trips ?? []).filter { $0.token != nil }.prefix(15)) }
     private var contact: ContactBody { ContactBody(complaintType: subject, message: message, tripToken: recent.first { $0.id == tripId }?.token) }
     private var operationKey: String? { model.operations.digest.map(OperationKey.contact) }
+    private var dirty: Bool { !message.isEmpty || tripId != "none" || subject != Guesses.mailComplaintTypes[0] }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if !open {
-                PillButton(variant: .secondary, action: start) { ButtonIcon(.envelopeSimple); Text("Écrire au service client") }
-            } else {
-                form
+        PushedPage("Écrire au service client", held: dirty) { form }
+            .modifier(LeaveGuard(dirty: dirty))
+            .sheet(isPresented: $asking, onDismiss: {
+                draft = nil
+                if sent { dismiss() }
+            }) {
+                ContactDialog(draft: draft, sent: {
+                    message = ""; tripId = "none"; subject = Guesses.mailComplaintTypes[0]; draft = nil; sent = true
+                }, writeAgain: writeAgain)
             }
-        }
-        .onChange(of: model.contactRequested, initial: true) { _, requested in
-            guard requested else { return }
-            model.contactRequested = false
-            start()
-        }
-        .sheet(isPresented: $asking, onDismiss: { draft = nil }) {
-            WriteDialog(title: "Envoyer au service client ?", key: operationKey, ready: draft != nil, run: { [draft] in
-                guard let draft else { return Outcome.refusal("local.empty", "Votre message est vide ou trop long.") }
-                let outcome = await attempt { try await model.service.contactSupport(draft) }
-                if outcome.ok { message = ""; tripId = "none"; open = false; self.draft = nil }
-                return outcome
-            }, restart: Restart(title: "Écrire un nouveau message", action: writeAgain))
-        }
     }
 
     private var form: some View {
         VStack(alignment: .leading, spacing: Space.field) {
-            SelectField(label: "Objet", value: $subject, options: subjects, layout: .stacked).zIndex(3)
+            SelectField(label: "Objet", value: $subject, options: subjects, layout: .stacked)
             if !recent.isEmpty {
                 SelectField(label: "Trajet (facultatif)", value: $tripId,
                             options: [.init(value: "none", label: "Aucun")] + recent.map { .init(value: $0.id, label: "\(formatDate($0.startedAt)) · \($0.startStation ?? "Trajet")") },
-                            layout: .stacked).zIndex(2)
+                            layout: .stacked)
             }
             VStack(alignment: .leading, spacing: Space.label) {
                 Text("Message").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                 TextEditor(text: $message).typo(.body(.input)).frame(minHeight: 110).scrollContentBackground(.hidden)
                     .padding(.horizontal, 13).padding(.vertical, 4)
-                    .ringed(RoundedRectangle(cornerRadius: Palette.radius, style: .continuous))
+                    .ringed(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
                     .accessibilityLabel("Message")
                     .onChange(of: message) { _, value in
                         guard value.utf16.count > 1500 else { return }
@@ -281,15 +349,11 @@ struct ContactSupport: View {
             }
             if let error { FormError(error) }
             PairedActions {
-                PillButton("Annuler", variant: .ghost, fullWidth: true) { open = false }
-                PillButton("Envoyer", fullWidth: true) { review() }
+                PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }
+                PillButton(variant: .primary, fullWidth: true, action: review) { ButtonIcon(.send); Text("Envoyer") }
             }
             .padding(.top, Space.actions - Space.field)
         }
-    }
-
-    private func start() {
-        if operationKey.flatMap({ model.operations.get($0) }) != nil { asking = true } else { open = true }
     }
 
     private func review() {
@@ -309,6 +373,5 @@ struct ContactSupport: View {
         tripId = "none"
         draft = nil
         asking = false
-        open = true
     }
 }

@@ -44,6 +44,7 @@ enum SnapshotScreen: String {
     case overview, overviewMap, trips, tripSheet, rateCard, points, stations, stationSheet, stationSheetLong, bikeList, bikeSheet, account, accountEnd, accountEdit
     case bookingBanner, unlockConfirm, bookConfirm, unlockUncertain, liveActivityLock, liveActivityIsland, tripActivityLock, tripActivityIsland
     case tripEnded, tripEndedStars
+    case ongoingBanner, profilePage, contactPage, journalPage, bikePage, logoutDialog, toggleDialog, choiceSheet
     case stats, statsCharts, statsTipFirst, statsTipMiddle, statsTipLast, statsHeatmap, statsHeatTip, statsDonut, statsRecords, statsBike, statsEnd
 
     var isLiveActivity: Bool { [.liveActivityLock, .liveActivityIsland, .tripActivityLock, .tripActivityIsland].contains(self) }
@@ -70,13 +71,15 @@ final class AppModel {
     var bookings: [Booking] = []
     var refreshing = false
     var stationsPending = false
-    var unlocking: Booking?
+    var sheet: ActiveSheet?
+    var paths: [Page: [Route]] = [:]
+    var tops: [Page: Int] = [:]
     var ratedHere: Set<String> = []
-    var ended: Trip?
-    var logoutOpen = false
     var contactRequested = false
     var foreground = true
     private var docked: Set<String> = []
+    private var openSheets = 0
+    private var queuedEnded: Trip?
     private var greeted = false
     @ObservationIgnored private let session = SessionGeneration()
     @ObservationIgnored private let bookingsFlight = SingleFlight()
@@ -110,12 +113,27 @@ final class AppModel {
         self.promoBacking = promoBacking
         operations = Operations(backing: operationBacking)
         switch snapshot {
-        case .trips?, .tripSheet?, .rateCard?: page = .trips
+        case .trips?, .tripSheet?, .rateCard?, .bikePage?: page = .trips
         case .stats?, .statsCharts?, .statsTipFirst?, .statsTipMiddle?, .statsTipLast?, .statsHeatmap?, .statsHeatTip?, .statsDonut?, .statsRecords?, .statsBike?, .statsEnd?: page = .trips
         case .points?: page = .points
         case .stations?, .stationSheet?, .stationSheetLong?, .bikeList?, .bikeSheet?, .bookConfirm?: page = .stations
-        case .account?, .accountEnd?, .accountEdit?: page = .account
+        case .account?, .accountEnd?, .accountEdit?, .profilePage?, .contactPage?, .journalPage?, .logoutDialog?, .choiceSheet?: page = .account
+        case .toggleDialog?: page = .points
         default: break
+        }
+        paths = Self.snapshotPaths(snapshot)
+        if snapshot == .logoutDialog { sheet = .logout }
+    }
+
+    private static func snapshotPaths(_ snapshot: SnapshotScreen?) -> [Page: [Route]] {
+        guard let snapshot, let first = SampleData.trips.first else { return [:] }
+        switch snapshot {
+        case .tripSheet, .rateCard: return [.trips: [.trip(TripRoute(trip: first))]]
+        case .bikePage: return [.trips: [.trip(TripRoute(trip: first)), .bike(BikeRoute(number: first.bikeNumber ?? 20449, station: nil))]]
+        case .accountEdit, .profilePage, .choiceSheet: return [.account: [.profile]]
+        case .contactPage: return [.account: [.contact]]
+        case .journalPage: return [.account: [.journal]]
+        default: return snapshot.showsStats ? [.trips: [.stats]] : [:]
         }
     }
 
@@ -185,7 +203,7 @@ final class AppModel {
             guard case .success(let value)? = await session.load({ try await service.bookings() }) else { return }
             bookings = value
             if snapshot == nil { activities.sync(value) }
-            if snapshot == .unlockConfirm || snapshot == .unlockUncertain { unlocking = value.first }
+            if snapshot == .unlockConfirm || snapshot == .unlockUncertain, let first = value.first { sheet = .unlock(first) }
         }
     }
 
@@ -211,7 +229,7 @@ final class AppModel {
 
     private func watchTrips(_ data: Dashboard) {
         if snapshot == .tripEnded || snapshot == .tripEndedStars {
-            ended = SampleData.trips.first
+            if let trip = SampleData.trips.first { sheet = .ended(trip) }
             return
         }
         guard snapshot == nil else { return }
@@ -235,13 +253,32 @@ final class AppModel {
     }
 
     private func showEnded(_ trip: Trip) {
-        ended = trip
+        if sheet == nil && openSheets == 0 { sheet = .ended(trip) } else { queuedEnded = trip }
         rides.finished(trip)
     }
 
     func closeEnded(_ trip: Trip) {
         if snapshot == nil { dismissTrip(UserDefaults.standard, trip.id) }
-        if ended?.id == trip.id { ended = nil }
+        if case .ended(let shown)? = sheet, shown.id == trip.id { sheet = nil }
+        if queuedEnded?.id == trip.id { queuedEnded = nil }
+    }
+
+    func sheetAppeared() { openSheets += 1 }
+
+    func sheetDisappeared() {
+        openSheets = max(0, openSheets - 1)
+        guard openSheets == 0, sheet == nil, let trip = queuedEnded else { return }
+        queuedEnded = nil
+        sheet = .ended(trip)
+    }
+
+    func push(_ route: Route, on page: Page) {
+        paths[page, default: []].append(route)
+    }
+
+    func reselect(_ page: Page) {
+        if paths[page]?.isEmpty == false, !operations.sending { paths[page] = [] }
+        tops[page, default: 0] += 1
     }
 
     func booked(_ booking: Booking?) {
@@ -307,8 +344,9 @@ final class AppModel {
         let confirmed = await service.logout()
         endSession()
         bookings = []
-        unlocking = nil
-        ended = nil
+        sheet = nil
+        queuedEnded = nil
+        paths = [:]
         activities.endAll()
         rides.endAll()
         operations.use(account: nil)

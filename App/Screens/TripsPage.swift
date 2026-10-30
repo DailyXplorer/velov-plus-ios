@@ -17,7 +17,7 @@ struct TripsPage: View {
         if let all = data.trips {
             let trips = all.filter { filter == .all || $0.bikeType.rawValue == filter.rawValue }
             VStack(alignment: .leading, spacing: 0) {
-                StatsLink().padding(.bottom, 20)
+                StatsLink().padding(.bottom, Space.cards)
                 TripsFilterLine {
                     SelectField(label: "Type de vélo", hideLabel: true, value: $filter, options: tripFilters)
                 } count: {
@@ -25,7 +25,7 @@ struct TripsPage: View {
                 }
                 .zIndex(1)
                 .onChange(of: filter) { limit = 10 }
-                TripsList(trips: Array(trips.prefix(limit)), openFirst: model.snapshot == .tripSheet || model.snapshot == .rateCard,
+                TripsList(trips: Array(trips.prefix(limit)),
                           emptyText: filter == .all ? "Aucun trajet." : "Aucun trajet pour ce type de vélo.")
                 if trips.count > limit {
                     PillButton("Voir plus", variant: .secondary) { limit += 10 }.frame(maxWidth: .infinity).padding(.vertical, 24)
@@ -49,21 +49,21 @@ struct TripsFilterLine<Select: View, Count: View>: View {
             Spacer(minLength: 8)
             count().typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).fixedSize()
         }
-        .padding(.bottom, 20)
+        .padding(.bottom, Space.label)
     }
 }
 
 struct TripsSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            StatsLink().skeleton(21).padding(.bottom, 20)
+            StatsLink().skeleton(Layout.control / 2).padding(.bottom, Space.cards)
             TripsFilterLine {
-                SelectField(label: "Type de vélo", hideLabel: true, value: .constant(TripFilter.all), options: tripFilters).skeleton(21)
+                SelectField(label: "Type de vélo", hideLabel: true, value: .constant(TripFilter.all), options: tripFilters).skeleton(Layout.control / 2)
             } count: {
                 Text(verbatim: "10 trajets").ghost()
             }
             GhostTrips(rows: 10)
-            PillButton("Voir plus", variant: .secondary) {}.skeleton(21).frame(maxWidth: .infinity).padding(.vertical, 24)
+            PillButton("Voir plus", variant: .secondary) {}.skeleton(Layout.control / 2).frame(maxWidth: .infinity).padding(.vertical, 24)
         }
         .accessibilityLabel("Chargement des trajets")
     }
@@ -86,23 +86,28 @@ struct GhostTrips: View {
 
 struct TripsList: View {
     let trips: [Trip]
-    var openFirst = false
     var emptyText = "Aucun trajet."
-    @State private var selected: Trip?
 
     var body: some View {
         VStack(spacing: 0) {
             ForEach(Array(trips.enumerated()), id: \.element.id) { index, trip in
-                Button { selected = trip } label: { TripRow(trip: trip) }
+                NavigationLink(value: Route.trip(TripRoute(trip: trip))) { TripRow(trip: trip) }
                     .buttonStyle(.row)
-                    .accessibilityLabel("Détails du trajet du \(formatDate(trip.startedAt))")
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(spokenTrip(trip))
                 if index < trips.count - 1 { Hairline() }
             }
             if trips.isEmpty { StateView(emptyText) }
         }
-        .sheet(item: $selected) { trip in TripSheet(trip: trip) }
-        .task { if openFirst, selected == nil { selected = trips.first } }
     }
+}
+
+private func arrival(_ trip: Trip) -> String { trip.endStation ?? "Station non renseignée" }
+
+func spokenTrip(_ trip: Trip) -> String {
+    let start = trip.startedAt.map { "\(formatDate($0)) à \(formatDate($0, .time))" } ?? "date indisponible"
+    let parts = ["Trajet de \(trip.startStation ?? "Trajet Vélo’v") à \(arrival(trip))", start, trip.duration.map(formatMinutes), trip.price.map(formatPrice)]
+    return parts.compactMap { $0 }.joined(separator: ", ")
 }
 
 struct TripIcon: View {
@@ -120,7 +125,7 @@ struct TripRow: View {
     let trip: Trip
     var body: some View {
         TripRowLayout(start: trip.startStation ?? "Trajet Vélo’v",
-                      end: trip.endStation ?? (trip.bikeType == .electrical ? "Électrique" : trip.bikeType == .mechanical ? "Mécanique" : "Stations non renseignées"),
+                      end: trip.startStation == nil && trip.endStation == nil ? "Stations non renseignées" : arrival(trip),
                       date: formatDate(trip.startedAt), time: formatDate(trip.startedAt, .time),
                       duration: trip.duration.map(formatMinutes) ?? "—", price: trip.price.map(formatPrice) ?? "—",
                       electrical: trip.bikeType == .electrical, ghost: false)
@@ -155,10 +160,10 @@ struct TripRowLayout: View {
                 .padding(.leading, 42)
             }
             Spacer(minLength: 0)
-            Text(duration).typo(.body(.micro)).foregroundStyle(Palette.inkSoft).ghost(ghost).frame(width: 43, alignment: .leading)
+            Text(duration).typo(.body(.micro)).foregroundStyle(Palette.inkSoft).ghost(ghost).frame(width: 43, alignment: .trailing)
             Text(price).typo(.body(.meta)).foregroundStyle(Palette.ink).ghost(ghost).frame(width: 59, alignment: .trailing)
         }
-        .padding(.vertical, 16)
+        .padding(.vertical, Space.row)
         .contentShape(Rectangle())
     }
 }

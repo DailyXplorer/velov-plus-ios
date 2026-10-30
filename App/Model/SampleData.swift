@@ -79,14 +79,48 @@ enum SampleData {
     ]
 }
 
+extension SampleData {
+    static let journal: TechnicalJournal = {
+        let defaults = UserDefaults(suiteName: "velov-sample-journal") ?? .standard
+        let journal = TechnicalJournal(defaults: defaults, key: "sample")
+        journal.clear()
+        let base = "https://api.cyclocity.fr/contracts/lyon"
+        let calls: [(String, String, Int?, Int?, TimeInterval, Double)] = [
+            ("GET", "\(base)/bikes?stationNumber=2002", 200, nil, 0.21, 0.3),
+            ("GET", "\(base)/accounts/00000000-0000-0000-0000-000000000000/bookings", 200, nil, 0.34, 0.2),
+            ("GET", "\(base)/accounts/00000000-0000-0000-0000-000000000000/trips?page=0", nil, -1001, 30, 0.1),
+            ("GET", "\(base)/gbfs/v3/station_status.json", 502, nil, 0.12, 0.05)
+        ]
+        for (method, url, status, error, duration, hours) in calls {
+            var request = URLRequest(url: URL(string: url)!)
+            request.httpMethod = method
+            journal.record(request, status: status, error: error, duration: duration, at: ago(hours))
+        }
+        return journal
+    }()
+}
+
 struct SampleService: VelovService {
     var booking: Booking?
     var failUnlock = false
+    var riding = false
+    var slow = false
+
+    private func pause() async { if slow { try? await Task.sleep(for: .seconds(8)) } }
 
     func hasSession() async -> Bool { true }
     func signIn(email: String, code: String) async throws {}
     func logout() async -> Bool { true }
-    func dashboard() async throws -> Dashboard { SampleData.dashboard }
+    func dashboard() async throws -> Dashboard {
+        guard riding else { return SampleData.dashboard }
+        var data = SampleData.dashboard
+        let start = SampleData.ago(23 / 60)
+        data.ongoing = [Trip(id: "ride", startedAt: start, endedAt: nil, startStation: SampleData.byNumber[2002]!.name, endStation: nil,
+                             startStationNumber: 2002, endStationNumber: nil, startStand: 2, endStand: nil, distance: nil, bikeNumber: 20449, bikeType: .electrical,
+                             duration: nil, price: nil, fullPrice: nil, discount: 0, pointsEarned: 0, pointsSpent: 0, litigious: false, isRated: nil,
+                             token: nil, origin: 4)]
+        return data
+    }
     func stations() async throws -> StationData { StationData(stations: SampleData.stations, updatedAt: SampleData.now) }
     func stationBikes(_ station: Int) async throws -> [Bike] { SampleData.bikes }
     func bike(_ number: Int) async throws -> Bike? { SampleData.bikes.first { $0.number == number } ?? SampleData.bikes[0] }
@@ -95,11 +129,12 @@ struct SampleService: VelovService {
     func rewardLedger() async throws -> RewardLedger { RewardLedger(movements: SampleData.dashboard.rewards.movements, complete: true) }
 
     func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?) {
-        (Outcome(ok: true, httpStatus: 200), SampleData.booking(bike: bikeNumber, minutesLeft: 15))
+        await pause()
+        return (Outcome(ok: true, httpStatus: 200), SampleData.booking(bike: bikeNumber, minutesLeft: 15))
     }
     func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?) {
         if failUnlock {
-            var lost = Outcome.refusal("network", "Vélo’v ne répond pas. Le vélo est peut-être déverrouillé : regardez la borne avant de réessayer.")
+            var lost = Outcome.refusal("network", Messages.unlockNoAnswer)
             lost.detail = NetworkFailure(code: URLError.timedOut.rawValue, elapsed: 30).line
             return (lost, nil)
         }
@@ -107,7 +142,10 @@ struct SampleService: VelovService {
     }
     func tripCheck() async throws -> TripCheck { TripCheck(ongoing: [], latest: nil) }
     func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome { Outcome(ok: true, httpStatus: 200) }
-    func setAutoSpend(_ value: Bool) async throws -> (outcome: Outcome, autoSpend: Bool?) { (Outcome(ok: true, httpStatus: 200), value) }
+    func setAutoSpend(_ value: Bool) async throws -> (outcome: Outcome, autoSpend: Bool?) {
+        await pause()
+        return (Outcome(ok: true, httpStatus: 200), value)
+    }
     func setFavorite(station: Int, on: Bool) async throws -> Outcome { Outcome(ok: true, httpStatus: 204) }
     func receipt(subscriptionId: String, periodId: String) async throws -> (outcome: Outcome, filename: String?, pdf: Data?) {
         (Outcome(ok: false, httpStatus: 0, code: "sample", message: "Pas de reçu dans les données d’exemple."), nil, nil)

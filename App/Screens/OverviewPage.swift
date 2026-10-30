@@ -105,18 +105,33 @@ struct OverviewSkeleton: View {
     }
 }
 
+private func elapsedClock(_ seconds: Int) -> String {
+    seconds < 3600 ? clock(seconds) : String(format: "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
+}
+
 struct OngoingBanner: View {
     let trip: Trip
+    @Environment(AppModel.self) private var model
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 14) {
-                Eyebrow(icon: .personSimpleBike, text: "Trajet en cours")
-                Text(trip.startStation ?? "Trajet Vélo’v").typo(.body(.small)).foregroundStyle(Palette.inkSoft).lineLimit(1)
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let elapsed = trip.startedAt.map { max(0, Int(context.date.timeIntervalSince($0).rounded())) }
+            HStack(spacing: Space.cards) {
+                HStack(spacing: Space.label) {
+                    Icon(.personSimpleBike, .light, size: 17)
+                        .frame(width: 34, height: 34)
+                        .overlay(Circle().strokeBorder(Palette.white, lineWidth: 1.5))
+                    if let elapsed { Text(elapsedClock(elapsed)).typo(.countdown).fixedSize() }
+                }
+                .foregroundStyle(Palette.white)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(elapsed.map { "Trajet en cours depuis \(max(1, $0 / 60)) min" } ?? "Trajet en cours")
+                Spacer(minLength: 0)
+                OnRedPill(icon: .timer, title: "15 minutes de plus") { model.sheet = .via }
             }
-            ViaAction()
+            .padding(.leading, Space.row).padding(.trailing, 6).padding(.vertical, 6)
+            .background(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).fill(Palette.red))
+            .padding(.bottom, Layout.margin)
         }
-        .padding(.bottom, 16)
-        .overlay(alignment: .bottom) { Hairline() }
-        .padding(.bottom, 24)
     }
 }

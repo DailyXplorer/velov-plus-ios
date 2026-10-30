@@ -33,11 +33,14 @@ struct Shell: View {
         .background {
             Color.clear.ignoresSafeArea(.keyboard).onGeometryChange(for: CGFloat.self, of: { $0.safeAreaInsets.bottom }) { homeIndicator = $0 }
         }
-        .sheet(isPresented: $model.logoutOpen) { LogoutSheet() }
-        .sheet(item: $model.unlocking) { booking in
-            if let place = Place(booking) { BikeActionSheet(place: place, bookingId: booking.id, action: .unlock) }
+        .sheet(item: $model.sheet) { sheet in
+            switch sheet {
+            case .logout: LogoutSheet()
+            case .unlock(let booking): if let place = Place(booking) { BikeActionSheet(place: place, bookingId: booking.id, action: .unlock) }
+            case .ended(let trip): TripEndedSheet(trip: trip)
+            case .via: ViaSheet()
+            }
         }
-        .sheet(item: $model.ended) { TripEndedSheet(trip: $0) }
         .environment(\.floatingRadius, radius)
         .environment(\.tabBarBand, tabBarBand)
     }
@@ -46,9 +49,96 @@ struct Shell: View {
     private func screen(_ page: Page) -> some View {
         switch page {
         case .stations: StationsPage()
-        case .trips: TripsStack()
-        default: PageScaffold(page: page)
+        default: TabStack(page: page)
         }
+    }
+}
+
+struct TabStack: View {
+    let page: Page
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var model = model
+        NavigationStack(path: Binding(get: { model.paths[page] ?? [] }, set: { model.paths[page] = $0 })) {
+            PageScaffold(page: page)
+                .navigationTitle(page.title)
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(for: Route.self) { route in destination(route) }
+        }
+        .onLeaving(page) { if !model.operations.sending { model.paths[page] = [] } }
+    }
+
+    @ViewBuilder
+    private func destination(_ route: Route) -> some View {
+        switch route {
+        case .stats: StatsPage()
+        case .trip(let trip): TripPage(trip: trip.trip)
+        case .bike(let bike): BikeDetail(route: bike)
+        case .profile: ProfilePage()
+        case .contact: ContactPage()
+        case .journal: JournalPage()
+        }
+    }
+}
+
+struct PageTitle: View {
+    let title: String
+    var body: some View {
+        Text(title).typo(.title(.page)).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
+    }
+}
+
+struct PushedPage<Header: View, Content: View>: View {
+    let title: String
+    var close: (() -> Void)?
+    var refresh: (() async -> Void)?
+    var held = false
+    @ViewBuilder let header: () -> Header
+    @ViewBuilder let content: () -> Content
+    @Environment(AppModel.self) private var model
+    @Environment(\.tabBarBand) private var tabBarBand
+
+    var body: some View {
+        let sending = model.operations.sending
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                header().padding(.top, Space.label).padding(.bottom, Layout.headerBottom)
+                content()
+            }
+            .padding(.horizontal, Layout.margin).padding(.bottom, Space.state)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .scrollIndicators(.hidden)
+        .contentMargins(.bottom, tabBarBand, for: .scrollContent)
+        .background(Palette.white)
+        .modifier(Refreshing(refresh: refresh))
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) }
+            if let close {
+                ToolbarItem(placement: .topBarTrailing) {
+                    IconButton(icon: .x, label: "Fermer", action: close).disabled(sending)
+                }
+            }
+        }
+        .heldWhile(sending || held)
+    }
+}
+
+extension PushedPage where Header == PageTitle {
+    init(_ title: String, close: (() -> Void)? = nil, refresh: (() async -> Void)? = nil, held: Bool = false, @ViewBuilder content: @escaping () -> Content) {
+        self.init(title: title, close: close, refresh: refresh, held: held, header: { PageTitle(title: title) }, content: content)
+    }
+}
+
+private struct Refreshing: ViewModifier {
+    let refresh: (() async -> Void)?
+    func body(content: Content) -> some View {
+        if let refresh { content.refreshable { await refresh() } } else { content }
     }
 }
 
@@ -83,7 +173,7 @@ struct TabBar: View {
             ForEach(Page.allCases) { page in
                 let active = model.page == page
                 Button {
-                    guard !active else { return }
+                    guard !active else { return model.reselect(page) }
                     model.page = page
                     Haptics.selection()
                 } label: {
@@ -269,6 +359,7 @@ struct PageScaffold: View {
         ScrollViewReader { proxy in
             scroll
                 .onLeaving(page) { proxy.scrollTo("page-top", anchor: .top) }
+                .onChange(of: model.tops[page]) { withAnimation(Motion.standard) { proxy.scrollTo("page-top", anchor: .top) } }
                 .task {
                     if model.snapshot == .overviewMap || model.snapshot == .accountEnd {
                         try? await Task.sleep(nanoseconds: 1_500_000_000)
@@ -309,7 +400,7 @@ struct PageScaffold: View {
         case .overview: OverviewPage(data: data)
         case .trips: TripsPage(data: data)
         case .points: PointsPage(data: data)
-        case .account: AccountPage(data: data, onLogout: { model.logoutOpen = true })
+        case .account: AccountPage(data: data, onLogout: { model.sheet = .logout })
         case .stations: EmptyView()
         }
     }
@@ -376,7 +467,7 @@ struct BookingBanners: View {
     }
 
     private func unlock(_ booking: Booking) -> some View {
-        OnRedPill(icon: .lockOpen, title: "Déverrouiller") { model.unlocking = booking }
+        OnRedPill(icon: .lockOpen, title: "Déverrouiller") { model.sheet = .unlock(booking) }
     }
 }
 

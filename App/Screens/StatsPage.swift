@@ -2,30 +2,13 @@ import Charts
 import SwiftUI
 import VelovCore
 
-enum TripsRoute: Hashable { case stats }
-
-struct TripsStack: View {
-    @Environment(AppModel.self) private var model
-    @State private var path = NavigationPath()
-
-    var body: some View {
-        NavigationStack(path: $path) {
-            PageScaffold(page: .trips)
-                .toolbar(.hidden, for: .navigationBar)
-                .navigationDestination(for: TripsRoute.self) { _ in StatsPage().heldWhile(model.operations.sending) }
-        }
-        .task { if let snapshot = model.snapshot, snapshot.showsStats, path.isEmpty { path.append(TripsRoute.stats) } }
-        .onLeaving(.trips) { path = NavigationPath() }
-    }
-}
-
 extension SnapshotScreen {
     var showsStats: Bool { [.stats, .statsCharts, .statsTipFirst, .statsTipMiddle, .statsTipLast, .statsHeatmap, .statsHeatTip, .statsDonut, .statsRecords, .statsBike, .statsEnd].contains(self) }
 }
 
 struct StatsLink: View {
     var body: some View {
-        NavigationLink(value: TripsRoute.stats) {
+        NavigationLink(value: Route.stats) {
             HStack(spacing: 10) {
                 Icon(.chart, .light, size: 18)
                 Text("Statistiques").typo(.body(.lead))
@@ -98,53 +81,35 @@ struct StatsPage: View {
     private static let unavailable = "Vos statistiques sont momentanément indisponibles."
 
     @Environment(AppModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.tabBarBand) private var tabBarBand
     @State private var state: Resource<Stats> = .loading
-    @State private var position = ScrollPosition()
 
     private var account: String { model.dashboard?.profile.email ?? "" }
 
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 4) {
-                        IconButton(icon: .arrowLeft, color: Palette.ink, label: "Retour aux trajets") { dismiss() }.bleed(.leading)
-                        Text("Statistiques").typo(.title(.page)).foregroundStyle(Palette.ink).lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, Layout.margin).padding(.top, Layout.headerTop).padding(.bottom, Layout.headerBottom)
-                    VStack(alignment: .leading, spacing: 0) {
-                        BookingBanners()
-                        switch state {
-                        case .loading: skeleton
-                        case .failed(let failure):
-                            StateView(failure) { Task { await load() } }
-                        case .ready(let stats): StatsView(stats: stats)
-                        }
-                    }
-                    .padding(.horizontal, Layout.margin).padding(.bottom, Space.state)
+            PushedPage("Statistiques", refresh: { await load(refresh: true) }) {
+                BookingBanners()
+                switch state {
+                case .loading: skeleton
+                case .failed(let failure):
+                    StateView(failure) { Task { await load() } }
+                case .ready(let stats): StatsView(stats: stats)
                 }
+                Color.clear.frame(height: 0).id("stats-end")
             }
-            .scrollPosition($position)
-            .contentMargins(.bottom, tabBarBand, for: .scrollContent)
-            .scrollIndicators(.hidden)
-            .background(Palette.white)
-            .toolbar(.hidden, for: .navigationBar)
             .task {
                 if let cached = model.statsCache.get(account) { state = .ready(cached) } else { await load() }
                 let anchors: [SnapshotScreen: String] = [.statsCharts: "panel-charts", .statsTipFirst: "panel-charts", .statsTipMiddle: "panel-charts", .statsTipLast: "panel-charts", .statsHeatTip: "panel-heatmap", .statsDonut: "panel-donut", .statsHeatmap: "panel-heatmap", .statsRecords: "panel-records", .statsBike: "panel-records"]
                 guard let snapshot = model.snapshot, snapshot != .stats, snapshot.showsStats else { return }
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
-                if let anchor = anchors[snapshot] { proxy.scrollTo(anchor, anchor: .top) } else { position.scrollTo(edge: .bottom) }
+                proxy.scrollTo(anchors[snapshot] ?? "stats-end", anchor: anchors[snapshot] == nil ? .bottom : .top)
             }
         }
     }
 
     private var skeleton: some View {
         VStack(alignment: .leading, spacing: gap) {
-            SelectField(label: "Période", hideLabel: true, value: .constant(StatsPeriod.months12), options: StatsView.periods).skeleton(21).padding(.bottom, 6)
+            SelectField(label: "Période", hideLabel: true, value: .constant(StatsPeriod.months12), options: StatsView.periods).skeleton(Layout.control / 2).padding(.bottom, 6)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: gap), GridItem(.flexible(), spacing: gap)], spacing: gap) {
                 ForEach(headlines, id: \.label) { card in
                     StatCard(icon: card.icon, label: card.label, value: card.value, unit: card.unit, detail: "—").skeleton()
@@ -174,8 +139,8 @@ struct StatsPage: View {
         .accessibilityLabel("Chargement des statistiques")
     }
 
-    private func load() async {
-        state = .loading
+    private func load(refresh: Bool = false) async {
+        if refresh, state.value != nil { model.statsChanged() } else { state = .loading }
         switch await model.loadStats() {
         case .success(let stats)?: state = .ready(stats)
         case .failure(let error)?: state = .failed(LoadFailure(error, Self.unavailable))
@@ -554,23 +519,13 @@ private struct BikeTypes: View {
 private struct Records: View {
     let records: StatsRecords?
     @Environment(AppModel.self) private var model
-    @State private var bikeOpen = false
 
     var body: some View {
         grid
-            .sheet(isPresented: $bikeOpen) {
-                if let bike = records?.bike {
-                    BikeDetail(route: BikeRoute(number: bike, station: nil))
-                        .presentationDetents([.large])
-                        .interactiveDismissDisabled(model.operations.sending)
-                        .presentationBackground(Palette.white)
-                        .sheetCorners()
-                }
-            }
             .task(id: records?.bike) {
-                guard model.snapshot == .statsBike, records?.bike != nil else { return }
+                guard model.snapshot == .statsBike, let bike = records?.bike else { return }
                 try? await Task.sleep(nanoseconds: 2_500_000_000)
-                bikeOpen = true
+                model.push(.bike(BikeRoute(number: bike, station: nil)), on: .trips)
             }
     }
 
@@ -584,8 +539,9 @@ private struct Records: View {
                 tile("Série", first: true) { value(records.map { $0.streakDays.map { plural($0, "jour") } }) }
                 tile("Vélo favori", first: false) {
                     if let bike = records?.bike {
-                        Button { bikeOpen = true } label: {
-                            Text(verbatim: "N° \(bike)").typo(.title(.section)).foregroundStyle(Palette.ink).underline(color: Palette.inkLine)
+                        NavigationLink(value: Route.bike(BikeRoute(number: bike, station: nil))) {
+                            Text(verbatim: "N°\u{a0}\(bike)").typo(.title(.section)).foregroundStyle(Palette.ink).underline(color: Palette.inkLine)
+                                .frame(minHeight: Layout.hit, alignment: .leading).contentShape(Rectangle())
                         }
                         .buttonStyle(.press)
                         .accessibilityLabel("Voir la fiche du vélo \(bike)")

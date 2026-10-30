@@ -77,14 +77,12 @@ struct PointsSkeleton: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.bottom, Space.cards)
             SettingRow(label: "Utilisation automatique", value: "Activée") { ConfirmToggle(label: "Utilisation automatique", on: true) {} }.skeleton()
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: Space.label) {
-                    Text("Inviter un ami").typo(.caps(.label))
-                    Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(.small))
-                }
-                Spacer(minLength: 0)
-                PillButton(variant: .secondary, action: {}) { ButtonIcon(.ticket); Text("Obtenir un code") }
+            VStack(alignment: .leading, spacing: Space.label) {
+                Text("Inviter un ami").typo(.caps(.label))
+                Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(.small))
+                PillButton(variant: .secondary, action: {}) { ButtonIcon(.ticket); Text("Obtenir un code") }.padding(.top, Space.label)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .card(.mist)
             .skeleton()
             .padding(.top, Space.cards)
@@ -98,7 +96,7 @@ struct PointsSkeleton: View {
                     MovementRow(label: ghostMovements[index % ghostMovements.count], date: "12 octobre 2026", amount: "+5", credit: false, ghost: true)
                     Hairline()
                 }
-                PillButton("Voir plus", variant: .secondary) {}.skeleton(21).frame(maxWidth: .infinity).padding(.vertical, 24)
+                PillButton("Voir plus", variant: .secondary) {}.skeleton(Layout.control / 2).frame(maxWidth: .infinity).padding(.vertical, 24)
             }
         }
         .accessibilityLabel("Chargement des points")
@@ -170,6 +168,12 @@ struct AutoSpendSetting: View {
             if let value {
                 ConfirmToggle(label: "Utilisation automatique des points", on: value) { next = !value; asking = true }
             }
+        }
+        .task {
+            guard model.snapshot == .toggleDialog, let value else { return }
+            try? await Task.sleep(for: .seconds(1))
+            next = !value
+            asking = true
         }
         .sheet(isPresented: $asking) {
             let next = model.operations.get(OperationKey.autoSpend).flatMap { Intent.wanted($0.meta) } ?? self.next

@@ -11,10 +11,10 @@ struct AccountPage: View {
             profile
             subscription
             AccountSection(title: "Service client") {
-                ContactSupport(trips: data.trips).padding(.top, 16)
+                ContactSupport().padding(.top, Space.titleToContent)
             }
             AccountSection(title: "Journal technique") {
-                JournalLink().padding(.top, 16)
+                JournalLink().padding(.top, Space.titleToContent)
             }
             LogoutButton(action: onLogout).padding(.top, Space.section - Space.cards)
         }
@@ -34,7 +34,7 @@ struct AccountPage: View {
                 }
                 .padding(.top, 26)
             }
-            ProfileCoordinates(profile: person).padding(.top, 14)
+            ProfileCoordinates(profile: person).padding(.top, Space.label)
         }
     }
 
@@ -113,9 +113,9 @@ struct AccountSkeleton: View {
                 VStack(alignment: .leading, spacing: 0) {
                     DetailRow(label: "Adresse") { StackedValue(value: "1 rue de la République", small: "69002 Lyon · France") }
                     DetailRow("Téléphone", "06 00 00 00 00", last: true)
-                    PillButton("Modifier mes coordonnées", variant: .secondary) {}.padding(.top, 16)
+                    PillButton(variant: .secondary, action: {}) { ButtonIcon(.pencil); Text("Modifier mes coordonnées") }.padding(.top, Space.titleToContent)
                 }
-                .padding(.top, 14)
+                .padding(.top, Space.label)
             }
             AccountSection(title: "Abonnement", ghost: true) {
                 Text(verbatim: "Vélo’v Plus 1 an Jeunes – paiement comptant").typo(.title(.card)).padding(.top, 18)
@@ -140,10 +140,14 @@ struct AccountSkeleton: View {
                 ManageLink {}
             }
             AccountSection(title: "Service client", ghost: true) {
-                PillButton(variant: .secondary, action: {}) { ButtonIcon(.envelopeSimple); Text("Écrire au service client") }.padding(.top, 16)
+                PillButton(variant: .secondary, action: {}) { ButtonIcon(.envelopeSimple); Text("Écrire au service client") }.padding(.top, Space.titleToContent)
             }
             AccountSection(title: "Journal technique", ghost: true) {
-                PillButton("Ouvrir le journal", variant: .secondary) {}.padding(.top, 16)
+                VStack(alignment: .leading, spacing: Space.titleToContent) {
+                    Text("Les \(TechnicalJournal.capacity) dernières requêtes envoyées à Vélo’v, sans jeton ni donnée personnelle.").typo(.body(.base))
+                    PillButton(variant: .secondary, action: {}) { ButtonIcon(.file); Text("Ouvrir le journal") }
+                }
+                .padding(.top, Space.titleToContent)
             }
             LogoutButton {}.skeleton(Layout.largeControl / 2).padding(.top, Space.section - Space.cards)
         }

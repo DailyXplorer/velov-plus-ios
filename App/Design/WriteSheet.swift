@@ -113,6 +113,7 @@ enum SheetDetent { case fit, large }
 
 private struct FitSheet: ViewModifier {
     @State private var height: CGFloat = 260
+    @State private var bottomInset: CGFloat = 0
 
     func body(content: Content) -> some View {
         ScrollView {
@@ -121,7 +122,8 @@ private struct FitSheet: ViewModifier {
         .scrollBounceBehavior(.basedOnSize)
         .scrollIndicators(.hidden)
         .ignoresSafeArea(.container, edges: .bottom)
-        .presentationDetents([.height(height)])
+        .background { Color.clear.ignoresSafeArea(.keyboard).onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.bottom } action: { bottomInset = $0 } }
+        .presentationDetents([.height(max(height - bottomInset, 1))])
     }
 }
 

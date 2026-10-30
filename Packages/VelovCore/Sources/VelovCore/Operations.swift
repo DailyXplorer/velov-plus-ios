@@ -55,7 +55,6 @@ public enum OperationKey {
 @Observable
 public final class Operations {
     public static let storageKey = "velov:operations:v1"
-    public static let sendingLimit: TimeInterval = 2 * 60
 
     public struct Entry: Codable, Equatable, Sendable {
         public enum Status: String, Codable, Sendable { case sending, uncertain }
@@ -99,12 +98,10 @@ public final class Operations {
         }
     }
 
-    private func live(_ entry: Entry?) -> Entry? {
-        guard var entry else { return nil }
-        if entry.status == .sending && now().timeIntervalSince(entry.at) > Self.sendingLimit {
-            entry.status = .uncertain
-            entry.outcome = entry.outcome ?? noAnswer(Messages.lost)
-        }
+    private func live(_ key: String, _ entry: Entry?) -> Entry? {
+        guard var entry, entry.status == .sending, !running.contains(key) else { return entry }
+        entry.status = .uncertain
+        entry.outcome = entry.outcome ?? noAnswer(Messages.lost)
         return entry
     }
 
@@ -127,18 +124,14 @@ public final class Operations {
     public func get(_ key: String) -> Entry? {
         _ = version
         let all = saved()
-        let entry = live(all.map { $0[key] } ?? memory[key])
+        let entry = live(key, all.map { $0[key] } ?? memory[key])
         if running.contains(key) && entry?.status != .sending {
             return Entry(status: .sending, at: now(), outcome: nil, meta: [:])
         }
         return entry
     }
 
-    public func busy() -> Bool {
-        _ = version
-        if !running.isEmpty { return true }
-        return (saved() ?? memory).values.contains { live($0)?.status == .sending }
-    }
+    public func busy() -> Bool { sending }
 
     public var sending: Bool {
         _ = version

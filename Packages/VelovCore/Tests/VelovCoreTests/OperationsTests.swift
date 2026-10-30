@@ -49,22 +49,18 @@ final class OperationsTests: XCTestCase {
         XCTAssertEqual(Messages.busy, "Une autre action est en cours. Attendez sa réponse avant de recommencer.")
     }
 
-    func testAnAnswerLostWithTheAppTurnsUncertainAfterTwoMinutesAndNeverExpires() {
+    func testAnAnswerLostWithTheAppIsUncertainAtOnceAndNeverExpires() {
         let clock = Clock()
         let backing = InMemoryOperationBacking()
         let first = store(backing, clock)
         XCTAssertEqual(first.begin("invite:x", meta: ["cost": "100", "balance": "250"]), .started)
         let relaunched = store(backing, clock)
-        XCTAssertEqual(relaunched.get("invite:x")?.status, .sending)
-        XCTAssertTrue(relaunched.busy(), "a send left by the closed app still blocks for two minutes")
-        XCTAssertEqual(relaunched.begin("book:1"), .busy)
-        clock.now += 121
         let entry = relaunched.get("invite:x")
-        XCTAssertEqual(entry?.status, .uncertain)
+        XCTAssertEqual(entry?.status, .uncertain, "a send left by the closed app is uncertain at once")
         XCTAssertEqual(entry?.outcome, noAnswer(Messages.lost))
         XCTAssertEqual(entry?.outcome?.message, "L’app a été fermée avant la réponse. L’action a peut-être abouti.")
         XCTAssertEqual(entry?.meta, ["cost": "100", "balance": "250"])
-        XCTAssertFalse(relaunched.busy())
+        XCTAssertFalse(relaunched.busy(), "a send of the closed app blocks no other action")
         XCTAssertEqual(relaunched.begin("invite:x"), .busy, "an uncertain debit is never sent again blindly")
         clock.now += 3600
         XCTAssertEqual(relaunched.get("invite:x")?.status, .uncertain)
@@ -72,13 +68,13 @@ final class OperationsTests: XCTestCase {
         let other = Clock()
         let again = InMemoryOperationBacking()
         XCTAssertEqual(store(again, other).begin("unlock:1", meta: ["bike": "1"]), .started)
-        other.now += 121
         let later = store(again, other)
         XCTAssertEqual(later.get("unlock:1")?.status, .uncertain, "an unlock left by the closed app is not forgotten")
         XCTAssertEqual(later.get("unlock:1")?.meta, ["bike": "1"])
         XCTAssertEqual(later.begin("unlock:1"), .busy)
+        XCTAssertEqual(later.begin("book:2"), .started)
         other.now += 86_400
-        XCTAssertEqual(later.begin("unlock:1"), .busy)
+        XCTAssertEqual(later.get("unlock:1")?.status, .uncertain)
     }
 
     func testAnUncertainOutcomeNeverExpiresByTimeAndARefusalIsForgotten() {

@@ -107,7 +107,7 @@ struct SelectField<Value: Hashable>: View {
 struct FieldArrow: View {
     var turn: Double = 0
     var body: some View {
-        Icon(.arrowRight, .bold, size: 13).foregroundStyle(Palette.ink)
+        Icon(.caretRight, .bold, size: 13).foregroundStyle(Palette.ink)
             .rotationEffect(.degrees(turn))
             .frame(width: 28, height: 28).background(Circle().fill(Palette.mist))
     }

@@ -55,7 +55,6 @@ public enum Messages {
     public static let releaseFailed = "Le déverrouillage n’a pas abouti."
     public static let bookingFailed = "La réservation de votre vélo n’a pas fonctionné."
     public static let sessionRefused = "Votre session n’est plus valide. Reconnectez-vous."
-    public static let sessionToRenew = "Votre session a expiré. Reconnectez-vous."
     public static let sessionExpired = "Votre session a expiré. Reconnectez-vous."
     public static let loginRefused = "Vélo’v a refusé la connexion."
     public static let otherDevice = "Votre compte est déjà connecté sur un autre appareil. Déconnectez-le avant de réessayer."

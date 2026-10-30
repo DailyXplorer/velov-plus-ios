@@ -242,7 +242,7 @@ final class Review3Tests: XCTestCase {
         XCTAssertEqual(ratingOutcome(Outcome(ok: false, httpStatus: 400, code: "trips.exception.already.rated")).message, "Vélo’v a refusé cette note.")
         XCTAssertEqual(ratingOutcome(Outcome(ok: false, httpStatus: 502)).message, "Vélo’v n’a pas confirmé la note. Elle a peut-être été enregistrée.")
         XCTAssertEqual(ratingOutcome(Outcome(ok: false, httpStatus: 400)).message, "Vélo’v n’a pas confirmé la note. Elle a peut-être été enregistrée.")
-        let expired = Outcome(ok: false, httpStatus: 401, code: "local.expired", message: Messages.sessionToRenew)
+        let expired = Outcome(ok: false, httpStatus: 401, code: "local.expired", message: Messages.sessionExpired)
         XCTAssertEqual(ratingOutcome(expired), expired)
         XCTAssertEqual(ratingOutcome(Outcome(ok: true, httpStatus: 204)), Outcome(ok: true, httpStatus: 204))
     }

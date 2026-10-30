@@ -27,7 +27,7 @@ struct BikesSheet: View {
     private var subtitle: String? {
         switch bikes {
         case .loading: "Chargement des vélos…"
-        case .ready: assessed.map { "\($0.count) vélo\($0.count > 1 ? "s" : "") à la station" }
+        case .ready: assessed.flatMap { $0.isEmpty ? nil : "\($0.count) vélo\($0.count > 1 ? "s" : "") à la station" }
         case .failed: nil
         }
     }

@@ -50,6 +50,15 @@ final class TripEndTests: XCTestCase {
         XCTAssertNil(tripToGreet([finished("old", endedMinutesAgo: 181)], store: Store(), now: now))
     }
 
+    func testTheLaunchGreetingWaitsUntilTheTripsAndTheOngoingTripAreKnown() {
+        let latest = finished("late", endedMinutesAgo: 30)
+        XCTAssertEqual(greeting(trips: nil, ongoing: [], store: Store(), now: now), .undecided, "the history could not be read")
+        XCTAssertEqual(greeting(trips: [latest], ongoing: nil, store: Store(), now: now), .undecided, "the ongoing trip could not be read")
+        XCTAssertEqual(greeting(trips: [latest], ongoing: [], store: Store(), now: now), .trip(latest))
+        XCTAssertEqual(greeting(trips: [latest], ongoing: [finished("ride", endedMinutesAgo: 0)], store: Store(), now: now), .nothing)
+        XCTAssertEqual(greeting(trips: [], ongoing: [], store: Store(), now: now), .nothing)
+    }
+
     final class Harness {
         var clock: Date
         var answers: [Result<TripCheck, Error>] = []

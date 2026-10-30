@@ -334,8 +334,13 @@ final class AppModel {
         if foreground { rides.observed(ongoing, latest: data.trips.flatMap(latestFinished)) }
         if let trip = ongoing?.first { dockWatch.follow(trip.id) }
         guard !greeted else { return }
-        greeted = true
-        if data.ongoing?.isEmpty != false, let trips = data.trips, let recent = tripToGreet(trips, store: UserDefaults.standard) { showEnded(recent) }
+        switch greeting(trips: data.trips, ongoing: data.ongoing, store: UserDefaults.standard) {
+        case .undecided: break
+        case .nothing: greeted = true
+        case .trip(let recent):
+            greeted = true
+            showEnded(recent)
+        }
     }
 
     private func tripDocked(_ tripId: String, latest: Trip?) {

@@ -39,6 +39,17 @@ public func tripToGreet(_ trips: [Trip], store: TripEndStore, now: Date = Date()
     return latest
 }
 
+public enum Greeting: Equatable, Sendable {
+    case undecided, nothing
+    case trip(Trip)
+}
+
+public func greeting(trips: [Trip]?, ongoing: [Trip]?, store: TripEndStore, now: Date = Date()) -> Greeting {
+    guard let trips, let ongoing else { return .undecided }
+    guard ongoing.isEmpty, let recent = tripToGreet(trips, store: store, now: now) else { return .nothing }
+    return .trip(recent)
+}
+
 public struct TripCheck: Equatable, Sendable {
     public var ongoing: [Trip]?
     public var latest: Trip?

@@ -98,9 +98,9 @@ struct ViaSheet: View {
                 if choices.isEmpty {
                     Text("Aucune station pleine ne correspond à votre recherche.").typo(.body(.base)).foregroundStyle(Palette.inkSoft)
                 } else {
-                    SelectField(label: "Station pleine", value: $selected, options: [.init(value: nil, label: "Choisir une station")] + choices.map { item in
+                    SelectField(label: "Station pleine", value: $selected, options: choices.map { item in
                         .init(value: item.number, label: "\(item.name) · N°\u{a0}\(item.number)\(position.map { " · \(formatDistance(haversine($0, item.point)))" } ?? "")")
-                    }, layout: .stacked, autoOpen: model.snapshot == .viaChoices)
+                    }, layout: .stacked, autoOpen: model.snapshot == .viaChoices, placeholder: "Choisir une station")
                 }
             }
             PairedActions {

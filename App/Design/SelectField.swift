@@ -16,9 +16,10 @@ struct SelectField<Value: Hashable>: View {
     let options: [SelectOption<Value>]
     var layout = Placement.row
     var autoOpen = false
+    var placeholder: String?
     @State private var choosing = false
 
-    private var selected: SelectOption<Value>? { options.first { $0.value == value } ?? options.first }
+    private var selected: SelectOption<Value>? { options.first { $0.value == value } ?? (placeholder == nil ? options.first : nil) }
     private var inline: Bool { layout == .inline }
     private var inForm: Bool { !hideLabel || layout == .stacked }
 
@@ -45,7 +46,7 @@ struct SelectField<Value: Hashable>: View {
         if inForm {
             Button { choosing = true } label: { pill(chevron: 0) }
                 .buttonStyle(.press)
-                .accessibilityLabel("\(label), \(selected?.label ?? "")")
+                .accessibilityLabel("\(label), \(selected?.label ?? placeholder ?? "")")
                 .task {
                     guard autoOpen else { return }
                     try? await Task.sleep(for: .seconds(1))
@@ -92,7 +93,11 @@ struct SelectField<Value: Hashable>: View {
         } else {
             ZStack(alignment: .leading) {
                 ForEach(options) { Text($0.label).lineLimit(1).hidden() }
-                Text(selected?.label ?? "").foregroundStyle(Palette.ink).lineLimit(1)
+                if let selected {
+                    Text(selected.label).foregroundStyle(Palette.ink).lineLimit(1)
+                } else {
+                    Text(placeholder ?? "").foregroundStyle(Palette.inkSoft).lineLimit(1)
+                }
             }
             .typo(.body(.lead))
         }

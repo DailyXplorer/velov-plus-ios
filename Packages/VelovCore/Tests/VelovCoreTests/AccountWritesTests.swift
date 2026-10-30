@@ -43,6 +43,23 @@ final class AccountWritesTests: XCTestCase {
         }
     }
 
+    func testAHeldProfileChangeKeepsNoPersonalValueAndIsStillChecked() {
+        let before = Profile(firstName: "Ada", lastName: "Lovelace", email: "person@example.com", locked: false, complete: true, phoneNumber: "+33612345678",
+                             address: "1 rue de la République", addressComplement: nil, zipCode: "69002", city: "Lyon", country: "FR", favorites: [])
+        let intent = profileIntent(ProfileBody(city: "Villeurbanne", phoneNumber: "+33698765432"))
+        let stored = intent.map { "\($0.key)=\($0.value)" }.joined(separator: "&").lowercased()
+        for value in ["villeurbanne", "698765432"] { XCTAssertFalse(stored.contains(value), value) }
+        var after = before
+        after.city = "Villeurbanne"
+        after.phoneNumber = "+33698765432"
+        XCTAssertEqual(profileCheck(intent, after: after), .applied)
+        XCTAssertEqual(profileCheck(intent, after: before), .unchanged)
+        after.city = "VILLEURBANNE"
+        XCTAssertEqual(profileCheck(intent, after: after), .applied)
+        after.phoneNumber = "+33600000000"
+        XCTAssertEqual(profileCheck(intent, after: after), .unchanged)
+    }
+
     func testTheProfileBodyAcceptsOnlyTheDocumentedFieldsTrimmedAndAtLeastOneOfThem() {
         XCTAssertNil(ProfileBody(zipCode: "69008", city: " Lyon ").problem())
         XCTAssertEqual(ProfileBody(zipCode: "69008", city: " Lyon ").trimmedForSending.city, "Lyon")

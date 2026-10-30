@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 public enum Check: Equatable, Sendable { case applied, unchanged, unknown }
@@ -75,10 +76,14 @@ private func lowered(_ fields: [[String]?]) -> [[String]?] {
     fields.map { $0?.map { $0.lowercased(with: french) } }
 }
 
-private func fields(_ profile: Profile, _ mask: [[String]?]) -> [[String]?] {
+private func fields(_ profile: Profile, _ mask: [Bool]) -> [[String]?] {
     let all = [[profile.firstName], [profile.lastName], [profile.address ?? "", profile.addressComplement ?? ""], [profile.zipCode ?? ""],
                [profile.city ?? ""], [profile.country ?? ""], [profile.phoneNumber ?? ""]]
-    return lowered(zip(all, mask).map { $1 == nil ? nil : $0 })
+    return lowered(zip(all, mask).map { $1 ? $0 : nil })
+}
+
+private func digest(_ values: [[String]?]) -> String {
+    SHA256.hash(data: (try? JSONEncoder().encode(values)) ?? Data()).map { String(format: "%02x", $0) }.joined()
 }
 
 private func wanted(_ body: ProfileBody) -> [[String]?] {
@@ -92,13 +97,16 @@ private struct ProfileChange: Codable {
 }
 
 public func profileIntent(_ body: ProfileBody) -> [String: String] {
-    let change = ProfileChange(wanted: wanted(body))
-    return ["profile": String(decoding: (try? JSONEncoder().encode(change)) ?? Data(), as: UTF8.self)]
+    let values = wanted(body)
+    return ["fields": values.map { $0 == nil ? "0" : "1" }.joined(), "digest": digest(values)]
 }
 
 public func profileCheck(_ intent: [String: String], after: Profile) -> Check {
+    if let mask = intent["fields"], let expected = intent["digest"] {
+        return digest(fields(after, mask.map { $0 == "1" })) == expected ? .applied : .unchanged
+    }
     guard let raw = intent["profile"], let change = try? JSONDecoder().decode(ProfileChange.self, from: Data(raw.utf8)) else { return .unchanged }
-    return fields(after, change.wanted) == change.wanted ? .applied : .unchanged
+    return fields(after, change.wanted.map { $0 != nil }) == change.wanted ? .applied : .unchanged
 }
 
 public enum DebitCheck: Equatable, Sendable { case debited, notDebited, unknown }

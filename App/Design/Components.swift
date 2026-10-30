@@ -181,12 +181,12 @@ struct CardTag: View {
         HStack(spacing: metrics.gap) {
             Icon(icon, .bold, size: metrics.glyph).foregroundStyle(Palette.white)
                 .frame(width: metrics.icon, height: metrics.icon).background(Circle().fill(Palette.red))
-            Text(text).typo(.caps(metrics.font)).foregroundStyle(Palette.ink).lineLimit(1)
+            Text(text).typo(.caps(metrics.font)).foregroundStyle(Palette.ink).lineLimit(size == .stat ? 2 : 1)
         }
         .padding(.leading, metrics.leading).padding(.trailing, metrics.trailing).padding(.vertical, metrics.vertical)
         .background(Capsule().fill(Palette.white))
         .overlay(Capsule().strokeBorder(size == .pick ? Palette.inkLine : .clear, lineWidth: 1))
-        .fixedSize()
+        .fixedSize(horizontal: size != .stat, vertical: true)
     }
 }
 

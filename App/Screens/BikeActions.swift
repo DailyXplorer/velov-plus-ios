@@ -75,7 +75,7 @@ struct BikeActionSheet: View {
     private var booked: Bool { model.bookings.contains { $0.bikeNumber == place.bikeNumber } }
 
     var body: some View {
-        let far = action == .unlock && (distance ?? 0) > Rules.releaseDistance
+        let far = action == .unlock && failure == nil && (distance ?? 0) > Rules.releaseDistance
         ConfirmScaffold(title: action == .book ? "Réserver le vélo \(place.bikeNumber)\u{a0}?" : "Déverrouiller le vélo \(place.bikeNumber)\u{a0}?",
                         closeDisabled: busy, close: { dismiss() }) {
             if action == .book {

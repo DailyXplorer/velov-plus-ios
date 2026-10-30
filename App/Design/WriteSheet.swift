@@ -20,7 +20,7 @@ struct UncertainNote: View {
     var unlock = false
     var body: some View {
         Text(unlock ? Messages.uncertainUnlock : Messages.uncertain)
-            .typo(.body(.base, medium: true)).foregroundStyle(Palette.redDeep).fixedSize(horizontal: false, vertical: true)
+            .typo(.body(.base)).foregroundStyle(Palette.formError).fixedSize(horizontal: false, vertical: true)
     }
 }
 

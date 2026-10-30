@@ -90,15 +90,22 @@ struct SheetHeading<Accessory: View>: View {
     @ViewBuilder var accessory: () -> Accessory
 
     var body: some View {
-        HStack(alignment: .center, spacing: 0) {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
             if let back {
-                IconButton(icon: .arrowLeft, color: Palette.ink, label: "Retour", action: back).bleed(.leading).disabled(closeDisabled)
+                onFirstLine(IconButton(icon: .arrowLeft, color: Palette.ink, label: "Retour", action: back)).bleed(.leading).disabled(closeDisabled)
             }
             Text(frenchSpaced(title)).typo(.title(.section)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: Space.label)
             accessory()
-            IconButton(icon: .x, label: "Fermer", action: close).bleed(.trailing).disabled(closeDisabled)
+            onFirstLine(IconButton(icon: .x, label: "Fermer", action: close)).bleed(.trailing).disabled(closeDisabled)
+        }
+    }
+
+    private func onFirstLine(_ button: some View) -> some View {
+        ZStack {
+            Text(verbatim: "A").typo(.title(.section)).hidden().accessibilityHidden(true)
+            button
         }
     }
 }

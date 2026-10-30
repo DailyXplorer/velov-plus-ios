@@ -38,8 +38,8 @@ struct StationsPage: View {
                     }
                     .padding(.bottom, 12)
                 }
-                if case .failed(let message) = model.stations {
-                    ErrorNotice(message: message, pending: model.stationsPending) { Task { await model.loadStations() } }
+                if case .failed(let failure) = model.stations {
+                    ErrorNotice(failure: failure, pending: model.stationsPending) { Task { await model.loadStations() } }
                         .padding(.bottom, 12)
                 }
             }
@@ -155,7 +155,7 @@ struct StationsPage: View {
                 }
                 .buttonStyle(.row(bleed: 0))
             }
-            if shown.isEmpty { EmptyState("Aucune station trouvée.") }
+            if shown.isEmpty { Text("Aucune station trouvée.").typo(.body(.small)).foregroundStyle(Palette.inkSoft).frame(maxWidth: .infinity, alignment: .leading).padding(Space.row) }
         }
         .padding(6)
         .frame(maxWidth: 340)

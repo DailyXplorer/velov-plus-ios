@@ -18,9 +18,10 @@ public struct VelovError: Error, Equatable, Sendable, LocalizedError {
     public let code: Code
     public let message: String
     public let revoked: Bool
+    public let status: Int?
 
-    public init(_ code: Code, _ message: String, revoked: Bool = false) {
-        self.code = code; self.message = message; self.revoked = revoked
+    public init(_ code: Code, _ message: String, revoked: Bool = false, status: Int? = nil) {
+        self.code = code; self.message = message; self.revoked = revoked; self.status = status
     }
 
     public static let sessionRevoked = VelovError(.expired, Messages.sessionExpired, revoked: true)

@@ -288,12 +288,8 @@ struct PageScaffold: View {
                     case .ready(let data):
                         DataNotice(warnings: data.warnings)
                         content(data)
-                    case .failed(let message):
-                        VStack(spacing: 24) {
-                            Text(message).typo(.body(.base)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center)
-                            PillButton("Réessayer", variant: .secondary, pending: model.refreshing) { Task { await model.loadDashboard() } }
-                        }
-                        .frame(maxWidth: .infinity).padding(.vertical, 100).padding(.horizontal, 20)
+                    case .failed(let failure):
+                        StateView(failure, pending: model.refreshing) { Task { await model.loadDashboard() } }
                     default:
                         PageSkeleton(page: page)
                     }
@@ -390,28 +386,19 @@ struct LogoutSheet: View {
     @State private var pending = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Se déconnecter ?").typo(.title(.section)).foregroundStyle(Palette.ink)
-                Spacer()
-                IconButton(icon: .x, label: "Fermer") { dismiss() }.bleed(.trailing)
-            }
-            PairedActions {
-                PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(pending)
-                PillButton("Se déconnecter", pending: pending, fullWidth: true) {
-                    pending = true
-                    Task {
-                        await model.logout()
-                        dismiss()
-                    }
+        ConfirmScaffold(title: "Se déconnecter\u{a0}?", closeDisabled: pending, close: { dismiss() }) {
+            EmptyView()
+        } extra: {
+            EmptyView()
+        } actions: {
+            PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(pending)
+            PillButton(variant: .destructive, pending: pending, fullWidth: true, action: {
+                pending = true
+                Task {
+                    await model.logout()
+                    dismiss()
                 }
-            }
-            .padding(.top, 30)
+            }) { Text("Se déconnecter") }
         }
-        .padding(.horizontal, 22).padding(.top, 24).padding(.bottom, 24)
-        .presentationDetents([.height(190)])
-        .presentationBackground(Palette.white)
-        .sheetCorners()
-        .interactiveDismissDisabled(pending)
     }
 }

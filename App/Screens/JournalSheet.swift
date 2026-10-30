@@ -17,13 +17,13 @@ struct JournalLink: View {
 struct JournalSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var entries = TechnicalJournal.shared.entries
-    @State private var sharing = false
+    @State private var clearing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SheetHeading(title: "Journal technique") { dismiss() }
             if entries.isEmpty {
-                Text("Aucune requête enregistrée.").typo(.body(.base)).foregroundStyle(Palette.inkSoft).padding(.top, 14)
+                StateView("Aucune requête enregistrée.")
                 Spacer(minLength: 0)
             } else {
                 ScrollView {
@@ -35,23 +35,32 @@ struct JournalSheet: View {
                 .padding(.top, 10)
             }
             PairedActions {
-                PillButton("Effacer", variant: .ghost, fullWidth: true) {
+                PillButton("Effacer", variant: .ghost, fullWidth: true) { clearing = true }
+                    .disabled(entries.isEmpty)
+                ShareLink(item: TechnicalJournal.shared.export()) {
+                    HStack(spacing: 10) { ButtonIcon(.share); Text("Partager") }
+                        .typo(.caps(.button)).foregroundStyle(entries.isEmpty ? Palette.inkSoft : Palette.white)
+                        .frame(maxWidth: .infinity, minHeight: Layout.control)
+                        .background(Capsule().fill(entries.isEmpty ? Palette.mist : Palette.red))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.press)
+                .disabled(entries.isEmpty)
+            }
+            .padding(.top, Space.actions)
+            .confirmationDialog("Effacer le journal\u{a0}?", isPresented: $clearing, titleVisibility: .visible) {
+                Button("Effacer", role: .destructive) {
                     TechnicalJournal.shared.clear()
                     entries = []
                 }
-                .disabled(entries.isEmpty)
-                PillButton("Partager", fullWidth: true) { sharing = true }.disabled(entries.isEmpty)
+                Button("Annuler", role: .cancel) {}
             }
-            .padding(.top, 16)
         }
         .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
         .presentationDetents([.large])
         .presentationBackground(Palette.white)
         .presentationDragIndicator(.hidden)
         .sheetCorners()
-        .sheet(isPresented: $sharing) {
-            ShareSheet(items: [TechnicalJournal.shared.export()]).presentationDetents([.medium, .large]).sheetCorners()
-        }
     }
 }
 

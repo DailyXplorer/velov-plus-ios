@@ -9,6 +9,8 @@ let countries: [SelectOption<String>] = [
 
 func countryName(_ code: String?) -> String? { countries.first { $0.value == code }?.label ?? code }
 
+enum ProfileField: Hashable { case firstName, lastName, address, complement, zipCode, city, phone }
+
 struct ProfileReview: Identifiable {
     let body: ProfileBody
     let id = UUID()
@@ -20,6 +22,7 @@ struct ProfileCoordinates: View {
     @State private var draft: ProfileDraft?
     @State private var error: String?
     @State private var review: ProfileReview?
+    @FocusState private var focus: ProfileField?
 
     var body: some View {
         Group {
@@ -58,25 +61,26 @@ struct ProfileCoordinates: View {
             Binding<String>(get: { draft?[keyPath: key] ?? "" }, set: { draft?[keyPath: key] = $0 })
         }
         let country = draft?.country ?? "FR"
-        return VStack(alignment: .leading, spacing: 14) {
-            FormField(label: "Prénom", text: binding(\.firstName), maxLength: Rules.nameMax, content: .givenName)
-            FormField(label: "Nom", text: binding(\.lastName), maxLength: Rules.nameMax, content: .familyName)
-            FormField(label: "Adresse", text: binding(\.address), maxLength: Rules.addressMax, content: .streetAddressLine1)
-            FormField(label: "Complément", text: binding(\.complement), maxLength: Rules.addressMax, content: .streetAddressLine2)
-            HStack(alignment: .top, spacing: 10) {
-                FormField(label: "Code postal", text: binding(\.zipCode), maxLength: 10, keyboard: .numbersAndPunctuation, content: .postalCode).frame(width: 110)
-                FormField(label: "Ville", text: binding(\.city), maxLength: 60, content: .addressCity)
+        return VStack(alignment: .leading, spacing: Space.field) {
+            FormField(label: "Prénom", text: binding(\.firstName), maxLength: Rules.nameMax, content: .givenName, focus: $focus, field: .firstName, next: .lastName)
+            FormField(label: "Nom", text: binding(\.lastName), maxLength: Rules.nameMax, content: .familyName, focus: $focus, field: .lastName, next: .address)
+            FormField(label: "Adresse", text: binding(\.address), maxLength: Rules.addressMax, content: .streetAddressLine1, focus: $focus, field: .address, next: .complement)
+            FormField(label: "Complément", text: binding(\.complement), maxLength: Rules.addressMax, content: .streetAddressLine2, focus: $focus, field: .complement, next: .zipCode)
+            HStack(alignment: .top, spacing: Space.cards) {
+                FormField(label: "Code postal", text: binding(\.zipCode), maxLength: 10, keyboard: .numbersAndPunctuation, content: .postalCode, focus: $focus, field: .zipCode, next: .city).frame(width: 110)
+                FormField(label: "Ville", text: binding(\.city), maxLength: 60, content: .addressCity, focus: $focus, field: .city, next: .phone)
             }
             SelectField(label: "Pays", value: binding(\.country),
                         options: countries.contains { $0.value == country } ? countries : countries + [.init(value: country, label: country)],
                         layout: .stacked)
                 .zIndex(2)
-            FormField(label: "Téléphone", text: binding(\.phone), maxLength: 20, keyboard: .phonePad, content: .telephoneNumber)
+            FormField(label: "Téléphone", text: binding(\.phone), maxLength: 20, keyboard: .phonePad, content: .telephoneNumber, focus: $focus, field: .phone)
             if let error { FormError(error) }
-            FormActions {
+            PairedActions {
                 PillButton("Annuler", variant: .ghost, fullWidth: true) { draft = nil }
                 PillButton("Enregistrer", fullWidth: true) { submit() }
             }
+            .padding(.top, Space.actions - Space.field)
         }
         .padding(.top, 16)
     }
@@ -89,11 +93,6 @@ struct ProfileCoordinates: View {
         case .success(let body)?: error = nil; review = ProfileReview(body: body)
         }
     }
-}
-
-struct FormActions<Content: View>: View {
-    @ViewBuilder let content: () -> Content
-    var body: some View { VStack(spacing: 8) { content() } }
 }
 
 struct AutoRenewalSetting: View {
@@ -260,14 +259,14 @@ struct ContactSupport: View {
     }
 
     private var form: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Space.field) {
             SelectField(label: "Objet", value: $subject, options: subjects, layout: .stacked).zIndex(3)
             if !recent.isEmpty {
                 SelectField(label: "Trajet (facultatif)", value: $tripId,
                             options: [.init(value: "none", label: "Aucun")] + recent.map { .init(value: $0.id, label: "\(formatDate($0.startedAt)) · \($0.startStation ?? "Trajet")") },
                             layout: .stacked).zIndex(2)
             }
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Space.label) {
                 Text("Message").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                 TextEditor(text: $message).typo(.body(.input)).frame(minHeight: 110).scrollContentBackground(.hidden)
                     .padding(.horizontal, 13).padding(.vertical, 4)
@@ -281,10 +280,11 @@ struct ContactSupport: View {
                     }
             }
             if let error { FormError(error) }
-            FormActions {
+            PairedActions {
                 PillButton("Annuler", variant: .ghost, fullWidth: true) { open = false }
                 PillButton("Envoyer", fullWidth: true) { review() }
             }
+            .padding(.top, Space.actions - Space.field)
         }
     }
 

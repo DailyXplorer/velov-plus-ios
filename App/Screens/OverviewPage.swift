@@ -15,7 +15,7 @@ struct OverviewPage: View {
             summary
             section("Stations", padding: Space.section) { mapCard }
             section("Derniers trajets", padding: Space.section, link: .trips) {
-                if let trips = data.trips { TripsList(trips: Array(trips.prefix(4))) } else { EmptyState("\(Messages.missing).") }
+                if let trips = data.trips { TripsList(trips: Array(trips.prefix(4))) } else { StateView("\(Messages.missing).", pending: model.refreshing) { Task { await model.manualRefresh() } } }
             }
         }
     }
@@ -47,12 +47,11 @@ struct OverviewPage: View {
     private var mapCard: some View {
         ZStack {
             StationMapView(stations: model.stations.value?.stations ?? [], camera: $camera, interactive: false)
-            if case .failed(let message) = model.stations {
+            if case .failed(let failure) = model.stations {
                 VStack {
-                    ErrorNotice(message: message, pending: model.stationsPending) { Task { await model.loadStations() } }
-                        .padding(.horizontal, 14).padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Palette.white))
-                        .padding(16)
+                    ErrorNotice(failure: failure, pending: model.stationsPending) { Task { await model.loadStations() } }
+                        .card(.ringed, compact: true)
+                        .padding(Space.cardCompact)
                     Spacer()
                 }
             } else {

@@ -53,13 +53,8 @@ struct RateBike: View {
                 .typo(.body(.lead)).foregroundStyle(stars == nil ? Palette.inkSoft : Palette.ink)
                 .frame(minHeight: 22).padding(.top, 2)
             if let failure {
-                VStack(alignment: .leading, spacing: 4) {
-                    FormError(failure.message ?? Messages.ratingUnconfirmed)
-                    RawStatus(line: ratingLine(failure))
-                    if uncertain != nil { UncertainNote().padding(.top, 4) }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 8)
+                FailureBlock(message: failure.message ?? Messages.ratingUnconfirmed, raw: ratingLine(failure), uncertain: uncertain != nil)
+                    .padding(.top, Space.label)
             }
             if let notice { FormError(notice).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8) }
             VStack(spacing: 2) {
@@ -171,9 +166,8 @@ struct TripEndedSheet: View {
                 PillButton("Fermer", variant: .secondary, fullWidth: true) { dismiss() }.padding(.top, 22)
             }
         }
-        .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 16)
-        .fitSheet()
-        .interactiveDismissDisabled(rating)
+        .padding(Layout.dialog)
+        .velovSheet(.fit, closeDisabled: rating)
         .onAppear { if rateable == nil { rateable = isRateable } }
         .onDisappear { model.closeEnded(trip) }
     }

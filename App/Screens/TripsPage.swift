@@ -25,7 +25,8 @@ struct TripsPage: View {
                 }
                 .zIndex(1)
                 .onChange(of: filter) { limit = 10 }
-                TripsList(trips: Array(trips.prefix(limit)), openFirst: model.snapshot == .tripSheet || model.snapshot == .rateCard)
+                TripsList(trips: Array(trips.prefix(limit)), openFirst: model.snapshot == .tripSheet || model.snapshot == .rateCard,
+                          emptyText: filter == .all ? "Aucun trajet." : "Aucun trajet pour ce type de vélo.")
                 if trips.count > limit {
                     PillButton("Voir plus", variant: .secondary) { limit += 10 }.frame(maxWidth: .infinity).padding(.vertical, 24)
                 }
@@ -33,7 +34,7 @@ struct TripsPage: View {
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 StatsLink()
-                EmptyState("\(Messages.missing).")
+                StateView("\(Messages.missing).", pending: model.refreshing) { Task { await model.manualRefresh() } }
             }
         }
     }
@@ -86,6 +87,7 @@ struct GhostTrips: View {
 struct TripsList: View {
     let trips: [Trip]
     var openFirst = false
+    var emptyText = "Aucun trajet."
     @State private var selected: Trip?
 
     var body: some View {
@@ -96,7 +98,7 @@ struct TripsList: View {
                     .accessibilityLabel("Détails du trajet du \(formatDate(trip.startedAt))")
                 if index < trips.count - 1 { Hairline() }
             }
-            if trips.isEmpty { EmptyState("Aucun trajet.") }
+            if trips.isEmpty { StateView(emptyText) }
         }
         .sheet(item: $selected) { trip in TripSheet(trip: trip) }
         .task { if openFirst, selected == nil { selected = trips.first } }

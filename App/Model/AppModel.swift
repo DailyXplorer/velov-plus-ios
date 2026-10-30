@@ -32,7 +32,7 @@ enum Page: String, CaseIterable, Identifiable {
 enum Resource<T> {
     case loading
     case ready(T)
-    case failed(String)
+    case failed(LoadFailure)
 
     var value: T? {
         if case .ready(let value) = self { return value }
@@ -59,7 +59,7 @@ final class AppModel {
         case guest(String?)
         case loading
         case ready(Dashboard)
-        case failed(String)
+        case failed(LoadFailure)
     }
 
     let service: VelovService
@@ -168,7 +168,7 @@ final class AppModel {
             dockWatch.stop()
             phase = .guest(error.revoked ? error.message : "Votre session a expiré. Reconnectez-vous.")
         case .failure(let error):
-            phase = .failed(failureMessage(error, "Votre compte est momentanément indisponible."))
+            phase = .failed(LoadFailure(error, "Votre compte est momentanément indisponible."))
         }
     }
 
@@ -177,7 +177,7 @@ final class AppModel {
         stationsPending = true
         defer { stationsPending = false }
         do { stations = .ready(try await service.stations()) }
-        catch { stations = .failed(failureMessage(error, "Les stations sont momentanément indisponibles.")) }
+        catch { stations = .failed(LoadFailure(error, Messages.stationsUnavailable)) }
     }
 
     func loadBookings(force: Bool = false) async {

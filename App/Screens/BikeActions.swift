@@ -71,49 +71,36 @@ struct BikeActionSheet: View {
 
     var body: some View {
         let far = action == .unlock && (distance ?? 0) > Rules.releaseDistance
-        VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: "Vélo \(place.bikeNumber)", closeDisabled: sending) { dismiss() }
-            Text(action == .book ? "Réserver ce vélo\u{a0}?" : "Déverrouiller ce vélo\u{a0}?").typo(.title(.card)).foregroundStyle(Palette.ink).padding(.top, 10)
-            Group {
-                if action == .book {
-                    Text("\(Rules.bookingPoints) points pour garder ce vélo \(Rules.bookingMinutes) minutes.").foregroundStyle(Palette.inkSoft)
-                } else {
-                    Text("Vous aurez ensuite 60 secondes pour appuyer sur le bouton de la borne \(place.standNumber) et retirer le vélo.").foregroundStyle(Palette.ink)
-                }
+        ConfirmScaffold(title: action == .book ? "Réserver le vélo \(place.bikeNumber)\u{a0}?" : "Déverrouiller le vélo \(place.bikeNumber)\u{a0}?",
+                        closeDisabled: sending, close: { dismiss() }) {
+            if action == .book {
+                Text("\(Rules.bookingPoints) points pour garder ce vélo \(Rules.bookingMinutes) minutes.")
+            } else {
+                Text("Vous aurez ensuite 60 secondes pour appuyer sur le bouton de la borne \(place.standNumber) et retirer le vélo.")
             }
-            .typo(.body(.base)).fixedSize(horizontal: false, vertical: true).padding(.top, 10)
+        } extra: {
             if far {
-                HStack(alignment: .top, spacing: 8) {
+                HStack(alignment: .top, spacing: Space.label) {
                     Icon(.warning, .bold, size: 16).padding(.top, 1)
                     Text("Vous semblez être à plus de \(Int(Rules.releaseDistance)) m de la station. Si quelqu’un d’autre prend le vélo, le trajet vous sera facturé.")
                         .typo(.body(.small)).fixedSize(horizontal: false, vertical: true)
                 }
                 .foregroundStyle(Palette.formError)
-                .padding(.top, 12)
             }
-            if let notice { FormError(notice).padding(.top, 14) }
+            if let notice { FormError(notice) }
             if let failure {
-                VStack(alignment: .leading, spacing: 6) {
-                    FormError(failure.message ?? (action == .book ? "Réservation impossible." : "Déverrouillage impossible."))
-                    RawStatus(outcome: failure, withState: true)
-                    if uncertain { UncertainNote(unlock: action == .unlock).padding(.top, 4) }
-                }
-                .padding(.top, 14)
+                FailureBlock(message: failure.message ?? (action == .book ? "Réservation impossible." : "Déverrouillage impossible."),
+                             raw: rawLine(failure, withState: true), uncertain: uncertain, unlock: action == .unlock)
             }
-            PairedActions {
-                if uncertain {
-                    PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }
-                    PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify(action) }
-                } else {
-                    PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(sending)
-                    PillButton("Confirmer", pending: sending, fullWidth: true) { send() }
-                }
+        } actions: {
+            if uncertain {
+                PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }
+                PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify(action) }
+            } else {
+                PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(sending)
+                PillButton("Confirmer", pending: sending, fullWidth: true) { send() }
             }
-            .padding(.top, 22)
         }
-        .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
-        .fitSheet()
-        .interactiveDismissDisabled(sending)
         .onChange(of: booked, initial: true) { _, now in
             if now, held?.action == .book, held?.entry.status == .uncertain {
                 model.operations.clear(key(.book))

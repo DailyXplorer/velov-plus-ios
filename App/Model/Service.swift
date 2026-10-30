@@ -86,7 +86,17 @@ func attempt(_ run: () async throws -> Outcome) async -> Outcome {
     }
 }
 
-func failureMessage(_ error: Error, _ fallback: String) -> String {
-    if let error = error as? VelovError { return error.message }
-    return "\(fallback)\n\(networkLine(error))"
+struct LoadFailure: Equatable {
+    let message: String
+    let raw: String
+
+    init(_ error: Error, _ fallback: String) {
+        message = (error as? VelovError)?.message ?? fallback
+        raw = failureLine(error)
+    }
+
+    init(message: String, raw: String = "") {
+        self.message = message
+        self.raw = raw
+    }
 }

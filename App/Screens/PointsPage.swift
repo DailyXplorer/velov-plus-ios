@@ -37,7 +37,7 @@ struct PointsPage: View {
                                 amount: "\(movement.amount > 0 ? "+" : "")\(formatNumber(movement.amount))", credit: movement.amount > 0)
                     Hairline()
                 }
-                if rewards.movements.isEmpty { EmptyState("Aucun mouvement de points.") }
+                if rewards.movements.isEmpty { StateView("Aucun mouvement de points.") }
                 if rewards.movements.count > limit {
                     PillButton("Voir plus", variant: .secondary) { limit += 12 }.frame(maxWidth: .infinity).padding(.vertical, 24)
                 }

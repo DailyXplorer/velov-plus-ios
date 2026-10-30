@@ -7,7 +7,7 @@ struct LoginView: View {
     @State private var email = ""
     @State private var code = ""
     @State private var pending = false
-    @State private var error = ""
+    @State private var failure: LoadFailure?
     @FocusState private var focus: Field?
 
     enum Field { case email, code }
@@ -35,8 +35,13 @@ struct LoginView: View {
                     PillButton("Se connecter", pending: pending, fullWidth: true) { submit() }
                         .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty || code.count != 6)
                         .padding(.top, 6)
-                    Text(error).typo(.body(.small)).foregroundStyle(Palette.formError).frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
-                        .opacity(error.isEmpty ? 0 : 1)
+                    VStack(alignment: .leading, spacing: Space.pair) {
+                        if let failure {
+                            FormError(failure.message)
+                            RawStatus(line: failure.raw)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
                 }
                 .padding(.top, 36)
             }
@@ -61,7 +66,7 @@ struct LoginView: View {
     private func submit() {
         guard !pending else { return }
         pending = true
-        error = ""
+        failure = nil
         focus = nil
         Task {
             defer { pending = false }
@@ -70,7 +75,7 @@ struct LoginView: View {
                 code = ""
             } catch {
                 Haptics.refused()
-                self.error = failureMessage(error, "Connexion impossible. Vérifiez votre connexion Internet.")
+                failure = LoadFailure(error, "Connexion impossible. Vérifiez votre connexion Internet.")
             }
         }
     }

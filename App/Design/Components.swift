@@ -308,25 +308,49 @@ struct FloatingCircleButton<Content: View>: View {
     }
 }
 
-struct EmptyState: View {
-    let text: String
-    init(_ text: String) { self.text = text }
+struct StateView: View {
+    let message: String
+    var raw: String?
+    var pending = false
+    var retry: (() -> Void)?
+
+    init(_ message: String, raw: String? = nil, pending: Bool = false, retry: (() -> Void)? = nil) {
+        self.message = message; self.raw = raw; self.pending = pending; self.retry = retry
+    }
+
+    init(_ failure: LoadFailure, pending: Bool = false, retry: @escaping () -> Void) {
+        self.init(failure.message, raw: failure.raw, pending: pending, retry: retry)
+    }
+
     var body: some View {
-        Text(text).typo(.body(.base)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity).padding(.vertical, 44).padding(.horizontal, 20)
+        VStack(spacing: 0) {
+            Text(message).typo(.body(.base)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center).lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            if let raw, !raw.isEmpty { RawStatus(line: raw).multilineTextAlignment(.center).padding(.top, Space.pair) }
+            if let retry {
+                PillButton("Réessayer", variant: .secondary, pending: pending, action: retry).padding(.top, Space.titleToContent)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Space.state)
+        .announced(retry == nil ? "" : message)
     }
 }
 
 struct ErrorNotice: View {
-    let message: String
+    let failure: LoadFailure
     var pending = false
     let retry: () -> Void
     var body: some View {
-        HStack(spacing: 16) {
-            Text(message).typo(.body(.small)).foregroundStyle(Palette.formError)
+        HStack(spacing: Space.row) {
+            VStack(alignment: .leading, spacing: Space.pair) {
+                Text(failure.message).typo(.body(.base)).foregroundStyle(Palette.formError).fixedSize(horizontal: false, vertical: true)
+                if !failure.raw.isEmpty { RawStatus(line: failure.raw) }
+            }
             Spacer(minLength: 0)
             PillButton("Réessayer", variant: .secondary, pending: pending, action: retry)
         }
+        .announced(failure.message)
     }
 }
 
@@ -468,28 +492,27 @@ struct Disclosure<Content: View>: View {
     @ViewBuilder let content: () -> Content
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button { withAnimation(.easeOut(duration: 0.2)) { open.toggle() } } label: {
-                HStack(spacing: 8) {
-                    if let icon {
-                        Icon(icon, .light, size: 17)
-                        Text(title).typo(.caps(.label))
-                    } else {
-                        Text(title).typo(.caps(.label))
-                        Icon(.caretDown, .bold, size: 14).rotationEffect(.degrees(open ? 180 : 0))
-                    }
+            Button { withAnimation(Motion.standard) { open.toggle() } } label: {
+                HStack(spacing: Space.label) {
+                    if let icon { Icon(icon, .light, size: 18) }
+                    Text(title).typo(.caps(.label))
+                    Icon(.caretDown, .bold, size: 16).rotationEffect(.degrees(open ? 180 : 0))
+                    Spacer(minLength: 0)
                 }
                 .foregroundStyle(Palette.inkSoft)
-                .padding(.top, icon == nil ? 18 : 8).padding(.bottom, icon == nil ? 4 : 8)
+                .frame(minHeight: Layout.hit)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.press)
+            .accessibilityValue(open ? "Déplié" : "Replié")
             if open { content() }
         }
     }
 }
 
-struct SoonNote: View {
-    var text = "Bientôt disponible"
-    var body: some View { Text(text).typo(.body(.meta)).foregroundStyle(Palette.inkSoft) }
+struct Note: View {
+    let text: String
+    var body: some View { Text(text).typo(.body(.small)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true) }
 }
 
 extension View {

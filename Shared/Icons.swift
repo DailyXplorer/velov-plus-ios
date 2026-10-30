@@ -43,6 +43,10 @@ enum IconName: String {
     case batteryFull = "battery-full"
     case downloadSimple = "download-01"
     case envelopeSimple = "mail-01"
+    case share = "share-01"
+    case pencil = "pencil-edit-02"
+    case file = "file-01"
+    case send = "sent"
 }
 
 enum IconWeight { case light, bold, fill }

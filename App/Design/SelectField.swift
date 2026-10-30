@@ -24,7 +24,7 @@ struct SelectField<Value: Hashable>: View {
     var body: some View {
         switch layout {
         case .row: HStack(spacing: 12) { title; trigger }.onChange(of: value) { Haptics.selection() }
-        case .stacked: VStack(alignment: .leading, spacing: 6) { title; trigger }.onChange(of: value) { Haptics.selection() }
+        case .stacked: VStack(alignment: .leading, spacing: Space.label) { title; trigger }.onChange(of: value) { Haptics.selection() }
         case .inline:
             HStack(spacing: 0) {
                 Rectangle().fill(Palette.inkLine).frame(width: 1, height: 22).padding(.leading, 8)
@@ -48,6 +48,7 @@ struct SelectField<Value: Hashable>: View {
                 .sheet(isPresented: $choosing) {
                     ChoiceList(title: label, value: $value, options: options)
                         .presentationDetents([.large])
+                        .sheetCorners()
                 }
         } else {
             Menu {
@@ -120,7 +121,7 @@ private struct ChoiceList<Value: Hashable>: View {
                             Text(option.label).typo(.body(.input)).foregroundStyle(Palette.ink)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             if option.value == value {
-                                Image(systemName: "checkmark").font(.system(size: 16, weight: .semibold)).foregroundStyle(Palette.red)
+                                Icon(.check, .bold, size: 16).foregroundStyle(Palette.red)
                             }
                         }
                         .contentShape(Rectangle())
@@ -133,7 +134,7 @@ private struct ChoiceList<Value: Hashable>: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                    Button { dismiss() } label: { Icon(.x, .light, size: Layout.glyph) }
                         .accessibilityLabel("Fermer")
                 }
             }

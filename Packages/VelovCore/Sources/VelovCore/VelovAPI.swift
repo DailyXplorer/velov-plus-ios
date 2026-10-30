@@ -18,14 +18,14 @@ public final class VelovAPI: Sendable {
             let request = makeRequest(URL(string: "https://api.cyclocity.fr/auth/environments/PRD/client_tokens")!, method: "POST",
                                       headers: ["Content-Type": "application/json"], body: body, timeout: ReadClient.attemptTimeout)
             let response = try await client.fetchTransient(request)
-            guard response.ok, let token = response.json?["accessToken"]?.string else { throw VelovError(.unavailable, "Vélo’v ne répond pas pour le moment.") }
+            guard response.ok, let token = response.json?["accessToken"]?.string else { throw VelovError(.unavailable, "Vélo’v ne répond pas pour le moment.", status: response.status) }
             return token
         }
     }
 
     private func gbfs(_ file: String) async throws -> JSON {
         let response = try await client.fetchTransient(makeRequest(URL(string: "\(Cyclocity.base)/gbfs/v3/\(file)")!, timeout: ReadClient.attemptTimeout))
-        guard response.ok, let value = response.json else { throw VelovError(.unavailable, Messages.stationsUnavailable) }
+        guard response.ok, let value = response.json else { throw VelovError(.unavailable, Messages.stationsUnavailable, status: response.status) }
         return value
     }
 
@@ -42,7 +42,7 @@ public final class VelovAPI: Sendable {
         let response = try await getWithAppToken(client, appToken, URL(string: "\(Cyclocity.base)/bikes?\(query)")!) { token in
             ["Authorization": "Taknv1 \(token)", "Accept": "application/vnd.bikes.v4+json"]
         }
-        guard response.ok, let value = response.json, let bikes = try? RawBike.list(value) else { throw VelovError(.unavailable, unavailable) }
+        guard response.ok, let value = response.json, let bikes = try? RawBike.list(value) else { throw VelovError(.unavailable, unavailable, status: response.status) }
         return bikes
     }
 
@@ -64,7 +64,7 @@ public final class VelovAPI: Sendable {
             ["Authorization": "Taknv1 \(token)", "Identity": identity.accessToken, "Accept": accept]
         }
         if response.status == 401 { throw VelovError(.expired, Messages.sessionToRenew) }
-        guard response.ok, let value = response.json else { throw VelovError(.unavailable, Messages.accountUnavailable) }
+        guard response.ok, let value = response.json else { throw VelovError(.unavailable, Messages.accountUnavailable, status: response.status) }
         return value
     }
 

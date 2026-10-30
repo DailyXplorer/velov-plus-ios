@@ -40,9 +40,9 @@ struct InviteFriend: View {
                     Text("Inviter un ami").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                     Text("Échangez vos points contre un code à offrir à un ami.").typo(.body(.small)).foregroundStyle(Palette.inkSoft)
                     if cost == nil {
-                        SoonNote(text: "L’offre est momentanément indisponible.")
+                        Note(text: "L’offre est momentanément indisponible.")
                     } else if let cost, let balance, balance < cost {
-                        SoonNote(text: "Il vous manque \(formatNumber(cost - balance)) points.")
+                        Note(text: "Il vous manque \(formatNumber(cost - balance)) points.")
                     }
                 }
                 Spacer(minLength: 0)
@@ -69,61 +69,45 @@ struct InviteFriend: View {
                         PillButton(variant: .secondary, action: { copy(entry.code) }) { ButtonIcon(.copy); Text(copied == entry.code ? "Copié" : "Copier") }
                     }
                 }
-                SoonNote(text: "Enregistré sur ce téléphone.")
+                Note(text: "Enregistré sur ce téléphone.")
             }
         }
     }
 
     private var sheet: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SheetHeading(title: "Échanger \(formatNumber(cost ?? 0)) points ?", closeDisabled: blocked) { close() }
-            Text("Les \(formatNumber(cost ?? 0)) points sont débités dès la création du code, même s’il n’est jamais utilisé.")
-                .typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+        ConfirmScaffold(title: "Obtenir un code\u{a0}?", closeDisabled: blocked, close: { close() }) {
+            Text("\(formatNumber(cost ?? 0)) points sont débités dès la création du code, même s’il n’est jamais utilisé.")
+        } extra: {
             if verification == .debited {
-                FormError("Vos points ont été débités, mais aucun code n’a été reçu. Contactez le service client pour le récupérer.").padding(.top, 14)
+                FormError("Vos points ont été débités, mais aucun code n’a été reçu. Contactez le service client pour le récupérer.")
             } else if let shown {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 0) {
                     if shown.ok {
                         Text("Code créé. Copiez-le pour l’envoyer à votre ami.").typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
                     } else {
-                        FormError(shown.message ?? "Le code n’a pas pu être créé.")
-                        RawStatus(line: messageLine(shown))
+                        FailureBlock(message: shown.message ?? "Le code n’a pas pu être créé.", raw: messageLine(shown), uncertain: shown.isUncertain)
                     }
-                    if shown.isUncertain { UncertainNote().padding(.top, 4) }
-                    codeList.padding(.top, 8)
-                }
-                .padding(.top, 14)
-            }
-            Group {
-                switch verification {
-                case .notDebited?: SoonNote(text: "Votre historique complet ne montre aucun débit de \(formatNumber(operationCost)) points depuis la demande.")
-                case .unknown?: SoonNote(text: "Votre historique de points ne permet pas encore d’exclure un débit. Vérifiez de nouveau dans quelques minutes ou écrivez au service client.")
-                case .failed?:
-                    VStack(alignment: .leading, spacing: 6) {
-                        FormError("Votre historique de points n’a pas pu être lu. Réessayez dans un instant.")
-                        if let verifyLine { RawStatus(line: verifyLine) }
-                    }
-                default: EmptyView()
+                    codeList.padding(.top, Space.label)
                 }
             }
-            .padding(.top, 12)
-            if uncertain != nil || verification == .debited { TextLink(title: "Écrire au service client", action: contact).padding(.top, 8) }
-            if let warning { FormError(warning).padding(.top, 12) }
-            PairedActions {
-                PillButton(settled ? "Fermer" : "Annuler", variant: .ghost, fullWidth: true) { close() }.disabled(blocked)
-                if uncertain != nil, verification == .notDebited {
-                    PillButton("Je n’ai pas été débité, réessayer", fullWidth: true) { retry() }
-                } else if uncertain != nil {
-                    PillButton("Vérifier mes points", variant: .secondary, pending: verification == .checking, fullWidth: true) { verify() }
-                } else if !settled {
-                    PillButton("Confirmer", pending: pending, fullWidth: true) { confirm() }.disabled(!canObtain)
-                }
+            switch verification {
+            case .notDebited?: Note(text: "Votre historique complet ne montre aucun débit de \(formatNumber(operationCost)) points depuis la demande.")
+            case .unknown?: Note(text: "Votre historique de points ne permet pas encore d’exclure un débit. Vérifiez de nouveau dans quelques minutes ou écrivez au service client.")
+            case .failed?: FailureBlock(message: "Votre historique de points n’a pas pu être lu. Réessayez dans un instant.", raw: verifyLine ?? "")
+            default: EmptyView()
             }
-            .padding(.top, 24)
+            if uncertain != nil || verification == .debited { TextLink(title: "Écrire au service client", action: contact) }
+            if let warning { FormError(warning) }
+        } actions: {
+            PillButton(settled ? "Fermer" : "Annuler", variant: .ghost, fullWidth: true) { close() }.disabled(blocked)
+            if uncertain != nil, verification == .notDebited {
+                PillButton("Je n’ai pas été débité, réessayer", fullWidth: true) { retry() }
+            } else if uncertain != nil {
+                PillButton("Vérifier mes points", variant: .secondary, pending: verification == .checking, fullWidth: true) { verify() }
+            } else if !settled {
+                PillButton("Confirmer", pending: pending, fullWidth: true) { confirm() }.disabled(!canObtain)
+            }
         }
-        .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
-        .fitSheet()
-        .interactiveDismissDisabled(blocked)
     }
 
     private func load() {

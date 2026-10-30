@@ -24,28 +24,35 @@ struct BikesSheet: View {
 
     private var own: Set<Int> { Set(model.bookings.compactMap(\.bikeNumber)) }
     private var assessed: [AssessedBike]? { bikes.value.map { assessForAccount($0, own: own) } }
+    private var subtitle: String? {
+        switch bikes {
+        case .loading: "Chargement des vélos…"
+        case .ready: assessed.map { "\($0.count) vélo\($0.count > 1 ? "s" : "") à la station" }
+        case .failed: nil
+        }
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: 8) {
-                        Text(station.name).typo(.title(.section)).foregroundStyle(Palette.ink).frame(maxWidth: .infinity, alignment: .leading)
+                    SheetHeading(title: station.name, closeDisabled: model.operations.sending) { dismiss() } accessory: {
                         Button { Task { await load() } } label: {
-                            Group { if refreshing { Spinner(size: 19) } else { Icon(.arrowClockwise, .light, size: 19) } }
-                                .foregroundStyle(Palette.inkSoft).frame(width: 40, height: 40)
+                            Group { if refreshing { Spinner(size: Layout.glyph) } else { Icon(.arrowClockwise, .light, size: Layout.glyph) } }
+                                .foregroundStyle(Palette.inkSoft).frame(width: Layout.hit, height: Layout.hit).contentShape(Rectangle())
                         }
                         .buttonStyle(.press).disabled(refreshing).accessibilityLabel("Actualiser les vélos")
-                        IconButton(icon: .x, label: "Fermer") { dismiss() }.disabled(model.operations.sending)
                     }
-                    .padding(.top, 14).padding(.bottom, 10)
-                    Text(assessed.map { "\($0.count) vélo\($0.count > 1 ? "s" : "") à la station" } ?? "Chargement des vélos…")
-                        .typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).padding(.bottom, 8)
+                    .padding(.top, Layout.headerTop - Space.titleToContent)
+                    if let subtitle {
+                        Text(subtitle).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).padding(.top, Space.pair)
+                    }
+                    Color.clear.frame(height: Space.label)
                     switch bikes {
                     case .loading:
                         BikesSkeleton(station: station)
-                    case .failed(let message):
-                        ErrorNotice(message: message, pending: refreshing) { Task { await load() } }.padding(.top, 12)
+                    case .failed(let failure):
+                        StateView(failure, pending: refreshing) { Task { await load() } }
                     case .ready:
                         if let assessed, !assessed.isEmpty {
                             VStack(spacing: 0) {
@@ -58,22 +65,20 @@ struct BikesSheet: View {
                                 }
                             }
                         } else {
-                            EmptyState("Aucun vélo à cette station.")
+                            StateView("Aucun vélo à cette station.")
                         }
                     }
                 }
-                .padding(.leading, 22).padding(.trailing, 12).padding(.bottom, 24)
+                .padding(.horizontal, Layout.margin).padding(.bottom, Layout.margin)
             }
             .scrollIndicators(.hidden)
+            .refreshable { await load() }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: BikeRoute.self) { route in
                 BikeDetail(route: route, preloaded: assessed?.first { $0.bike.number == route.number }, close: { dismiss() })
             }
         }
-        .presentationDetents([.large])
-        .interactiveDismissDisabled(model.operations.sending)
-        .presentationBackground(Palette.white)
-        .sheetCorners()
+        .velovSheet(.large, closeDisabled: model.operations.sending)
         .task {
             await load()
             if model.snapshot == .bikeSheet || model.snapshot == .bookConfirm, let first = assessed?.first { path = [BikeRoute(number: first.bike.number, station: station)] }
@@ -84,7 +89,7 @@ struct BikesSheet: View {
         refreshing = true
         defer { refreshing = false }
         do { bikes = .ready(try await model.service.stationBikes(station.number)) }
-        catch { bikes = .failed(failureMessage(error, Messages.stationBikesUnavailable)) }
+        catch { bikes = .failed(LoadFailure(error, Messages.stationBikesUnavailable)) }
     }
 }
 
@@ -161,7 +166,7 @@ struct BikesSkeleton: View {
         let count = station.mechanical + station.electrical
         let picks = (station.mechanical > 0 ? 1 : 0) + (station.electrical > 0 ? 1 : 0)
         if count == 0 {
-            Text("Aucun vélo à cette station.").typo(.body(.base)).ghost().frame(maxWidth: .infinity).padding(.vertical, 44).padding(.horizontal, 20)
+            StateView("Aucun vélo à cette station.").ghost()
         } else {
             VStack(spacing: 0) {
                 ForEach(0..<count, id: \.self) { index in
@@ -224,6 +229,7 @@ struct BikeDetail: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var loaded: Resource<AssessedBike> = .loading
+    @State private var retrying = false
     @State private var pending: PendingAction?
 
     private var own: Set<Int> { Set(model.bookings.compactMap(\.bikeNumber)) }
@@ -244,8 +250,8 @@ struct BikeDetail: View {
                 .padding(.top, 14).padding(.bottom, 12)
                 if let item {
                     sheet(item)
-                } else if case .failed(let message) = loaded {
-                    ErrorNotice(message: message) { Task { await load() } }.padding(.top, 12)
+                } else if case .failed(let failure) = loaded {
+                    StateView(failure, pending: retrying) { Task { await load() } }
                 } else {
                     BikeSheetSkeleton()
                 }
@@ -260,13 +266,15 @@ struct BikeDetail: View {
     }
 
     private func load() async {
+        retrying = true
+        defer { retrying = false }
         do {
-            guard let bike = try await model.service.bike(route.number) else { loaded = .failed(Messages.bikeUnavailable); return }
+            guard let bike = try await model.service.bike(route.number) else { loaded = .failed(LoadFailure(message: Messages.bikeUnavailable)); return }
             var assessed = assessForAccount([bike], own: own)[0]
             if assessed.verdict == .recommended { assessed.verdict = .neutral; assessed.reasons = [] }
             loaded = .ready(assessed)
         } catch {
-            loaded = .failed(failureMessage(error, Messages.bikeUnavailable))
+            loaded = .failed(LoadFailure(error, Messages.bikeUnavailable))
         }
     }
 

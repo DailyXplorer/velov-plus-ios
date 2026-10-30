@@ -119,12 +119,8 @@ struct StatsPage: View {
                         BookingBanners()
                         switch state {
                         case .loading: skeleton
-                        case .failed(let message):
-                            VStack(spacing: 24) {
-                                Text(message).typo(.body(.base)).foregroundStyle(Palette.inkSoft).multilineTextAlignment(.center)
-                                PillButton("Réessayer", variant: .secondary) { Task { await load() } }
-                            }
-                            .frame(maxWidth: .infinity).padding(.vertical, 100).padding(.horizontal, 20)
+                        case .failed(let failure):
+                            StateView(failure) { Task { await load() } }
                         case .ready(let stats): StatsView(stats: stats)
                         }
                     }
@@ -182,7 +178,7 @@ struct StatsPage: View {
         state = .loading
         switch await model.loadStats() {
         case .success(let stats)?: state = .ready(stats)
-        case .failure(let error)?: state = .failed(failureMessage(error, Self.unavailable))
+        case .failure(let error)?: state = .failed(LoadFailure(error, Self.unavailable))
         case nil: break
         }
     }
@@ -223,7 +219,7 @@ struct StatsView: View {
             if !stats.complete { Text("Historique partiel").typo(.body(.meta)).foregroundStyle(Palette.inkSoft).padding(.top, 4) }
             Headline(data: data, balance: stats.balance)
             if data.trips == 0 {
-                EmptyState(stats.all.trips > 0 ? "Aucun trajet sur cette période." : "Vos statistiques apparaîtront après votre premier trajet.")
+                StateView(stats.all.trips > 0 ? "Aucun trajet sur cette période." : "Vos statistiques apparaîtront après votre premier trajet.")
             } else {
                 Panel(title: data.unit == .day ? "Temps à vélo par jour" : "Temps à vélo par mois", chart: true, tips: true) { MinutesChart(data: data, focus: $focus) }.id("panel-charts")
                 Panel(title: "Horaires de départ", chart: true, tips: true) { Heatmap(data: data, focus: $focus) }.id("panel-heatmap")

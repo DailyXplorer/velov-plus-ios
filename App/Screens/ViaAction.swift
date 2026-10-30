@@ -47,11 +47,10 @@ private struct ViaSheet: View {
             Group {
                 if reviewing || held != nil, let target { review(target) } else { pick }
             }
-            .padding(.top, 14)
+            .padding(.top, Space.titleToContent)
         }
-        .padding(.horizontal, 22).padding(.top, 22).padding(.bottom, 20)
-        .fitSheet()
-        .interactiveDismissDisabled(blocked)
+        .padding(Layout.dialog)
+        .velovSheet(.fit, closeDisabled: blocked)
     }
 
     private func review(_ station: (number: Int, name: String)) -> some View {
@@ -60,14 +59,11 @@ private struct ViaSheet: View {
              + Text(" est pleine. Demander 15 minutes de plus pour rejoindre une autre station\u{a0}?"))
                 .typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             if let failure {
-                VStack(alignment: .leading, spacing: 6) {
-                    FormError(failure.message ?? "Les 15 minutes supplémentaires n’ont pas été accordées.")
-                    RawStatus(line: messageLine(failure))
-                    if failure.isUncertain { UncertainNote().padding(.top, 4) }
-                }
-                .padding(.top, 14)
+                FailureBlock(message: failure.message ?? "Les 15 minutes supplémentaires n’ont pas été accordées.",
+                             raw: messageLine(failure), uncertain: failure.isUncertain)
+                    .padding(.top, Space.titleToContent)
             }
-            if let notice { FormError(notice).padding(.top, 12) }
+            if let notice { FormError(notice).padding(.top, Space.cards) }
             PairedActions {
                 if failure?.isUncertain == true {
                     PillButton("Fermer", variant: .ghost, fullWidth: true) { close() }
@@ -76,7 +72,7 @@ private struct ViaSheet: View {
                     PillButton("Confirmer", pending: pending, fullWidth: true) { confirm(station) }.disabled(operationKey == nil)
                 }
             }
-            .padding(.top, 24)
+            .padding(.top, Space.actions)
         }
     }
 
@@ -84,7 +80,7 @@ private struct ViaSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Choisissez la station pleine où vous vouliez rendre votre vélo.")
                 .typo(.body(.lead)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Space.label) {
                 Text("Rechercher une station pleine").typo(.caps(.label)).foregroundStyle(Palette.inkSoft)
                 TextField("", text: $query, prompt: Text("Nom, adresse ou numéro").foregroundStyle(Palette.inkSoft))
                     .typo(.body(.input)).foregroundStyle(Palette.ink).autocorrectionDisabled()
@@ -93,7 +89,7 @@ private struct ViaSheet: View {
             PillButton("Les plus proches", variant: .ghost, pending: locating) { locate() }
             if !locationError.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    SoonNote(text: locationError)
+                    FormError(locationError)
                     if !locationRaw.isEmpty { RawStatus(line: locationRaw) }
                 }
             }
@@ -109,7 +105,7 @@ private struct ViaSheet: View {
                 PillButton("Annuler", variant: .ghost, fullWidth: true) { close() }
                 PillButton("Continuer", fullWidth: true) { reviewing = true }.disabled(target == nil)
             }
-            .padding(.top, 12)
+            .padding(.top, Space.actions - Space.cards)
         }
     }
 

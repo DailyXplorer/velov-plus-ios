@@ -45,7 +45,7 @@ struct PairedActions<Content: View>: View {
     }
 }
 
-private struct EqualCells: SwiftUI.Layout {
+struct EqualCells: SwiftUI.Layout {
     let spacing: CGFloat
 
     private func arrangement(_ width: CGFloat?, _ subviews: Subviews) -> (cell: CGFloat, side: Bool) {

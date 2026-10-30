@@ -155,7 +155,7 @@ struct Eyebrow: View {
     var body: some View {
         HStack(spacing: Layout.iconGap) {
             Icon(icon, .bold, size: 13).foregroundStyle(Palette.white).frame(width: 26, height: 26).background(Circle().fill(Palette.red))
-            Text(text).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
+            Text(text).typo(.caps(.label)).foregroundStyle(Palette.inkSoft).fixedSize()
         }
         .padding(.leading, Space.pair).padding(.trailing, 14).padding(.vertical, Space.pair)
         .background(Capsule().fill(surface == .white ? Palette.mist : Palette.white))

@@ -12,7 +12,7 @@ struct PointsPage: View {
         let rules = Array(rewards.rules.filter { $0.kind == .earn }.prefix(3))
         let invite = rewards.rules.first { $0.name == "PROMOCODE" }
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: Space.cards) {
+            EqualCells(spacing: Space.cards) {
                 PointsFigure(icon: .starFour, label: "Solde actuel", value: rewards.balance.map { formatNumber($0) } ?? "—")
                 PointsFigure(icon: .trendUp, label: "Total gagné", value: rewards.total.map { formatNumber($0) } ?? "—")
             }
@@ -70,7 +70,7 @@ private let ghostMovements = ["Bonus de trajet", "Évaluation", "Arrivée dans u
 struct PointsSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: Space.cards) {
+            EqualCells(spacing: Space.cards) {
                 PointsFigure(icon: .starFour, label: "Solde actuel", value: "0").skeleton()
                 PointsFigure(icon: .trendUp, label: "Total gagné", value: "0").skeleton()
             }

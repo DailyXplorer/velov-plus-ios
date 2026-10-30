@@ -139,6 +139,7 @@ extension View {
 struct ConfirmScaffold<Message: View, Extra: View, Actions: View>: View {
     let title: String
     var closeDisabled = false
+    var stacked = false
     let close: () -> Void
     @ViewBuilder let message: () -> Message
     @ViewBuilder let extra: () -> Extra
@@ -154,7 +155,10 @@ struct ConfirmScaffold<Message: View, Extra: View, Actions: View>: View {
                 }
                 .padding(.top, Space.titleToContent)
             }
-            PairedActions(content: actions).padding(.top, Space.actions)
+            Group {
+                if stacked { VStack(spacing: Space.cards, content: actions) } else { PairedActions(content: actions) }
+            }
+            .padding(.top, Space.actions)
         }
         .padding(Layout.dialog)
         .velovSheet(.fit, closeDisabled: closeDisabled)
@@ -199,7 +203,7 @@ struct WriteDialog<Question: View>: View {
     private var uncertain: Bool { entry?.status == .uncertain }
 
     var body: some View {
-        ConfirmScaffold(title: title, closeDisabled: busy, close: { dismiss() }) {
+        ConfirmScaffold(title: title, closeDisabled: busy, stacked: uncertain && check == nil && restart != nil, close: { dismiss() }) {
             if Question.self != EmptyView.self { question() }
         } extra: {
             if let failure {
@@ -211,12 +215,13 @@ struct WriteDialog<Question: View>: View {
             }
             if let notice { FormError(notice) }
         } actions: {
-            if uncertain {
+            if uncertain, check == nil, let restart {
+                PillButton(restart.title, variant: .secondary, fullWidth: true) { restart.action() }
+                PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }.disabled(busy)
+            } else if uncertain {
                 PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }.disabled(busy)
                 if check != nil {
                     PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify() }
-                } else if let restart {
-                    PillButton(restart.title, variant: .secondary, fullWidth: true) { restart.action() }
                 }
             } else {
                 PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(busy)

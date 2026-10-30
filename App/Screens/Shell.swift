@@ -58,6 +58,7 @@ struct Shell: View {
 struct TabStack: View {
     let page: Page
     @Environment(AppModel.self) private var model
+    @Environment(\.tabBarBand) private var tabBarBand
 
     var body: some View {
         @Bindable var model = model
@@ -72,7 +73,7 @@ struct TabStack: View {
 
     @ViewBuilder
     private var root: some View {
-        if page == .stations { StationsPage() } else { PageScaffold(page: page) }
+        if page == .stations { StationsPage().safeAreaPadding(.bottom, tabBarBand) } else { PageScaffold(page: page) }
     }
 
     @ViewBuilder

@@ -117,6 +117,14 @@ final class WritesTests: XCTestCase {
         XCTAssertEqual(booking?.endTime, "2026-03-02T09:47:14")
     }
 
+    func testABookingAnswerWithoutTheBikeIsNoProofAndStaysUncertain() async throws {
+        let (outcome, booking, server) = try await book(.json(["id": "bk-1", "stationNumber": 2002, "standNumber": 12]))
+        XCTAssertFalse(outcome.ok)
+        XCTAssertTrue(outcome.isUncertain)
+        XCTAssertNil(booking)
+        XCTAssertEqual(server.calls.count, 1)
+    }
+
     func testABookingAnswerThatIsNotTheBookingStaysUncertain() async throws {
         let replies: [Reply] = [.status(200, body: "<html>Maintenance</html>"), .status(204), .json(["id": "bk-1", "stationNumber": 9999]),
                                 .json(["id": "bk-1", "stationNumber": 2002, "bikeId": "other-bike"]), .json(["stationNumber": 2002])]

@@ -110,7 +110,7 @@ public enum Writes {
         let reply = ErrorReply(response)
         var outcome = bookingOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail)
         guard outcome.ok else { return (outcome, nil) }
-        if let booking = reply.value.flatMap(RawBooking.init), booking.stationNumber == stationNumber, booking.bikeId == nil || booking.bikeId == bikeId {
+        if let booking = reply.value.flatMap(RawBooking.init), booking.stationNumber == stationNumber, booking.bikeId == bikeId {
             return (outcome, booking)
         }
         outcome.ok = false

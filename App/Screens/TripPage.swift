@@ -5,10 +5,8 @@ import VelovCore
 struct TripPage: View {
     let trip: Trip
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.openURL) private var openURL
     @Environment(AppModel.self) private var model
     @State private var copied = false
-    @State private var addressCopied = false
 
     private var sameStation: Bool { trip.startStationNumber != nil && trip.startStationNumber == trip.endStationNumber }
     private var rated: Bool { trip.isRated == true || model.ratedHere.contains(trip.id) }
@@ -78,28 +76,19 @@ struct TripPage: View {
     }
 
     private var litigious: some View {
-        let subject = "Trajet litigieux\(trip.token.map { " \($0)" } ?? "")"
-        return VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: Space.cards) {
             Text("Vélo’v a signalé ce trajet comme litigieux.").typo(.body(.small)).foregroundStyle(Palette.ink)
-            TextLink(title: "Contacter le service client", hint: "Ouvre Mail") {
-                var components = URLComponents()
-                components.scheme = "mailto"
-                components.path = Support.address
-                components.queryItems = [URLQueryItem(name: "subject", value: subject)]
-                guard let url = components.url else { return }
-                openURL(url) { opened in
-                    guard !opened else { return }
-                    UIPasteboard.general.string = Support.address
-                    addressCopied = true
-                    Haptics.success()
-                }
-            }
-            if addressCopied { Note(text: "Adresse copiée\u{a0}: \(Support.address)") }
+            PillButton(variant: .secondary, action: contact) { ButtonIcon(.envelopeSimple); Text("Écrire au service client") }
         }
-        .padding(.horizontal, Space.row).padding(.vertical, Space.cards)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(RoundedRectangle(cornerRadius: Radius.card, style: .continuous).strokeBorder(Palette.red, lineWidth: 1))
+        .card(.ringed, compact: true)
         .padding(.top, Space.titleToContent)
+    }
+
+    private func contact() {
+        model.contactTrip = trip
+        model.contactRequested = true
+        model.page = .account
     }
 
     private var details: some View {

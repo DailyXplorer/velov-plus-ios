@@ -60,7 +60,7 @@ Les réglages à ouvrir ne sont pas les mêmes :
 - « Effacer » le Journal technique demande d’abord « Effacer le journal ? » (Effacer / Annuler), dans le menu natif d’iOS.
 - Les fenêtres du site sont des boîtes de dialogue centrées sur ordinateur, ou des feuilles en bas de l’écran sur téléphone. L’app utilise les feuilles iOS : on peut les baisser d’un geste, sauf pendant un envoi.
 - L’app ajoute des retours haptiques : un léger à chaque choix (onglet, menu, étoile, station, barre de graphique), un plus marqué à la confirmation d’un envoi, puis succès, refus ou avertissement quand le résultat est incertain.
-- Si l’iPhone n’a pas l’app Mail, « Contacter le service client » sur un trajet litigieux copie l’adresse du service client et l’affiche sous le lien.
+- Sur un trajet litigieux, « Écrire au service client » ouvre l’onglet Compte sur la page du formulaire, avec ce trajet déjà choisi. Le site ouvre le même formulaire dans sa carte.
 
 ### Reçus et presse-papiers
 - Le site télécharge le PDF du reçu. Dans l’app, « Reçu » télécharge le PDF, puis le bouton devient « Partager » et ouvre la feuille de partage iOS. Seul l’app peut dire « Le reçu n’a pas pu être enregistré sur ce téléphone. ».

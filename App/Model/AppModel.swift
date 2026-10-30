@@ -52,6 +52,7 @@ enum SnapshotScreen: String {
     case expiredSession, bookingWithoutAccount
     case ongoingLong
     case stationsFailure
+    case tripDisputed
 
     var asGuest: Bool { [.guestStations, .guestStationSheet, .guestBikeSheet].contains(self) }
 
@@ -94,6 +95,7 @@ final class AppModel {
     var leaving: Leave?
     var ratedHere: Set<String> = []
     var contactRequested = false
+    var contactTrip: Trip?
     var foreground = true
     private(set) var toasts = ToastSlot()
     private(set) var guestFavorites: [Int] = []
@@ -144,6 +146,7 @@ final class AppModel {
         case .stationsFailure?: page = .stations
         case .account?, .accountEnd?, .accountEdit?, .profilePage?, .contactPage?, .journalPage?, .logoutDialog?, .choiceSheet?, .renewalToggle?, .renewalDialog?,
              .contactUncertain?: page = .account
+        case .tripDisputed?: page = .trips
         default: break
         }
         paths = Self.snapshotPaths(snapshot)
@@ -159,6 +162,7 @@ final class AppModel {
         case .accountEdit, .profilePage, .choiceSheet: return [.account: [.profile]]
         case .contactPage, .contactUncertain: return [.account: [.contact]]
         case .journalPage: return [.account: [.journal]]
+        case .tripDisputed: return SampleData.trips.first(where: \.litigious).map { [.trips: [.trip(TripRoute(trip: $0))]] } ?? [:]
         default: return snapshot.showsStats ? [.trips: [.stats]] : [:]
         }
     }

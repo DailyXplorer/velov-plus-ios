@@ -20,7 +20,3 @@ public enum Guesses {
     public static let promocodeCodeField = "promoCode"
     public static let promocodeReward = "PROMOCODE"
 }
-
-public enum Support {
-    public static let address = "contact.velov@jcdecaux.com"
-}

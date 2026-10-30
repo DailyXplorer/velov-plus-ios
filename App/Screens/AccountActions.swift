@@ -286,19 +286,31 @@ struct ContactPage: View {
     @State private var subject = Guesses.mailComplaintTypes[0]
     @State private var message = ""
     @State private var tripId = "none"
+    @State private var preset: Trip?
     @State private var error: String?
     @State private var draft: ContactBody?
     @State private var asking = false
     @State private var sent = false
 
-    private var recent: [Trip] { Array((model.dashboard?.trips ?? []).filter { $0.token != nil }.prefix(15)) }
+    private var recent: [Trip] {
+        let latest = Array((model.dashboard?.trips ?? []).filter { $0.token != nil }.prefix(15))
+        guard let preset, !latest.contains(where: { $0.id == preset.id }) else { return latest }
+        return [preset] + latest
+    }
     private var contact: ContactBody { ContactBody(complaintType: subject, message: message, tripToken: recent.first { $0.id == tripId }?.token) }
     private var operationKey: String? { model.operations.digest.map(OperationKey.contact) }
-    private var dirty: Bool { !message.isEmpty || tripId != "none" || subject != Guesses.mailComplaintTypes[0] }
+    private var dirty: Bool { !message.isEmpty || (tripId != "none" && tripId != preset?.id) || subject != Guesses.mailComplaintTypes[0] }
 
     var body: some View {
         PushedPage("Écrire au service client") { form }
             .modifier(LeaveGuard(dirty: dirty))
+            .onAppear {
+                guard let trip = model.contactTrip else { return }
+                model.contactTrip = nil
+                guard trip.token != nil else { return }
+                preset = trip
+                tripId = trip.id
+            }
             .task {
                 guard model.snapshot == .contactUncertain else { return }
                 try? await Task.sleep(for: .seconds(1.5))

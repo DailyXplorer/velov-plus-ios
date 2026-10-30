@@ -455,9 +455,9 @@ private struct Heatmap: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: [0, 6, 12, 18, 23].map { Double($0) + 0.5 }) { value in
-                let hour = value.as(Double.self) ?? 0
-                AxisValueLabel(anchor: hour > 23 ? .topTrailing : .top, collisionResolution: .disabled) { axisText("\(Int(hour))\u{a0}h") }
+            AxisMarks(values: (0...24).map(Double.init)) { value in
+                let hour = Int(value.as(Double.self) ?? 0)
+                AxisValueLabel(centered: true, collisionResolution: .disabled) { axisText([0, 6, 12, 18, 23].contains(hour) ? "\(hour)\u{a0}h" : "") }
             }
         }
         .chartOverlay { proxy in

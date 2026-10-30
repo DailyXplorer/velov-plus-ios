@@ -16,6 +16,7 @@ protocol VelovService: Sendable {
 
     func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?)
     func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?)
+    func watchUnlock(bikeNumber: Int) async throws -> Trip?
     func tripCheck() async throws -> TripCheck
     func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome
     func setAutoSpend(_ value: Bool) async throws -> (outcome: Outcome, autoSpend: Bool?)
@@ -33,9 +34,9 @@ final class LiveService: VelovService {
     private let session: SessionManager
 
     init() {
-        let transport = JournalTransport(URLSessionTransport())
-        api = VelovAPI(transport: transport)
-        session = SessionManager(store: KeychainStore(), http: transport)
+        let fresh = JournalTransport(FreshConnectionTransport())
+        api = VelovAPI(transport: JournalTransport(URLSessionTransport()), writes: fresh)
+        session = SessionManager(store: KeychainStore(), http: fresh)
     }
 
     private func identity() async throws -> Identity { try await session.identity() }
@@ -58,6 +59,7 @@ final class LiveService: VelovService {
     func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?) {
         try await api.unlock(try await identity(), stationNumber: stationNumber, standNumber: standNumber, bikeNumber: bikeNumber)
     }
+    func watchUnlock(bikeNumber: Int) async throws -> Trip? { try await api.watchUnlock(try await identity(), bikeNumber: bikeNumber) }
     func tripCheck() async throws -> TripCheck { try await api.tripCheck(try await identity()) }
     func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome {
         try await api.rate(try await identity(), tripId: tripId, bikeNumber: bikeNumber, vote: vote)

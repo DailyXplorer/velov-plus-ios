@@ -171,6 +171,10 @@ struct SampleService: VelovService {
         if screen == .unlockUncertain { return (lost(Messages.unlockNoAnswer), nil) }
         return (Outcome(ok: true, httpStatus: 200, transactionState: "OK"), [])
     }
+    func watchUnlock(bikeNumber: Int) async throws -> Trip? {
+        account()
+        return nil
+    }
     func tripCheck() async throws -> TripCheck {
         account()
         return TripCheck(ongoing: [], latest: nil)

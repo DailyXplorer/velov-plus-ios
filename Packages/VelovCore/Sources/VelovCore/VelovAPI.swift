@@ -15,12 +15,14 @@ public final class VelovAPI: Sendable {
                 pause: @escaping @Sendable (Double) async -> Void = { try? await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }) {
         let client = ReadClient(transport: transport, pause: pause)
         self.client = client
-        self.writes = writes ?? transport
+        let writes = writes ?? transport
+        self.writes = writes
+        let tokens = ReadClient(transport: writes, pause: pause)
         appToken = AppToken {
             let body = try JSONSerialization.data(withJSONObject: ["code": Cyclocity.appTokenCode, "key": Cyclocity.appTokenKey], options: [.sortedKeys])
             let request = makeRequest(URL(string: "https://api.cyclocity.fr/auth/environments/PRD/client_tokens")!, method: "POST",
                                       headers: ["Content-Type": "application/json"], body: body, timeout: ReadClient.attemptTimeout)
-            let response = try await client.fetchTransient(request)
+            let response = try await tokens.fetchTransient(request)
             guard response.ok, let token = response.json?["accessToken"]?.string else { throw VelovError(.unavailable, "Vélo’v ne répond pas pour le moment.", status: response.status) }
             return token
         }

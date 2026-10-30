@@ -326,10 +326,12 @@ final class Review3Tests: XCTestCase {
             journal.record(makeRequest(URL(string: "https://api.cyclocity.fr/contracts/lyon/bikes?number=\(index)")!, timeout: 8), status: 200, error: nil,
                            duration: 0.1, at: Date(timeIntervalSince1970: Double(index)))
         }
-        XCTAssertEqual(journal.entries.count, TechnicalJournal.capacity)
+        let reads = journal.entries.filter { !$0.isWrite }
+        XCTAssertEqual(reads.count, TechnicalJournal.capacity)
         XCTAssertEqual(TechnicalJournal.capacity, 50)
-        XCTAssertEqual(journal.entries.first?.path, "/contracts/lyon/bikes?number=59", "newest first")
-        XCTAssertEqual(journal.entries.last?.path, "/contracts/lyon/bikes?number=10")
+        XCTAssertEqual(reads.first?.path, "/contracts/lyon/bikes?number=59", "newest first")
+        XCTAssertEqual(reads.last?.path, "/contracts/lyon/bikes?number=10")
+        XCTAssertEqual(journal.entries.count - reads.count, 7, "writes are kept apart from the read ring")
         journal.clear()
         XCTAssertEqual(journal.entries, [])
     }

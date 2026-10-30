@@ -55,49 +55,75 @@ extension HTTPTransport {
     public func send(_ request: URLRequest) async throws -> HTTPResponse { try await send(request, followRedirects: true) }
 }
 
+private func privateConfiguration(_ configuration: URLSessionConfiguration) -> URLSessionConfiguration {
+    configuration.httpCookieStorage = nil
+    configuration.httpShouldSetCookies = false
+    configuration.urlCache = nil
+    configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+    return configuration
+}
+
+private func load(_ request: URLRequest, followRedirects: Bool, on session: URLSession) async throws -> HTTPResponse {
+    let observer = TaskObserver(follow: followRedirects && ["GET", "HEAD"].contains((request.httpMethod ?? "GET").uppercased()))
+    defer { TechnicalJournal.connection?.line = observer.line }
+    let (data, response) = try await session.data(for: request, delegate: observer)
+    guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+    var headers: [String: String] = [:]
+    for (key, value) in http.allHeaderFields { headers[String(describing: key)] = String(describing: value) }
+    return HTTPResponse(status: http.statusCode, headers: headers, body: data, url: http.url)
+}
+
 public final class URLSessionTransport: HTTPTransport {
     private let session: URLSession
 
     public init(configuration: URLSessionConfiguration = .ephemeral) {
-        configuration.httpCookieStorage = nil
-        configuration.httpShouldSetCookies = false
-        configuration.urlCache = nil
-        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        session = URLSession(configuration: configuration)
+        session = URLSession(configuration: privateConfiguration(configuration))
     }
 
     public func send(_ request: URLRequest, followRedirects: Bool) async throws -> HTTPResponse {
-        let follow = followRedirects && ["GET", "HEAD"].contains((request.httpMethod ?? "GET").uppercased())
-        let (data, response) = try await session.data(for: request, delegate: follow ? nil : NoRedirects.shared)
-        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-        var headers: [String: String] = [:]
-        for (key, value) in http.allHeaderFields { headers[String(describing: key)] = String(describing: value) }
-        return HTTPResponse(status: http.statusCode, headers: headers, body: data, url: http.url)
+        try await load(request, followRedirects: followRedirects, on: session)
     }
 }
 
 public final class FreshConnectionTransport: HTTPTransport {
-    private let session: URLSession
+    private let makeSession: @Sendable () -> URLSession
 
     public convenience init(configuration: URLSessionConfiguration = .ephemeral) {
+        nonisolated(unsafe) let configuration = privateConfiguration(configuration)
         self.init { URLSession(configuration: configuration) }
     }
 
     init(makeSession: @escaping @Sendable () -> URLSession) {
-        session = makeSession()
+        self.makeSession = makeSession
     }
 
     public func send(_ request: URLRequest, followRedirects: Bool) async throws -> HTTPResponse {
-        let follow = followRedirects && ["GET", "HEAD"].contains((request.httpMethod ?? "GET").uppercased())
-        let (data, response) = try await session.data(for: request, delegate: follow ? nil : NoRedirects.shared)
-        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-        return HTTPResponse(status: http.statusCode, body: data, url: http.url)
+        let session = makeSession()
+        defer { session.finishTasksAndInvalidate() }
+        return try await load(request, followRedirects: followRedirects, on: session)
     }
 }
 
-private final class NoRedirects: NSObject, URLSessionTaskDelegate, Sendable {
-    static let shared = NoRedirects()
-    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest) async -> URLRequest? { nil }
+private final class TaskObserver: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    private let follow: Bool
+    private let lock = NSLock()
+    private var metrics: URLSessionTaskTransactionMetrics?
+
+    init(follow: Bool) { self.follow = follow }
+
+    var line: String? {
+        guard let metrics = lock.withLock({ metrics }) else { return nil }
+        let sent = metrics.countOfRequestHeaderBytesSent + metrics.countOfRequestBodyBytesSent
+        return "\(metrics.networkProtocolName ?? "?") · \(metrics.isReusedConnection ? "reused" : "new") connection · sent \(sent) B"
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest) async -> URLRequest? {
+        follow ? request : nil
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didFinishCollecting metrics: URLSessionTaskMetrics) {
+        lock.withLock { self.metrics = metrics.transactionMetrics.last { $0.resourceFetchType == .networkLoad } ?? metrics.transactionMetrics.last }
+    }
 }
 
 public func makeRequest(_ url: URL, method: String = "GET", headers: [String: String] = [:], body: Data? = nil, timeout: TimeInterval) -> URLRequest {

@@ -18,6 +18,7 @@ final class FakeTransport: HTTPTransport, @unchecked Sendable {
     var requests: [String] { lock.withLock { recorded.map { "\($0.httpMethod ?? "GET") \($0.url!.absoluteString)" } } }
 
     func send(_ request: URLRequest, followRedirects: Bool) async throws -> HTTPResponse {
+        if request.url!.absoluteString.hasSuffix("/client_tokens") { return HTTPResponse(status: 200, body: Data(#"{"accessToken":"app"}"#.utf8)) }
         lock.withLock { recorded.append(request) }
         throw URLError(code)
     }
@@ -42,6 +43,8 @@ func makeJournal(_ test: XCTestCase) -> TechnicalJournal {
 }
 
 extension WriteFlowsTests {
+    static let tokens = "https://api.cyclocity.fr/auth/environments/PRD/client_tokens"
+
     func ongoingReads(_ server: MockServer) -> Int { server.calls.filter { $0.url.hasSuffix("/trips/ongoing") }.count }
 
     func testAnUnlockSendsItsPostThroughTheWriteTransportOnly() async throws {
@@ -50,8 +53,8 @@ extension WriteFlowsTests {
         let api = VelovAPI(transport: reads.transport, writes: sent.transport, pause: noPause)
         let (outcome, ongoing) = try await api.unlock(identity, stationNumber: 2002, standNumber: 12, bikeNumber: 20449)
         XCTAssertTrue(outcome.ok)
-        XCTAssertEqual(sent.calls.map { "\($0.method) \($0.url)" }, ["POST \(account)/subscriptions/sub-1/trips"])
-        XCTAssertEqual(sent.calls.first?.bodyText, #"{"stationNumber":2002,"standNumber":12,"bikeNumber":20449,"typeFrom":"SMARTPHONE"}"#)
+        XCTAssertEqual(sent.calls.map { "\($0.method) \($0.url)" }, ["POST \(Self.tokens)", "POST \(account)/subscriptions/sub-1/trips"])
+        XCTAssertEqual(sent.calls.last?.bodyText, #"{"stationNumber":2002,"standNumber":12,"bikeNumber":20449,"typeFrom":"SMARTPHONE"}"#)
         XCTAssertEqual(writes(reads).count, 0, "no write on the pooled read session")
         XCTAssertEqual(ongoingReads(reads), 1)
         XCTAssertEqual(ongoing?.map(\.id), ["t-9"])
@@ -72,9 +75,9 @@ extension WriteFlowsTests {
         _ = try await api.contactSupport(identity, ContactBody(complaintType: "PAYMENT", message: "Bonjour"))
         _ = try await api.consumePromoCode(identity, expectedCost: 50)
         _ = try await api.receipt(identity, subscriptionId: "sub-1", periodId: "p-1")
-        XCTAssertEqual(writes(reads).map { "\($0.method) \($0.url)" }, [], "no write on the pooled read session")
+        XCTAssertEqual(reads.calls.filter { $0.method != "GET" }.map(\.url), [], "no POST, PATCH or DELETE on the pooled read session")
         XCTAssertEqual(sent.calls.map { "\($0.method) \($0.url.replacingOccurrences(of: account, with: ""))" }, [
-            "POST /bookings", "POST /trips/t-1/rate", "PATCH /rewards", "POST /stationbookmarks/2002/", "DELETE /stationbookmarks/2002/", "PATCH ",
+            "POST \(Self.tokens)", "POST /bookings", "POST /trips/t-1/rate", "PATCH /rewards", "POST /stationbookmarks/2002/", "DELETE /stationbookmarks/2002/", "PATCH ",
             "PATCH /subscriptions/sub-1", "POST /subscriptions/sub-1/via", "POST /mail", "POST /rewards/consume/promocode",
             "POST /subscriptions/sub-1/periods/p-1/reports"
         ])
@@ -175,6 +178,26 @@ final class WriteConnectionTests: XCTestCase {
         XCTAssertEqual(created.count, 2, "one session per request")
         XCTAssertEqual(server.calls.map(\.url), ["https://api.cyclocity.fr/first", "https://api.cyclocity.fr/moved"])
         await fulfillment(of: [invalidated], timeout: 2)
+    }
+
+    func testTheJournalNotesTheConnectionThatCarriedAFailedWrite() async throws {
+        let journal = makeJournal(self)
+        let server = MockServer { _, _ in .failure(.networkConnectionLost) }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockProtocol.self]
+        configuration.httpAdditionalHeaders = ["X-Mock-Server": server.id]
+        let transport = JournalTransport(FreshConnectionTransport(configuration: configuration), journal: journal)
+        let post = makeRequest(URL(string: "https://api.cyclocity.fr/contracts/lyon/accounts/\(accountId)/subscriptions/sub-1/trips")!, method: "POST", timeout: 30)
+        do {
+            _ = try await transport.send(post)
+            XCTFail("no error")
+        } catch {
+            XCTAssertEqual((error as? NetworkFailure)?.code, -1005)
+        }
+        let entry = try XCTUnwrap(journal.entries.first)
+        XCTAssertEqual(entry.result, "NSURLErrorNetworkConnectionLost (-1005)")
+        XCTAssertEqual(entry.connection?.contains("new connection · sent"), true, String(describing: entry.connection))
+        XCTAssertTrue(journal.export().contains(" · new connection · sent"))
     }
 
     func testJournalKeepsWritesAndTheirReadsPastTheReadRing() {

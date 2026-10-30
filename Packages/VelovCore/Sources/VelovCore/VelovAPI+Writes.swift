@@ -8,7 +8,7 @@ extension VelovAPI {
         WriteAuth(accountId: try await accountId(identity), token: try await appToken.get(), identity: identity.accessToken)
     }
 
-    private var http: HTTPTransport { client.transport }
+    private var http: HTTPTransport { writes }
 
     private func currentSubscriptionList(_ account: String, _ identity: Identity, accept: String = Guesses.subscriptionMediaType) async throws -> [JSON] {
         guard let list = try await read("\(account)/\(currentSubscriptions)", identity, accept: accept).array else { throw ShapeError("subscriptions is not a list") }
@@ -62,7 +62,16 @@ extension VelovAPI {
     }
 
     public func watchUnlock(_ identity: Identity, bikeNumber: Int) async throws -> Trip? {
-        nil
+        let account = "/accounts/\(try await accountId(identity))"
+        for wait in Reconcile.unlockPolls {
+            await client.pause(wait)
+            if Task.isCancelled { return nil }
+            do {
+                let trips = try RawTrip.list(try await read("\(account)/trips/ongoing", identity, accept: "application/vnd.trip.v6+json"))
+                if let trip = trips.first(where: { $0.bikeNumber == Double(bikeNumber) }) { return normalizeTrip(trip, stations: await stationsByNumber()) }
+            } catch let error as VelovError where error.code == .expired { throw error } catch {}
+        }
+        return nil
     }
 
     public func rate(_ identity: Identity, tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome {

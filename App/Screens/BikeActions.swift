@@ -43,6 +43,7 @@ struct BikeActionSheet: View {
     @State private var refused: Outcome?
     @State private var notice: String?
     @State private var checking = false
+    @State private var watching = false
     @State private var distance: Double?
 
     init(place: Place, bookingId: String? = nil, action: BikeAction, done: @escaping (BikeAction) -> Void = { _ in }) {
@@ -70,6 +71,7 @@ struct BikeActionSheet: View {
         return refused
     }
     private var uncertain: Bool { held?.entry.status == .uncertain }
+    private var uncertainUnlockSince: Date? { held?.action == .unlock && uncertain ? held?.entry.at : nil }
     private var booked: Bool { model.bookings.contains { $0.bikeNumber == place.bikeNumber } }
 
     var body: some View {
@@ -98,7 +100,7 @@ struct BikeActionSheet: View {
         } actions: {
             if uncertain {
                 PillButton("Fermer", variant: .ghost, fullWidth: true) { dismiss() }.disabled(busy)
-                PillButton("Vérifier", variant: .secondary, pending: checking, fullWidth: true) { verify(action) }
+                PillButton("Vérifier", variant: .secondary, pending: checking || watching, fullWidth: true) { verify(action) }
             } else {
                 PillButton("Annuler", variant: .ghost, fullWidth: true) { dismiss() }.disabled(busy)
                 PillButton("Confirmer", pending: sending, fullWidth: true) { send() }
@@ -114,6 +116,29 @@ struct BikeActionSheet: View {
             distance = model.snapshot == nil ? await knownDistance(to: place) : 640
             if model.snapshot == .unlockUncertain { send() }
         }
+        .task(id: uncertainUnlockSince) {
+            guard let since = uncertainUnlockSince, model.snapshot == nil else { return }
+            await follow(since: since)
+        }
+    }
+
+    private func follow(since: Date) async {
+        let key = key(.unlock)
+        if Date().timeIntervalSince(since) < Reconcile.dockWindow {
+            watching = true
+            let trip = await TechnicalJournal.$operation.withValue(key) { try? await model.service.watchUnlock(bikeNumber: place.bikeNumber) }
+            watching = false
+            if let trip, let held = model.operations.get(key), held.status == .uncertain {
+                model.operations.clear(key, held: held)
+                Haptics.success()
+                model.unlocked(bookingId: bookingId, ride: place.ride(trip))
+                done(.unlock)
+                dismiss()
+                return
+            }
+            try? await Task.sleep(for: .seconds(max(0, since.addingTimeInterval(Reconcile.dockWindow).timeIntervalSinceNow)))
+        }
+        if !Task.isCancelled { verify(.unlock) }
     }
 
     private func send() {
@@ -157,7 +182,7 @@ struct BikeActionSheet: View {
                 dismiss()
             } else if !outcome.isUncertain {
                 refused = outcome
-            } else if model.snapshot == nil {
+            } else if model.snapshot == nil, action == .book {
                 verify(action)
             }
         }
@@ -174,14 +199,16 @@ struct BikeActionSheet: View {
             defer { checking = false }
             var trip: Trip?
             let settled = await model.operations.settleHeld(key) { _ in
-                switch action {
-                case .book:
-                    return bookingCheck(try await model.service.bookings(), bike: place.bikeNumber)
-                case .unlock:
-                    let answer = try await model.service.tripCheck()
-                    trip = answer.ongoing?.first { $0.bikeNumber == place.bikeNumber }
-                    let bookings = bookingId == nil ? nil : try? await model.service.bookings()
-                    return unlockCheck(answer, bike: place.bikeNumber, since: held.at, now: Date(), booking: bookingId, bookings: bookings)
+                try await TechnicalJournal.$operation.withValue(key) {
+                    switch action {
+                    case .book:
+                        return bookingCheck(try await model.service.bookings(), bike: place.bikeNumber)
+                    case .unlock:
+                        let answer = try await model.service.tripCheck()
+                        trip = answer.ongoing?.first { $0.bikeNumber == place.bikeNumber }
+                        let bookings = bookingId == nil ? nil : try? await model.service.bookings()
+                        return unlockCheck(answer, bike: place.bikeNumber, since: held.at, now: Date(), booking: bookingId, bookings: bookings)
+                    }
                 }
             }
             switch settled {

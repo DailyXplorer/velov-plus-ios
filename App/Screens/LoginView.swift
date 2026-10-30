@@ -42,6 +42,11 @@ struct LoginView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, minHeight: Space.state, alignment: .topLeading)
+                    PillButton(variant: .ghost, fullWidth: true, action: { model.continueAsGuest() }) {
+                        ButtonIcon(.mapPin)
+                        Text("Continuer sans compte")
+                    }
+                    .disabled(pending)
                 }
                 .padding(.top, Space.section)
             }

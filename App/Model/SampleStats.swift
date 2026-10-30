@@ -54,5 +54,8 @@ extension SampleData {
 }
 
 extension SampleService {
-    func stats() async throws -> Stats { SampleData.stats() }
+    func stats() async throws -> Stats {
+        account()
+        return SampleData.stats()
+    }
 }

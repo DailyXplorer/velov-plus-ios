@@ -48,6 +48,11 @@ enum SnapshotScreen: String {
     case viaPick, viaReview, viaUncertain, inviteDialog, inviteCode, renewalToggle, renewalDialog, contactUncertain
     case stationsSearch, stationsEmptyFilter, locationError, pageFailure, bikeListFailure, bikeOwnBooking, bigBalance, dockWhileBikes
     case stats, statsCharts, statsTipFirst, statsTipMiddle, statsTipLast, statsHeatmap, statsHeatTip, statsDonut, statsRecords, statsBike, statsEnd
+    case login, guestStations, guestStationSheet, guestBikeSheet
+
+    var asGuest: Bool { [.guestStations, .guestStationSheet, .guestBikeSheet].contains(self) }
+
+    var signedOut: Bool { self == .login || asGuest }
 
     var isLiveActivity: Bool { [.liveActivityLock, .liveActivityIsland, .tripActivityLock, .tripActivityIsland].contains(self) }
 
@@ -55,9 +60,9 @@ enum SnapshotScreen: String {
 
     var riding: Bool { [.ongoingBanner, .viaPick, .viaReview, .viaUncertain].contains(self) }
 
-    var opensBikes: Bool { [.bikeList, .bikeSheet, .bookConfirm, .bikeListFailure, .bikeOwnBooking, .dockWhileBikes].contains(self) }
+    var opensBikes: Bool { [.bikeList, .bikeSheet, .bookConfirm, .bikeListFailure, .bikeOwnBooking, .dockWhileBikes, .guestBikeSheet].contains(self) }
 
-    var pushesBike: Bool { [.bikeSheet, .bookConfirm, .bikeOwnBooking].contains(self) }
+    var pushesBike: Bool { [.bikeSheet, .bookConfirm, .bikeOwnBooking, .guestBikeSheet].contains(self) }
 }
 
 @MainActor
@@ -65,7 +70,8 @@ enum SnapshotScreen: String {
 final class AppModel {
     enum Phase {
         case launching
-        case guest(String?)
+        case signedOut(String?)
+        case guest
         case loading
         case ready(Dashboard)
         case failed(LoadFailure)
@@ -87,6 +93,7 @@ final class AppModel {
     var ratedHere: Set<String> = []
     var contactRequested = false
     var foreground = true
+    private(set) var guestFavorites: [Int] = []
     private var docked: Set<String> = []
     private var openSheets = 0
     private var queuedEnded: Trip?
@@ -102,7 +109,7 @@ final class AppModel {
                 rides.observed(answer.ongoing, latest: answer.latest)
                 return answer
             case .failure(let error as VelovError) where error.code == .expired:
-                phase = .guest("Session expirée. Reconnectez-vous.")
+                phase = .signedOut("Session expirée. Reconnectez-vous.")
                 dockWatch.stop()
                 throw error
             case .failure(let error):
@@ -113,14 +120,16 @@ final class AppModel {
         visible: { [unowned self] in foreground })
     let promoBacking: PromoBacking
     let operations: Operations
+    @ObservationIgnored private let guestStore: GuestStore
     @ObservationIgnored private let refreshGate = RefreshGate()
     private let activities = BookingActivities()
     @ObservationIgnored private lazy var rides = TripActivities(host: TripActivityKit(bookings: activities))
 
-    init(service: VelovService, snapshot: SnapshotScreen? = nil, promoBacking: PromoBacking, operationBacking: OperationBacking) {
+    init(service: VelovService, snapshot: SnapshotScreen? = nil, promoBacking: PromoBacking, operationBacking: OperationBacking, guestStore: GuestStore) {
         self.service = service
         self.snapshot = snapshot
         self.promoBacking = promoBacking
+        self.guestStore = guestStore
         operations = Operations(backing: operationBacking)
         switch snapshot {
         case .trips?, .tripSheet?, .rateCard?, .bikePage?: page = .trips
@@ -158,15 +167,49 @@ final class AppModel {
         return nil
     }
 
+    var isGuest: Bool {
+        if case .guest = phase { return true }
+        return false
+    }
+
+    var favorites: [Int] { isGuest ? guestFavorites : dashboard?.profile.favorites ?? [] }
+
     func start() async {
         guard case .launching = phase else { return }
         if snapshot == nil { rides.launched() }
-        if await service.hasSession() {
+        switch StartMode(hasSession: await service.hasSession(), guest: guestStore.isOn) {
+        case .session:
             phase = .loading
             refreshAll()
-        } else {
-            phase = .guest(nil)
+        case .guest:
+            browse()
+        case .signedOut:
+            phase = .signedOut(nil)
         }
+    }
+
+    func continueAsGuest() {
+        guestStore.remember(true)
+        browse()
+    }
+
+    private func browse() {
+        guestFavorites = guestStore.favorites
+        page = .stations
+        phase = .guest
+        Task { await loadStations() }
+    }
+
+    func leaveGuest() {
+        guestStore.remember(false)
+        sheet = nil
+        paths = [:]
+        page = .overview
+        phase = .signedOut(nil)
+    }
+
+    func setGuestFavorite(_ number: Int, _ on: Bool) {
+        guestFavorites = guestStore.setFavorite(number, on)
     }
 
     func refreshAll() {
@@ -177,6 +220,7 @@ final class AppModel {
 
     func manualRefresh() async {
         guard refreshGate.allow(busy: refreshing || stationsPending) else { return }
+        if isGuest { return await loadStations() }
         async let dashboard: Void = loadDashboard()
         async let stations: Void = loadStations()
         async let bookings: Void = loadBookings()
@@ -196,7 +240,7 @@ final class AppModel {
             watchTrips(data)
         case .failure(let error as VelovError) where error.code == .expired:
             dockWatch.stop()
-            phase = .guest(error.revoked ? error.message : "Votre session a expiré. Reconnectez-vous.")
+            phase = .signedOut(error.revoked ? error.message : "Votre session a expiré. Reconnectez-vous.")
         case .failure(let error):
             phase = .failed(LoadFailure(error, "Votre compte est momentanément indisponible."))
         }
@@ -372,6 +416,7 @@ final class AppModel {
     func signIn(email: String, code: String) async throws {
         endSession()
         try await service.signIn(email: email, code: code)
+        guestStore.remember(false)
         phase = .loading
         refreshAll()
     }
@@ -398,6 +443,6 @@ final class AppModel {
         rides.endAll()
         operations.use(account: nil)
         page = .overview
-        phase = .guest(confirmed ? nil : Messages.remoteLogoutUnconfirmed)
+        phase = .signedOut(confirmed ? nil : Messages.remoteLogoutUnconfirmed)
     }
 }

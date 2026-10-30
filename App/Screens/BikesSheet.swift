@@ -290,7 +290,9 @@ struct BikeDetail: View {
         if bike.status != "AVAILABLE" {
             Text(bike.statusLabel ?? "Statut inconnu").typo(.body(.base)).foregroundStyle(Palette.inkSoft).padding(.top, Space.titleToContent)
         }
-        if let station = route.station, bike.status == "AVAILABLE", bike.standNumber != nil, !bike.isReserved || mine {
+        if model.isGuest {
+            if route.station != nil { signIn }
+        } else if let station = route.station, bike.status == "AVAILABLE", bike.standNumber != nil, !bike.isReserved || mine {
             actions(bike, station: station, mine: mine)
         }
         VStack(spacing: 0) {
@@ -342,6 +344,21 @@ struct BikeDetail: View {
         } else {
             Text("Non renseigné")
         }
+    }
+
+    private var signIn: some View {
+        Button { model.leaveGuest() } label: {
+            HStack(spacing: Space.label) {
+                Icon(.signIn, .light, size: 18)
+                Text("Se connecter pour réserver ou déverrouiller").typo(.caps(.tag)).multilineTextAlignment(.leading)
+            }
+            .foregroundStyle(Palette.redDeep)
+            .frame(minHeight: Layout.hit)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.press)
+        .accessibilityLabel("Se connecter pour réserver ou déverrouiller")
+        .padding(.top, Space.label)
     }
 
     private func actions(_ bike: Bike, station: Station, mine: Bool) -> some View {

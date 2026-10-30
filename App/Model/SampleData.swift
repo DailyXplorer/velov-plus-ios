@@ -80,6 +80,18 @@ enum SampleData {
 }
 
 extension SampleData {
+    static func guestStore(_ screen: SnapshotScreen?) -> GuestStore {
+        let name = "velov-sample-guest"
+        let defaults = UserDefaults(suiteName: name) ?? .standard
+        defaults.removePersistentDomain(forName: name)
+        let store = GuestStore(defaults: defaults)
+        if screen?.asGuest == true {
+            store.remember(true)
+            store.setFavorite(2002, true)
+        }
+        return store
+    }
+
     static let journal: TechnicalJournal = {
         let defaults = UserDefaults(suiteName: "velov-sample-journal") ?? .standard
         let journal = TechnicalJournal(defaults: defaults, key: "sample")
@@ -106,6 +118,9 @@ struct SampleService: VelovService {
 
     private var booking: Booking? { screen?.withBooking == true ? SampleData.booking() : nil }
     private var riding: Bool { screen?.riding == true }
+    func account() {
+        precondition(screen?.asGuest != true, "An account request started while browsing without an account")
+    }
     private func pause() async { if slow { try? await Task.sleep(for: .seconds(8)) } }
     private func lost(_ message: String) -> Outcome {
         var lost = Outcome.refusal("network", message)
@@ -113,10 +128,11 @@ struct SampleService: VelovService {
         return lost
     }
 
-    func hasSession() async -> Bool { true }
+    func hasSession() async -> Bool { screen?.signedOut != true }
     func signIn(email: String, code: String) async throws {}
     func logout() async -> Bool { true }
     func dashboard() async throws -> Dashboard {
+        account()
         if screen == .pageFailure { throw NetworkFailure(code: URLError.timedOut.rawValue, elapsed: 30) }
         var data = SampleData.dashboard
         if screen == .stationsEmptyFilter { data.profile.favorites = [] }
@@ -135,25 +151,42 @@ struct SampleService: VelovService {
         return SampleData.bikes
     }
     func bike(_ number: Int) async throws -> Bike? { SampleData.bikes.first { $0.number == number } ?? SampleData.bikes[0] }
-    func bookings() async throws -> [Booking] { booking.map { [$0] } ?? [] }
+    func bookings() async throws -> [Booking] {
+        account()
+        return booking.map { [$0] } ?? []
+    }
     func forgetStats() async {}
-    func rewardLedger() async throws -> RewardLedger { RewardLedger(movements: SampleData.dashboard.rewards.movements, complete: true) }
+    func rewardLedger() async throws -> RewardLedger {
+        account()
+        return RewardLedger(movements: SampleData.dashboard.rewards.movements, complete: true)
+    }
 
     func book(stationNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, booking: Booking?) {
+        account()
         await pause()
         return (Outcome(ok: true, httpStatus: 200), SampleData.booking(bike: bikeNumber, minutesLeft: 15))
     }
     func unlock(stationNumber: Int, standNumber: Int, bikeNumber: Int) async throws -> (outcome: Outcome, ongoing: [Trip]?) {
+        account()
         if screen == .unlockUncertain { return (lost(Messages.unlockNoAnswer), nil) }
         return (Outcome(ok: true, httpStatus: 200, transactionState: "OK"), [])
     }
-    func tripCheck() async throws -> TripCheck { TripCheck(ongoing: [], latest: nil) }
-    func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome { Outcome(ok: true, httpStatus: 200) }
+    func tripCheck() async throws -> TripCheck {
+        account()
+        return TripCheck(ongoing: [], latest: nil)
+    }
+    func rate(tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome {
+        account()
+        return Outcome(ok: true, httpStatus: 200)
+    }
     func setAutoSpend(_ value: Bool) async throws -> (outcome: Outcome, autoSpend: Bool?) {
         await pause()
         return (Outcome(ok: true, httpStatus: 200), value)
     }
-    func setFavorite(station: Int, on: Bool) async throws -> Outcome { Outcome(ok: true, httpStatus: 204) }
+    func setFavorite(station: Int, on: Bool) async throws -> Outcome {
+        account()
+        return Outcome(ok: true, httpStatus: 204)
+    }
     func receipt(subscriptionId: String, periodId: String) async throws -> (outcome: Outcome, filename: String?, pdf: Data?) {
         (Outcome(ok: false, httpStatus: 0, code: "sample", message: "Pas de reçu dans les données d’exemple."), nil, nil)
     }

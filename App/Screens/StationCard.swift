@@ -21,7 +21,15 @@ struct StationCard: View {
             HStack(spacing: 0) {
                 Text(station.name).typo(.title(.small)).foregroundStyle(Palette.ink).lineLimit(1)
                 IconButton(icon: .star, weight: favorite ? .fill : .light, color: favorite ? Palette.red : Palette.inkSoft,
-                           label: favorite ? "Retirer des favoris" : "Ajouter aux favoris") { wasFavorite = favorite; favoriteOpen = true }
+                           label: favorite ? "Retirer des favoris" : "Ajouter aux favoris") {
+                    if model.isGuest {
+                        Haptics.selection()
+                        model.setGuestFavorite(station.number, !favorite)
+                    } else {
+                        wasFavorite = favorite
+                        favoriteOpen = true
+                    }
+                }
                     .accessibilityAddTraits(favorite ? .isSelected : [])
                     .padding(.leading, Layout.bleed + Space.pair)
                 Spacer(minLength: Space.label)

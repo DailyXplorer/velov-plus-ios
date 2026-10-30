@@ -49,10 +49,33 @@ struct Shell: View {
         .environment(\.floatingRadius, radius)
         .environment(\.tabBarBand, tabBarBand)
         .environment(\.tabBarClearance, homeIndicator + tabBarBand)
+        .environment(\.floatingFloor, homeIndicator + tabBarBand + Concentric.gap)
     }
 
     private func screen(_ page: Page) -> some View {
         TabStack(page: page)
+    }
+}
+
+struct GuestShell: View {
+    @State private var homeIndicator: CGFloat = 0
+    @State private var radius = Concentric.fallback
+
+    var body: some View {
+        StationsPage()
+            .background(Palette.white)
+            .background {
+                Color.clear.ignoresSafeArea(.keyboard).onGeometryChange(for: CGFloat.self, of: { $0.safeAreaInsets.bottom }) { homeIndicator = $0 }
+            }
+            .background(alignment: .bottom) {
+                Color.clear.frame(height: 1)
+                    .onGeometryChange(for: CGFloat.self, of: { Concentric.radius($0) }) { radius = $0 }
+                    .padding(.horizontal, Concentric.inset).padding(.bottom, Concentric.inset)
+                    .ignoresSafeArea()
+            }
+            .environment(\.floatingRadius, radius)
+            .environment(\.tabBarClearance, homeIndicator)
+            .environment(\.floatingFloor, Concentric.inset)
     }
 }
 
@@ -343,11 +366,27 @@ struct Header: View {
                 .foregroundStyle(Palette.inkSoft)
             }
             .disabled(busy)
-            FloatingCircleButton(label: fullName.isEmpty ? "Mon compte" : "Mon compte, \(fullName)") { model.page = .account } content: {
-                if let initial = model.dashboard.flatMap({ formatName($0.profile.firstName).first }) {
-                    Text(String(initial)).typo(.title(.small))
-                } else {
-                    Icon(.userCircle, .light, size: 22)
+            if model.isGuest {
+                Button { model.leaveGuest() } label: {
+                    HStack(spacing: Space.label) {
+                        Icon(.signIn, .light, size: Layout.glyph)
+                        Text("Se connecter").typo(.caps(.button)).lineLimit(1)
+                    }
+                    .foregroundStyle(Palette.ink)
+                    .padding(.leading, 14).padding(.trailing, 18)
+                    .frame(height: Layout.control)
+                    .floatingGlass(Capsule(), interactive: true, fallback: Palette.mist)
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.press)
+                .fixedSize()
+            } else {
+                FloatingCircleButton(label: fullName.isEmpty ? "Mon compte" : "Mon compte, \(fullName)") { model.page = .account } content: {
+                    if let initial = model.dashboard.flatMap({ formatName($0.profile.firstName).first }) {
+                        Text(String(initial)).typo(.title(.small))
+                    } else {
+                        Icon(.userCircle, .light, size: 22)
+                    }
                 }
             }
         }

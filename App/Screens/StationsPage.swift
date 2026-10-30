@@ -18,13 +18,14 @@ struct StationsPage: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var still
     @Environment(\.tabBarClearance) private var clearance
+    @Environment(\.floatingFloor) private var floor
     @FocusState private var searching: Bool
     @State private var cardHeight: CGFloat = 0
     @State private var toolbarBand: CGFloat = 0
     @State private var filtered: [Station] = []
 
     private var stations: [Station] { model.stations.value?.stations ?? [] }
-    private var favorites: Set<Int> { Set(model.dashboard?.profile.favorites ?? []) }
+    private var favorites: Set<Int> { Set(model.favorites) }
     private var here: GeoPoint? { position.map { GeoPoint(lat: $0.coordinate.latitude, lon: $0.coordinate.longitude) } }
     private var ranking: StationRanking { StationRanking(stations: stations, query: query, filter: filter, favorites: favorites, here: here) }
 
@@ -67,7 +68,7 @@ struct StationsPage: View {
         }
         .onLeaving(.stations) { searching = false }
         .task {
-            if model.snapshot == .stationSheet || model.snapshot?.opensBikes == true {
+            if model.snapshot == .stationSheet || model.snapshot == .guestStationSheet || model.snapshot?.opensBikes == true {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 select("2002")
             }
@@ -130,7 +131,7 @@ struct StationsPage: View {
                 selectedId = nil
             }
                 .safeAreaPadding(.top, toolbarBand)
-                .safeAreaPadding(.bottom, clearance + (selected == nil ? 0 : cardHeight + Concentric.gap))
+                .safeAreaPadding(.bottom, selected == nil ? clearance : floor + cardHeight)
                 .ignoresSafeArea(.container, edges: .bottom)
             VStack(alignment: .leading, spacing: Space.cards) {
                 toolbar
@@ -151,7 +152,7 @@ struct StationsPage: View {
                 }
                 .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { cardHeight = $0 }
                 .padding(.horizontal, Concentric.inset)
-                .padding(.bottom, clearance + Concentric.gap)
+                .padding(.bottom, floor)
                 .ignoresSafeArea(edges: .bottom)
                 .transition(Motion.panelTransition(still: still))
             }

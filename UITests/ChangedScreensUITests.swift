@@ -21,9 +21,9 @@ final class ChangedScreensUITests: XCTestCase {
     }
 
     func testOverviewMap() { capture("overviewMap", "01b-overview-map", until: "Explorer les stations", wait: 5) }
-    func testStationCard() { capture("stationSheet", "04-stations-sheet", until: "Voir les vélos") }
+    func testStationCard() { capture("stationSheet", "04-stations-sheet", until: "Bellecour") }
     func testStations() { capture("stations", "04a-stations", until: "Rechercher une station") }
-    func testStationCardLong() { capture("stationSheetLong", "04b-stations-sheet-long", until: "Voir les vélos") }
+    func testStationCardLong() { capture("stationSheetLong", "04b-stations-sheet-long", until: "Part-Dieu Villette") }
     func testBikeList() { capture("bikeList", "05-bike-list", until: "Actualiser les vélos") }
     func testBikePage() { capture("bikeSheet", "06-bike-sheet", until: "Vélo 20449") }
     func testPoints() { capture("points", "07-points", until: "Solde actuel") }
@@ -48,7 +48,7 @@ final class ChangedScreensUITests: XCTestCase {
     func testViaReview() { capture("viaReview", "28-via-review", until: "Confirmer", wait: 5) }
     func testViaUncertain() { capture("viaUncertain", "29-via-uncertain", until: "Fermer", wait: 6) }
     func testInviteCode() { capture("inviteCode", "31-invite-code", until: "Copier", wait: 5) }
-    func testRenewalToggle() { capture("renewalToggle", "32-renewal-toggle", until: "Reçu", wait: 5) }
+    func testRenewalToggle() { capture("renewalToggle", "32-renewal-toggle", until: "Télécharger le reçu", wait: 5) }
     func testContactUncertain() { capture("contactUncertain", "34-contact-uncertain", until: "Fermer", wait: 6) }
     func testStationsSearch() { capture("stationsSearch", "35-stations-search", until: "Part-Dieu", wait: 5) }
     func testStationsEmptyFilter() { capture("stationsEmptyFilter", "36-stations-empty-filter", until: "Toutes les stations", wait: 5) }

@@ -161,6 +161,56 @@ final class NavigationUITests: XCTestCase {
         shot("booking-without-account")
     }
 
+    private func tap(_ app: XCUIApplication, _ label: String, scroll: Bool = false) {
+        let matches = app.buttons.matching(NSPredicate(format: "label == %@", label))
+        XCTAssertTrue(matches.firstMatch.waitForExistence(timeout: 10), "\(label) is shown")
+        for _ in 0..<5 {
+            if let button = matches.allElementsBoundByIndex.last(where: { $0.isHittable }) { return button.tap() }
+            if scroll { app.swipeUp() } else { sleep(1) }
+        }
+        XCTFail("\(label) can be tapped")
+    }
+
+    func testATripChosenForSupportIsForgottenAtLogout() {
+        let app = launch("contactUncertain")
+        let restart = app.buttons["Écrire un nouveau message"]
+        XCTAssertTrue(restart.waitForExistence(timeout: 30), "the first message is uncertain")
+        tap(app, "Fermer")
+        tap(app, "Annuler")
+        tap(app, "Ignorer")
+        tap(app, "Trajets")
+        let disputed = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Trajet de Terreaux")).firstMatch
+        XCTAssertTrue(disputed.waitForExistence(timeout: 10), "the disputed trip is listed")
+        disputed.tap()
+        tap(app, "Écrire au service client", scroll: true)
+        XCTAssertTrue(restart.waitForExistence(timeout: 10), "support asked from the disputed trip shows the uncertain message")
+        tap(app, "Fermer")
+        tap(app, "Se déconnecter", scroll: true)
+        let title = header(app, "Se déconnecter\u{a0}?")
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        sleep(1)
+        let below = app.descendants(matching: .any).matching(NSPredicate(format: "label ==[c] %@", "Se déconnecter")).allElementsBoundByIndex.filter { $0.frame.minY > title.frame.maxY }
+        if let confirm = below.first { confirm.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() } else {
+            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: app.frame.width * 0.72, dy: title.frame.midY + 66)).tap()
+        }
+        let email = app.textFields["Adresse e-mail"]
+        XCTAssertTrue(email.waitForExistence(timeout: 10), "the logout opens the login screen")
+        email.tap()
+        email.typeText("person@example.com")
+        let code = app.secureTextFields["Code secret à 6 chiffres"]
+        code.tap()
+        code.typeText("123456")
+        tap(app, "Se connecter")
+        tap(app, "Compte")
+        tap(app, "Écrire au service client", scroll: true)
+        XCTAssertTrue(restart.waitForExistence(timeout: 10))
+        restart.tap()
+        let tripField = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Trajet (facultatif)")).firstMatch
+        XCTAssertTrue(tripField.waitForExistence(timeout: 10), "the new message form is open")
+        XCTAssertEqual(tripField.label, "Trajet (facultatif), Aucun", "the trip chosen before the logout is not chosen for the next session")
+        shot("contact-after-logout")
+    }
+
     func testAnEditedFormAsksBeforeItIsLeft() {
         let app = launch("profilePage")
         XCTAssertTrue(visible(app, "Modifier mes coordonnées", timeout: 30))

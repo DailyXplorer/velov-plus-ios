@@ -96,17 +96,25 @@ private struct ProfileChange: Codable {
     var wanted: [[String]?]
 }
 
+private func hashedIntent(_ values: [[String]?]) -> [String: String] {
+    ["fields": values.map { $0 == nil ? "0" : "1" }.joined(), "digest": digest(values)]
+}
+
 public func profileIntent(_ body: ProfileBody) -> [String: String] {
-    let values = wanted(body)
-    return ["fields": values.map { $0 == nil ? "0" : "1" }.joined(), "digest": digest(values)]
+    hashedIntent(wanted(body))
+}
+
+func scrubbedIntent(_ meta: [String: String]) -> [String: String] {
+    guard let raw = meta["profile"] else { return meta }
+    var meta = meta
+    meta["profile"] = nil
+    guard let change = try? JSONDecoder().decode(ProfileChange.self, from: Data(raw.utf8)) else { return meta }
+    return meta.merging(hashedIntent(lowered(change.wanted))) { $1 }
 }
 
 public func profileCheck(_ intent: [String: String], after: Profile) -> Check {
-    if let mask = intent["fields"], let expected = intent["digest"] {
-        return digest(fields(after, mask.map { $0 == "1" })) == expected ? .applied : .unchanged
-    }
-    guard let raw = intent["profile"], let change = try? JSONDecoder().decode(ProfileChange.self, from: Data(raw.utf8)) else { return .unchanged }
-    return fields(after, change.wanted.map { $0 != nil }) == change.wanted ? .applied : .unchanged
+    guard let mask = intent["fields"], let expected = intent["digest"] else { return .unchanged }
+    return digest(fields(after, mask.map { $0 == "1" })) == expected ? .applied : .unchanged
 }
 
 public enum DebitCheck: Equatable, Sendable { case debited, notDebited, unknown }

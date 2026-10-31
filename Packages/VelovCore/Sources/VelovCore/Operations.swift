@@ -13,6 +13,7 @@ public func noAnswer(_ message: String) -> Outcome {
 public protocol OperationBacking: AnyObject {
     func read(_ key: String) throws -> Data?
     func write(_ key: String, _ value: Data?) throws
+    func keys() throws -> [String]
 }
 
 public final class DefaultsOperationBacking: OperationBacking {
@@ -22,6 +23,7 @@ public final class DefaultsOperationBacking: OperationBacking {
     public func write(_ key: String, _ value: Data?) {
         if let value { defaults.set(value, forKey: key) } else { defaults.removeObject(forKey: key) }
     }
+    public func keys() -> [String] { Array(defaults.dictionaryRepresentation().keys) }
 }
 
 public final class InMemoryOperationBacking: OperationBacking {
@@ -35,6 +37,10 @@ public final class InMemoryOperationBacking: OperationBacking {
     public func write(_ key: String, _ value: Data?) throws {
         if failing { throw CocoaError(.fileWriteNoPermission) }
         values[key] = value
+    }
+    public func keys() throws -> [String] {
+        if failing { throw CocoaError(.fileReadNoPermission) }
+        return Array(values.keys)
     }
 }
 
@@ -62,6 +68,12 @@ public final class Operations {
         public var at: Date
         public var outcome: Outcome?
         public var meta: [String: String]
+
+        var scrubbed: Entry {
+            var entry = self
+            entry.meta = scrubbedIntent(meta)
+            return entry
+        }
     }
 
     public enum Began: Equatable, Sendable { case started, busy, unsaved }
@@ -80,6 +92,16 @@ public final class Operations {
         self.now = now
         self.session = session
         digest = account.map(accountDigest)
+        scrubStored()
+    }
+
+    private func scrubStored() {
+        guard let backing, let keys = try? backing.keys() else { return }
+        for key in keys where key.hasPrefix("\(Self.storageKey):") {
+            guard let raw = try? backing.read(key), let all = try? JSONDecoder().decode([String: Entry].self, from: raw) else { continue }
+            let clean = all.mapValues(\.scrubbed)
+            if clean != all { try? backing.write(key, try JSONEncoder().encode(clean)) }
+        }
     }
 
     public func use(account: String?) {
@@ -94,7 +116,7 @@ public final class Operations {
         guard let backing, let owner = owner ?? digest else { return nil }
         do {
             guard let raw = try backing.read("\(Self.storageKey):\(owner)") else { return [:] }
-            return try JSONDecoder().decode([String: Entry].self, from: raw)
+            return try JSONDecoder().decode([String: Entry].self, from: raw).mapValues(\.scrubbed)
         } catch {
             return nil
         }

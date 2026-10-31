@@ -340,7 +340,7 @@ final class OperationsTests: XCTestCase {
         XCTAssertEqual(profileCheck(profileIntent(ProfileBody(lastName: "Lovelace-Byron")), after: renamed), .applied)
         XCTAssertEqual(profileCheck([:], after: renamed), .unchanged)
         let legacy = ["profile": #"{"before":[null,["Lovelace"],null,null,null,null,null],"wanted":[null,["lovelace-byron"],null,null,null,null,null]}"#]
-        XCTAssertEqual(profileCheck(legacy, after: renamed), .applied)
+        XCTAssertEqual(profileCheck(scrubbedIntent(legacy), after: renamed), .applied)
 
         var edited = before
         edited.city = "Villeurbanne"

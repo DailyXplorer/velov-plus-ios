@@ -197,9 +197,9 @@ private struct BarBands: ViewModifier {
                     Spacer(minLength: 0)
                     if band > 0 {
                         ZStack {
-                            LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .gray, location: 0.5)], startPoint: .top, endPoint: .bottom)
+                            LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .gray, location: 0.3)], startPoint: .top, endPoint: .bottom)
                                 .blendMode(.saturation)
-                            LinearGradient(stops: [.init(color: Palette.white.opacity(0), location: 0.5), .init(color: Palette.white, location: 1)], startPoint: .top, endPoint: .bottom)
+                            LinearGradient(stops: [.init(color: Palette.white.opacity(0), location: 0), .init(color: Palette.white.opacity(0.75), location: 0.5), .init(color: Palette.white, location: 1)], startPoint: .top, endPoint: .bottom)
                         }
                         .frame(height: Space.actions)
                         Palette.white.frame(height: clearance)

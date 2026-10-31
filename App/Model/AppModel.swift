@@ -94,8 +94,7 @@ final class AppModel {
     var unsaved: Page?
     var leaving: Leave?
     var ratedHere: Set<String> = []
-    var contactRequested = false
-    var contactTrip: Trip?
+    var contactRequest: ContactRequest?
     var foreground = true
     private(set) var toasts = ToastSlot()
     private(set) var guestFavorites: [Int] = []
@@ -160,7 +159,7 @@ final class AppModel {
         case .tripSheet, .rateCard: return [.trips: [.trip(TripRoute(trip: first))]]
         case .bikePage: return [.trips: [.trip(TripRoute(trip: first)), .bike(BikeRoute(number: first.bikeNumber ?? 20449, station: nil))]]
         case .accountEdit, .profilePage, .choiceSheet: return [.account: [.profile]]
-        case .contactPage, .contactUncertain: return [.account: [.contact]]
+        case .contactPage, .contactUncertain: return [.account: [.contact(nil)]]
         case .journalPage: return [.account: [.journal]]
         case .tripDisputed: return SampleData.trips.first(where: \.litigious).map { [.trips: [.trip(TripRoute(trip: $0))]] } ?? [:]
         default: return snapshot.showsStats ? [.trips: [.stats]] : [:]
@@ -496,6 +495,10 @@ final class AppModel {
         paths = [:]
         unsaved = nil
         leaving = nil
+        contactRequest = nil
+        ratedHere = []
+        docked = []
+        greeted = false
         activities.endAll()
         rides.endAll()
         operations.use(account: nil)

@@ -12,8 +12,12 @@ enum Route: Hashable {
     case trip(TripRoute)
     case bike(BikeRoute)
     case profile
-    case contact
+    case contact(TripRoute?)
     case journal
+}
+
+struct ContactRequest: Equatable {
+    let trip: TripRoute?
 }
 
 enum Leave: Equatable {

@@ -214,7 +214,7 @@ struct InviteFriend: View {
 
     private func contact() {
         asking = false
-        model.contactRequested = true
+        model.contactRequest = ContactRequest(trip: nil)
         model.page = .account
     }
 

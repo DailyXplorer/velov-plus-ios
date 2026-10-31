@@ -254,43 +254,50 @@ private struct ContactDialog: View {
 struct ContactSupport: View {
     @Environment(AppModel.self) private var model
     @State private var asking = false
+    @State private var trip: TripRoute?
 
     private var operationKey: String? { model.operations.digest.map(OperationKey.contact) }
 
     var body: some View {
-        PillButton(variant: .secondary, action: start) { ButtonIcon(.envelopeSimple); Text("Écrire au service client") }
-            .onChange(of: model.contactRequested, initial: true) { _, requested in
-                guard requested else { return }
-                model.contactRequested = false
-                start()
+        PillButton(variant: .secondary, action: { start(nil) }) { ButtonIcon(.envelopeSimple); Text("Écrire au service client") }
+            .onChange(of: model.contactRequest, initial: true) { _, request in
+                guard let request else { return }
+                model.contactRequest = nil
+                start(request.trip)
             }
             .sheet(isPresented: $asking) {
                 ContactDialog(draft: nil, sent: {}, writeAgain: writeAgain)
             }
     }
 
-    private func start() {
-        if operationKey.flatMap({ model.operations.get($0) }) != nil { asking = true } else { model.push(.contact, on: .account) }
+    private func start(_ trip: TripRoute?) {
+        self.trip = trip
+        if operationKey.flatMap({ model.operations.get($0) }) != nil { asking = true } else { model.push(.contact(trip), on: .account) }
     }
 
     private func writeAgain() {
         if let operationKey { model.operations.clear(operationKey) }
         asking = false
-        model.push(.contact, on: .account)
+        model.push(.contact(trip), on: .account)
     }
 }
 
 struct ContactPage: View {
+    let preset: Trip?
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var subject = Guesses.mailComplaintTypes[0]
     @State private var message = ""
-    @State private var tripId = "none"
-    @State private var preset: Trip?
+    @State private var tripId: String
     @State private var error: String?
     @State private var draft: ContactBody?
     @State private var asking = false
     @State private var sent = false
+
+    init(preset: Trip?) {
+        self.preset = preset?.token == nil ? nil : preset
+        _tripId = State(initialValue: self.preset?.id ?? "none")
+    }
 
     private var recent: [Trip] {
         let latest = Array((model.dashboard?.trips ?? []).filter { $0.token != nil }.prefix(15))
@@ -304,13 +311,6 @@ struct ContactPage: View {
     var body: some View {
         PushedPage("Écrire au service client") { form }
             .modifier(LeaveGuard(dirty: dirty))
-            .onAppear {
-                guard let trip = model.contactTrip else { return }
-                model.contactTrip = nil
-                guard trip.token != nil else { return }
-                preset = trip
-                tripId = trip.id
-            }
             .task {
                 guard model.snapshot == .contactUncertain else { return }
                 try? await Task.sleep(for: .seconds(1.5))

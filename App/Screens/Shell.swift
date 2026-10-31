@@ -112,7 +112,7 @@ struct TabStack: View {
         case .trip(let trip): TripPage(trip: trip.trip)
         case .bike(let bike): BikeDetail(route: bike)
         case .profile: ProfilePage()
-        case .contact: ContactPage()
+        case .contact(let route): ContactPage(preset: route?.trip)
         case .journal: JournalPage()
         }
     }

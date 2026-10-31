@@ -86,8 +86,7 @@ struct TripPage: View {
     }
 
     private func contact() {
-        model.contactTrip = trip
-        model.contactRequested = true
+        model.contactRequest = ContactRequest(trip: TripRoute(trip: trip))
         model.page = .account
     }
 

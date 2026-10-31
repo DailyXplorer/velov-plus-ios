@@ -508,9 +508,9 @@ struct RedBanner: View {
     }
 
     private func row(_ pill: OnRedPill?) -> some View {
-        HStack(spacing: Space.cards) {
+        HStack(spacing: 0) {
             clock
-            Spacer(minLength: 0)
+            Spacer(minLength: Space.pair)
             pill
         }
         .padding(.leading, Space.row).padding(.trailing, inset).padding(.vertical, inset)

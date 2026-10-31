@@ -36,7 +36,15 @@ final class ChangedScreensUITests: XCTestCase {
     func testStatsBike() { capture("statsBike", "16f-stats-bike-sheet", until: "Vélo", wait: 5) }
     func testHeatmapTip() { capture("statsHeatTip", "16i-stats-heatmap-tooltip", until: "Horaires de départ", wait: 6) }
     func testTripEnded() { capture("tripEnded", "17-trip-ended", until: "Plus tard", wait: 5) }
-    func testOngoingBanner() { capture("ongoingBanner", "19-ongoing-banner", until: "Trajet en cours") }
+    func testOngoingBanner() throws {
+        let app = launch("ongoingBanner", until: "Trajet en cours")
+        sleep(4)
+        shot("19-ongoing-banner")
+        try XCTSkipIf(app.windows.firstMatch.frame.width < 400, "the pill stacks under the clock on a small iPhone")
+        let clock = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Trajet en cours")).firstMatch.frame
+        let pill = app.buttons["15 minutes de plus"].firstMatch.frame
+        XCTAssertTrue(pill.minY < clock.midY && clock.midY < pill.maxY, "the trip clock and its pill share one row: clock \(clock), pill \(pill)")
+    }
     func testOngoingBannerLong() { capture("ongoingLong", "19b-ongoing-banner-long", until: "Trajet en cours") }
     func testBikePushedFromTrip() { capture("bikePage", "20-bike-page", until: "Vélo 20449", wait: 5) }
     func testProfilePage() { capture("profilePage", "21-profile-page", until: "Modifier mes coordonnées") }

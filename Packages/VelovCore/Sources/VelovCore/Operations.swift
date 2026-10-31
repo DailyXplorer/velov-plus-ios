@@ -172,7 +172,9 @@ public final class Operations {
 
     public func settleHeld(_ key: String, check: ([String: String]) async throws -> Check) async -> Settled? {
         guard let held = get(key), held.status == .uncertain else { return nil }
+        let started = session?.current
         let settled = await settle(held.outcome ?? noAnswer(Messages.lost), at: held.at, now: now) { try await check(held.meta) }
+        guard started == session?.current else { return nil }
         if case .uncertain = settled { return settled }
         clear(key, held: held)
         return settled
@@ -184,6 +186,7 @@ public final class Operations {
         case .unsaved: return .unsaved
         case .started: break
         }
+        let started = session?.current
         let outcome: Outcome
         do { outcome = try await TechnicalJournal.$operation.withValue(key) { try await send() } } catch {
             var lost = noAnswer(Messages.noReply)
@@ -191,6 +194,6 @@ public final class Operations {
             outcome = lost
         }
         finish(key, outcome)
-        return .finished(outcome)
+        return started == session?.current ? .finished(outcome) : .superseded
     }
 }

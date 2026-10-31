@@ -84,6 +84,47 @@ final class AccountWritesTests: XCTestCase {
         XCTAssertEqual(normalizePhone("0612345678", country: "BE"), "0612345678")
     }
 
+    func testAnAccountWriteAnswered2xxWithAPageInsteadOfDataStaysUncertainAndIsSentOnce() async throws {
+        let auth = auth
+        let writes: [(String, (HTTPTransport) async throws -> Outcome)] = [
+            ("profile", { try await Writes.setProfile(auth, ProfileBody(city: "Lyon"), http: $0) }),
+            ("favourite", { try await Writes.setFavorite(auth, station: 2002, on: true, http: $0) }),
+            ("autoSpend", { try await Writes.setAutoSpend(auth, false, http: $0).outcome }),
+            ("renewal", { try await Writes.setAutoRenewal(auth, subscriptionId: "sub-1", autoRenewal: false, http: $0) }),
+            ("contact", { try await Writes.contactMail(auth, ContactBody(complaintType: "TRIP", message: "Bonjour"), http: $0) }),
+            ("via", { try await Writes.via(auth, subscriptionId: "sub-1", station: .number(2002), http: $0) }),
+            ("promo", { try await Writes.promoCode(auth, http: $0).outcome }),
+            ("receipt", { try await Writes.receipt(auth, subscriptionId: "sub-1", periodId: "p-1", http: $0).outcome })
+        ]
+        for (name, send) in writes {
+            for page in [Reply.status(200, body: "<html><body>Maintenance</body></html>"), .status(201, body: "OK")] {
+                let server = MockServer { _, _ in page }
+                let outcome = try await send(server.transport)
+                XCTAssertEqual(server.calls.count, 1, name)
+                XCTAssertEqual([outcome.ok, outcome.isUncertain], [false, true], "\(name) \(page)")
+            }
+        }
+    }
+
+    func testTheWritesVelovAnswersEmptyOrWithDataStillSucceed() async throws {
+        for reply in [Reply.status(204), .status(200)] {
+            let favourite = try await Writes.setFavorite(auth, station: 2002, on: true, http: MockServer { _, _ in reply }.transport)
+            let renewal = try await Writes.setAutoRenewal(auth, subscriptionId: "sub-1", autoRenewal: true, http: MockServer { _, _ in reply }.transport)
+            let contact = try await Writes.contactMail(auth, ContactBody(complaintType: "TRIP", message: "Bonjour"), http: MockServer { _, _ in reply }.transport)
+            XCTAssertEqual([favourite.ok, renewal.ok, contact.ok], [true, true, true], "\(reply)")
+        }
+        let profile = try await Writes.setProfile(auth, ProfileBody(city: "Lyon"), http: MockServer { _, _ in .json([:]) }.transport)
+        XCTAssertTrue(profile.ok)
+        let pdf = Data("%PDF-1.4 receipt".utf8).base64EncodedString()
+        let receipt = try await Writes.receipt(auth, subscriptionId: "sub-1", periodId: "p-1",
+                                               http: MockServer { _, _ in .json(["filename": "recu.pdf", "translations": ["content": pdf]]) }.transport)
+        XCTAssertTrue(receipt.outcome.ok)
+        XCTAssertNotNil(receipt.pdf)
+        let promo = try await Writes.promoCode(auth, http: MockServer { _, _ in .json(["promoCode": "INVITE-EXAMPLE"]) }.transport)
+        XCTAssertEqual(promo.promoCode, "INVITE-EXAMPLE")
+        XCTAssertTrue(promo.outcome.ok)
+    }
+
     func testRenewalPatchSendsTheSourceSupportedIsAutoRenewalBodyExactlyOnce() async throws {
         XCTAssertEqual(Guesses.autoRenewalField, "isAutoRenewal")
         let server = MockServer { _, _ in .status(204) }

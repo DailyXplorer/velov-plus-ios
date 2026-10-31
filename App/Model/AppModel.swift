@@ -48,7 +48,7 @@ enum SnapshotScreen: String {
     case viaPick, viaChoices, viaChosen, viaReview, viaUncertain, inviteDialog, inviteCode, renewalToggle, renewalDialog, contactUncertain
     case stationsSearch, stationsEmptyFilter, locationError, locationTimeout, pageFailure, bikeListFailure, bikeOwnBooking, bigBalance, dockWhileBikes
     case stats, statsCharts, statsTipFirst, statsTipMiddle, statsTipLast, statsHeatmap, statsHeatTip, statsDonut, statsRecords, statsBike, statsEnd
-    case login, loginError, guestStations, guestStationSheet, guestBikeSheet, bikePush
+    case login, loginError, guestFailed, guestStations, guestStationSheet, guestBikeSheet, bikePush
     case expiredSession, bookingWithoutAccount
     case ongoingLong
     case stationsFailure
@@ -56,7 +56,7 @@ enum SnapshotScreen: String {
 
     var asGuest: Bool { [.guestStations, .guestStationSheet, .guestBikeSheet].contains(self) }
 
-    var signedOut: Bool { self == .login || self == .loginError || asGuest }
+    var signedOut: Bool { self == .login || self == .loginError || self == .guestFailed || asGuest }
 
     var isLiveActivity: Bool { [.liveActivityLock, .liveActivityIsland, .tripActivityLock, .tripActivityIsland].contains(self) }
 
@@ -103,6 +103,7 @@ final class AppModel {
     private var queuedEnded: Trip?
     private var greeted = false
     @ObservationIgnored private let session = SessionGeneration()
+    @ObservationIgnored private lazy var forgetter = Forgetter { [service] in await service.forgetSession() }
     @ObservationIgnored private let bookingsFlight = SingleFlight()
     private let dashboardLoad = LatestLoad()
     @ObservationIgnored let statsCache = StatsScreenCache()
@@ -197,9 +198,12 @@ final class AppModel {
         }
     }
 
-    func continueAsGuest() {
+    func continueAsGuest() async {
+        guard await forgetter.forget() else {
+            phase = .signedOut(Messages.guestFailed)
+            return
+        }
         guestStore.remember(true)
-        Task { await service.forgetSession() }
         browse()
     }
 
@@ -459,6 +463,7 @@ final class AppModel {
 
     func signIn(email: String, code: String) async throws {
         endSession()
+        await forgetter.settled()
         try await service.signIn(email: email, code: code)
         guestStore.remember(false)
         sheet = nil
@@ -484,6 +489,7 @@ final class AppModel {
 
     func expire() {
         signOut(Messages.sessionExpired)
+        Task { await forgetter.forget() }
     }
 
     private func signOut(_ notice: String?) {

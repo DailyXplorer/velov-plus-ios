@@ -34,7 +34,7 @@ struct LoginView: View {
                     PillButton("Se connecter", pending: pending, fullWidth: true) { submit() }
                         .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty || code.count != 6)
                         .padding(.top, Space.pair)
-                    PillButton(variant: .ghost, fullWidth: true, action: { model.continueAsGuest() }) {
+                    PillButton(variant: .ghost, fullWidth: true, action: { Task { await model.continueAsGuest() } }) {
                         ButtonIcon(.mapPin)
                         Text("Continuer sans compte")
                     }

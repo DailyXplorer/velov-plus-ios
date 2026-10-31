@@ -41,6 +41,7 @@ public struct HTTPResponse: Sendable {
     public var ok: Bool { (200..<300).contains(status) }
     public var text: String { String(decoding: body, as: UTF8.self) }
     public var json: JSON? { JSON.parse(body) }
+    public var readable: Bool { body.isEmpty || json != nil }
 
     public func header(_ name: String) -> String? {
         headers.first { $0.key.caseInsensitiveCompare(name) == .orderedSame }?.value

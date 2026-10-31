@@ -60,6 +60,7 @@ public enum Messages {
     public static let otherDevice = "Votre compte est déjà connecté sur un autre appareil. Déconnectez-le avant de réessayer."
     public static let credentials = "Adresse e-mail ou code secret incorrect."
     public static let remoteLogoutUnconfirmed = "Déconnexion effectuée. Vélo’v ne l’a pas encore confirmée."
+    public static let guestFailed = "Impossible de continuer sans compte. Réessayez."
     public static let missing = "Indisponible pour le moment"
     public static let stationsUnavailable = "Les stations sont momentanément indisponibles."
     public static let stationBikesUnavailable = "Les vélos de cette station sont momentanément indisponibles."
@@ -88,8 +89,8 @@ public func bookingOutcome(httpStatus: Int, code: String?, detail: String?) -> O
             failed: Messages.bookingFailed, unsure: Messages.bookingNoAnswer)
 }
 
-public func accountOutcome(httpStatus: Int, code: String?, detail: String?, failed: String, unsure: String) -> Outcome {
-    failure(Outcome(ok: (200..<300).contains(httpStatus), httpStatus: httpStatus, code: code, detail: detail), code.flatMap { Messages.accountCodes[$0] },
+public func accountOutcome(httpStatus: Int, readable: Bool, code: String?, detail: String?, failed: String, unsure: String) -> Outcome {
+    failure(Outcome(ok: (200..<300).contains(httpStatus) && readable, httpStatus: httpStatus, code: code, detail: detail), code.flatMap { Messages.accountCodes[$0] },
             failed: failed, unsure: unsure)
 }
 

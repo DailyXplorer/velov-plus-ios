@@ -4,7 +4,7 @@ import Security
 public protocol SecureStore: Sendable {
     func read(_ key: String) -> Data?
     func write(_ key: String, _ value: Data) -> Bool
-    func delete(_ key: String)
+    func delete(_ key: String) -> Bool
 }
 
 public struct KeychainStore: SecureStore {
@@ -34,8 +34,8 @@ public struct KeychainStore: SecureStore {
         return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
     }
 
-    public func delete(_ key: String) {
-        SecItemDelete(query(key) as CFDictionary)
+    public func delete(_ key: String) -> Bool {
+        [errSecSuccess, errSecItemNotFound].contains(SecItemDelete(query(key) as CFDictionary))
     }
 }
 
@@ -45,7 +45,7 @@ public final class InMemoryStore: SecureStore, @unchecked Sendable {
     public init() {}
     public func read(_ key: String) -> Data? { lock.withLock { values[key] } }
     public func write(_ key: String, _ value: Data) -> Bool { lock.withLock { values[key] = value }; return true }
-    public func delete(_ key: String) { lock.withLock { values[key] = nil } }
+    public func delete(_ key: String) -> Bool { lock.withLock { values[key] = nil }; return true }
 }
 
 public enum DeviceIdentity {
@@ -89,6 +89,24 @@ public final class SessionGeneration {
         do { result = .success(try await fetch()) } catch { result = .failure(error) }
         return started == current ? result : nil
     }
+}
+
+@MainActor
+public final class Forgetter {
+    private let send: @Sendable () async -> Bool
+    private var pending: Task<Bool, Never>?
+
+    public init(_ send: @escaping @Sendable () async -> Bool) { self.send = send }
+
+    @discardableResult
+    public func forget() async -> Bool {
+        let previous = pending, send = send
+        let task = Task { _ = await previous?.value; return await send() }
+        pending = task
+        return await task.value
+    }
+
+    public func settled() async { _ = await pending?.value }
 }
 
 public actor SessionManager {
@@ -147,10 +165,11 @@ public actor SessionManager {
         return tokens == nil ? true : await endSession(refreshToken: tokens?.refreshToken, idToken: tokens?.idToken, http: http)
     }
 
-    public func forget() {
+    @discardableResult
+    public func forget() -> Bool {
         invalidate()
         session = nil
-        store.delete(Self.tokensKey)
+        return store.delete(Self.tokensKey)
     }
 
     @discardableResult

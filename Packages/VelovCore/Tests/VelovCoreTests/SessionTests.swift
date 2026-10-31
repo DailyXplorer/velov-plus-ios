@@ -53,6 +53,51 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(StartMode(hasSession: relaunched, guest: true), .guest)
     }
 
+    func testAKeychainThatKeepsTheTokensIsReportedAsNotForgotten() async {
+        let stuck = StuckStore()
+        signedIn(stuck, expires: Date().addingTimeInterval(600))
+        let server = MockServer()
+        let failed = await SessionManager(store: stuck, http: server.transport).forget()
+        XCTAssertFalse(failed)
+        XCTAssertNotNil(stuck.read("tokens"))
+        let store = InMemoryStore()
+        signedIn(store, expires: Date().addingTimeInterval(600))
+        let forgotten = await SessionManager(store: store, http: server.transport).forget()
+        XCTAssertTrue(forgotten)
+        let nothingStored = await SessionManager(store: InMemoryStore(), http: server.transport).forget()
+        XCTAssertTrue(nothingStored)
+        XCTAssertEqual(server.calls.count, 0)
+    }
+
+    @MainActor
+    func testGuestModeWaitsForTheForgetAndALoginWaitsForAForgetStillOnItsWay() async throws {
+        for gone in [true, false] {
+            let answer = await Forgetter { gone }.forget()
+            XCTAssertEqual(answer, gone)
+        }
+        let steps = Steps()
+        let (started, didStart) = AsyncStream<Void>.makeStream()
+        let (release, doRelease) = AsyncStream<Void>.makeStream()
+        let forgetter = Forgetter {
+            didStart.yield()
+            for await _ in release { break }
+            await steps.add("forgotten")
+            return true
+        }
+        let forgetting = Task { await forgetter.forget() }
+        for await _ in started { break }
+        let login = Task { await forgetter.settled(); await steps.add("login") }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        let early = await steps.list
+        XCTAssertEqual(early, [], "a login does not start while a forget is on its way")
+        doRelease.yield()
+        await login.value
+        let forgotten = await forgetting.value
+        XCTAssertTrue(forgotten)
+        let order = await steps.list
+        XCTAssertEqual(order, ["forgotten", "login"])
+    }
+
     func testParallelCallersWithAnExpiredTokenShareASingleRefreshThatIsSaved() async throws {
         let store = InMemoryStore()
         signedIn(store, expires: Date().addingTimeInterval(-10))
@@ -148,4 +193,16 @@ final class SessionTests: XCTestCase {
         let identity = try await session.identity()
         XCTAssertEqual(identity.email, "person@example.com")
     }
+}
+
+private final class StuckStore: SecureStore, @unchecked Sendable {
+    private let kept = InMemoryStore()
+    func read(_ key: String) -> Data? { kept.read(key) }
+    func write(_ key: String, _ value: Data) -> Bool { kept.write(key, value) }
+    func delete(_ key: String) -> Bool { false }
+}
+
+private actor Steps {
+    private(set) var list: [String] = []
+    func add(_ step: String) { list.append(step) }
 }

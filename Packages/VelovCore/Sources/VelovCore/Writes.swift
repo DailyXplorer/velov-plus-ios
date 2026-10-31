@@ -73,7 +73,7 @@ public enum Writes {
             outcome.detail = networkLine(error)
             return ratingOutcome(outcome)
         }
-        if response.ok, response.body.isEmpty || JSON.parse(response.body) != nil { return Outcome(ok: true, httpStatus: response.status) }
+        if response.ok, response.readable { return Outcome(ok: true, httpStatus: response.status) }
         let reply = ErrorReply(response)
         return ratingOutcome(Outcome(ok: false, httpStatus: response.status, code: reply.code, detail: reply.detail))
     }
@@ -133,7 +133,8 @@ public enum Writes {
             return (outcome, nil)
         }
         let reply = ErrorReply(response)
-        return (accountOutcome(httpStatus: response.status, code: reply.code, detail: reply.detail, failed: failed, unsure: unsure), response.ok ? reply.value : nil)
+        let outcome = accountOutcome(httpStatus: response.status, readable: response.readable, code: reply.code, detail: reply.detail, failed: failed, unsure: unsure)
+        return (outcome, outcome.ok ? reply.value : nil)
     }
 
     public static func setAutoSpend(_ auth: WriteAuth, _ autoSpend: Bool, http: HTTPTransport) async throws -> (outcome: Outcome, autoSpend: Bool?) {

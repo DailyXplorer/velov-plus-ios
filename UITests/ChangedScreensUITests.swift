@@ -84,6 +84,15 @@ final class ChangedScreensUITests: XCTestCase {
         shot("50b-expired-guest")
     }
 
+    func testGuestRefusedWhileTheSessionStaysStored() {
+        let app = launch("guestFailed", until: "Continuer sans compte")
+        app.buttons["Continuer sans compte"].tap()
+        XCTAssertTrue(app.staticTexts["Impossible de continuer sans compte. Réessayez."].waitForExistence(timeout: 10), "a failed forget says so")
+        XCTAssertTrue(app.buttons["Continuer sans compte"].exists, "a failed forget stays on the login screen")
+        sleep(1)
+        shot("50c-guest-failed")
+    }
+
     func testBookingWithoutAccount() { capture("bookingWithoutAccount", "51-booking-without-account", until: "Déverrouiller", wait: 4) }
 
     func testLeaveAlert() {

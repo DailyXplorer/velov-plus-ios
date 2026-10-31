@@ -136,7 +136,11 @@ struct SampleService: VelovService {
 
     func hasSession() async -> Bool { screen?.signedOut != true && !SampleData.sessionForgotten }
     func accountEmail() async -> String? { await hasSession() ? SampleData.dashboard.profile.email : nil }
-    func forgetSession() async { UserDefaults(suiteName: SampleData.guestSuite)?.set(true, forKey: SampleData.forgottenKey) }
+    func forgetSession() async -> Bool {
+        guard screen != .guestFailed else { return false }
+        UserDefaults(suiteName: SampleData.guestSuite)?.set(true, forKey: SampleData.forgottenKey)
+        return true
+    }
     func signIn(email: String, code: String) async throws {}
     func logout() async -> Bool { true }
     func dashboard() async throws -> Dashboard {

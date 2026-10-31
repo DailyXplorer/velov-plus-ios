@@ -366,6 +366,31 @@ final class OperationsTests: XCTestCase {
         XCTAssertEqual(operations.begin(OperationKey.profile), .started)
     }
 
+    func testAProfileChangeHeldInClearByAnOlderVersionIsHashedAtLoadForEveryAccount() {
+        let clock = Clock()
+        let backing = InMemoryOperationBacking()
+        let legacy = #"{"before":[null,["Lovelace"],null,null,null,null,["+33612345678"]],"wanted":[null,["lovelace-byron"],null,null,null,null,["+33698765432"]]}"#
+        let held = Operations.Entry(status: .uncertain, at: clock.now, outcome: lost, meta: ["profile": legacy])
+        for account in ["person@example.com", "other@example.com"] {
+            backing.values["\(Operations.storageKey):\(accountDigest(account))"] = try? JSONEncoder().encode([OperationKey.profile: held])
+        }
+        let operations = store(backing, clock, account: nil)
+        XCTAssertEqual(backing.values.count, 2)
+        for raw in backing.values.values {
+            let text = String(decoding: raw, as: UTF8.self)
+            XCTAssertFalse(text.lowercased().contains("lovelace") || text.contains("+33"), "no profile value stays in clear: \(text)")
+        }
+        operations.use(account: "other@example.com")
+        let entry = operations.get(OperationKey.profile)
+        XCTAssertEqual(entry?.status, .uncertain, "the change is still held")
+        XCTAssertEqual(operations.begin(OperationKey.profile), .busy)
+        var renamed = dashboard().profile
+        renamed.lastName = "LOVELACE-BYRON"
+        renamed.phoneNumber = "+33698765432"
+        XCTAssertEqual(entry.map { profileCheck($0.meta, after: renamed) }, .applied, "and still checked against what was sent")
+        XCTAssertEqual(entry.map { profileCheck($0.meta, after: dashboard().profile) }, .unchanged)
+    }
+
     func testALegacyProfileEntryWithoutIntentIsReleasedAfterTheLag() async {
         let clock = Clock()
         let operations = store(InMemoryOperationBacking(), clock)

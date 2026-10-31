@@ -70,18 +70,20 @@ struct BookingLockScreenView: View {
     var stale = false
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                ActivityPill(icon: .clock, text: "Réservé")
-                Text(attributes.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
-                Text(attributes.placeLine).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    ActivityPill(icon: .clock, text: "Réservé")
+                    Text(attributes.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if stale {
+                    Text("Expirée").font(ActivityStyle.label(15)).foregroundStyle(.white)
+                } else {
+                    BookingCountdown(endsAt: endsAt, size: 34, color: .white).multilineTextAlignment(.trailing).frame(width: 118, alignment: .trailing)
+                }
             }
-            Spacer(minLength: 0)
-            if stale {
-                Text("Expirée").font(ActivityStyle.label(15)).foregroundStyle(.white)
-            } else {
-                BookingCountdown(endsAt: endsAt, size: 34, color: .white).multilineTextAlignment(.trailing).frame(width: 118, alignment: .trailing)
-            }
+            Text(attributes.placeLine).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(attributes.spoken(endsAt: endsAt, stale: stale))

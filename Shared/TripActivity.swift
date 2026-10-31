@@ -42,14 +42,16 @@ struct TripLockScreenView: View {
     let state: TripActivityAttributes.ContentState
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                ActivityPill(icon: .personSimpleBike, text: state.status)
-                Text(state.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
-                Text(state.station).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    ActivityPill(icon: .personSimpleBike, text: state.status)
+                    Text(state.bikeLine).font(ActivityStyle.title(19)).foregroundStyle(.white).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                TripElapsed(state: state, size: 34, color: .white).multilineTextAlignment(.trailing).frame(width: 150, alignment: .trailing)
             }
-            Spacer(minLength: 0)
-            TripElapsed(state: state, size: 34, color: .white).multilineTextAlignment(.trailing).frame(width: 150, alignment: .trailing)
+            Text(state.station).font(ActivityStyle.label(13)).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(state.spoken())

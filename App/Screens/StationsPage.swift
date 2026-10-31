@@ -174,7 +174,7 @@ struct StationsPage: View {
                 } label: {
                     VStack(alignment: .leading, spacing: Space.pair) {
                         HStack(spacing: Space.label) {
-                            Text(station.name).typo(.body(.base, medium: true)).foregroundStyle(Palette.ink).lineLimit(1)
+                            Text(station.name).typo(.body(.base, medium: true)).foregroundStyle(Palette.ink).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                             if favorites.contains(station.number) { Icon(.star, .fill, size: 16).foregroundStyle(Palette.red) }
                             Spacer(minLength: 0)
                             Icon(.caretRight, .light, size: 16).foregroundStyle(Palette.inkSoft)

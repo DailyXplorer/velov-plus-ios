@@ -197,7 +197,6 @@ struct ConfirmScaffold<Message: View, Extra: View, Actions: View>: View {
 
 struct Restart {
     let title: String
-    let note: String
     let action: () -> Void
 }
 
@@ -239,9 +238,6 @@ struct WriteDialog<Question: View>: View {
             if let failure {
                 FailureBlock(message: failure.message ?? (failure.isUncertain ? Messages.noReply : "La modification n’a pas abouti."),
                              uncertain: uncertain)
-            }
-            if uncertain, check == nil, let restart {
-                Text(restart.note).typo(.body(.base)).foregroundStyle(Palette.ink).fixedSize(horizontal: false, vertical: true)
             }
             if let notice { FormError(notice) }
         } actions: {

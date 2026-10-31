@@ -20,7 +20,8 @@ struct StationCard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 0) {
                 Text(station.name).typo(.title(.small)).foregroundStyle(Palette.ink).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                    .alignmentGuide(VerticalAlignment.center) { $0.height / 2 - ($0[.lastTextBaseline] - $0[.firstTextBaseline]) / 2 }
+                    .padding(.bottom, Space.label)
+                    .alignmentGuide(VerticalAlignment.center) { ($0.height - Space.label) / 2 - ($0[.lastTextBaseline] - $0[.firstTextBaseline]) / 2 }
                 IconButton(icon: .star, weight: favorite ? .fill : .light, color: favorite ? Palette.red : Palette.inkSoft,
                            label: favorite ? "Retirer des favoris" : "Ajouter aux favoris") {
                     if model.isGuest {

@@ -138,10 +138,17 @@ public enum Writes {
     }
 
     public static func setAutoSpend(_ auth: WriteAuth, _ autoSpend: Bool, http: HTTPTransport) async throws -> (outcome: Outcome, autoSpend: Bool?) {
-        let (outcome, value) = try await accountCall(URL(string: "\(accountURL(auth.accountId))/rewards")!, method: "PATCH",
-                                                     headers: ["Content-Type": "application/vnd.rewards.v5+json"], body: orderedJSON([("autoSpend", autoSpend)]),
-                                                     auth: auth, failed: "Vélo’v n’a pas enregistré ce réglage.", http: http)
-        return (outcome, value?["autoSpend"]?.bool ?? (outcome.ok ? autoSpend : nil))
+        let (answer, value) = try await accountCall(URL(string: "\(accountURL(auth.accountId))/rewards")!, method: "PATCH",
+                                                    headers: ["Content-Type": "application/vnd.rewards.v5+json"], body: orderedJSON([("autoSpend", autoSpend)]),
+                                                    auth: auth, failed: "Vélo’v n’a pas enregistré ce réglage.", http: http)
+        var outcome = answer
+        guard outcome.ok else { return (outcome, nil) }
+        if let echoed = value?["autoSpend"]?.bool, echoed != autoSpend {
+            outcome.ok = false
+            outcome.message = Messages.changeNoAnswer
+            return (outcome, nil)
+        }
+        return (outcome, autoSpend)
     }
 
     public static func setFavorite(_ auth: WriteAuth, station: Int, on: Bool, http: HTTPTransport) async throws -> Outcome {

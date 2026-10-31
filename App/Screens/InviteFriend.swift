@@ -191,8 +191,8 @@ struct InviteFriend: View {
         verification = .checking
         let model = model
         Task {
-            do {
-                let ledger = try await model.service.rewardLedger()
+            switch await model.inSession({ try await model.service.rewardLedger() }) {
+            case .success(let ledger)?:
                 let check = inviteDebit(before, ledger: ledger, now: Date())
                 if check == .debited { model.operations.clear(operationKey, held: operation) }
                 verification = switch check {
@@ -200,8 +200,10 @@ struct InviteFriend: View {
                 case .notDebited: .notDebited
                 case .unknown: .unknown
                 }
-            } catch {
+            case .failure?:
                 verification = .failed
+            case nil:
+                verification = nil
             }
         }
     }

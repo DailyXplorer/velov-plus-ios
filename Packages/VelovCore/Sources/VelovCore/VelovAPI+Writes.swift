@@ -8,7 +8,10 @@ extension VelovAPI {
         try await beforeSending { WriteAuth(accountId: try await accountId(identity), token: try await appToken.get(), identity: identity.accessToken) }
     }
 
-    private var http: HTTPTransport { writes }
+    private func http(_ identity: Identity) async throws -> HTTPTransport {
+        guard await identity.live() else { throw VelovError.sessionRevoked }
+        return writes
+    }
 
     private func currentSubscriptionList(_ account: String, _ identity: Identity, accept: String = Guesses.subscriptionMediaType) async throws -> [JSON] {
         guard let list = try await read("\(account)/\(currentSubscriptions)", identity, accept: accept).array else { throw ShapeError("subscriptions is not a list") }
@@ -45,7 +48,7 @@ extension VelovAPI {
             return (.refusal("local.missing.id", "Ce vélo ne peut pas être réservé pour le moment. Réessayez dans un instant."), nil)
         }
         let (outcome, booking) = try await Writes.book(try await writer(identity), stationId: station, stationNumber: stationNumber, standNumber: standNumber,
-                                                       subscriptionId: subscriptionId, bikeId: bikeId, http: http)
+                                                       subscriptionId: subscriptionId, bikeId: bikeId, http: try await http(identity))
         guard let booking else { return (outcome, nil) }
         return (outcome, toBooking(booking, stations: await stationsByNumber(), bikeNumbers: [bikeId: bike.number]))
     }
@@ -54,7 +57,7 @@ extension VelovAPI {
         let auth = try await writer(identity)
         let account = "/accounts/\(auth.accountId)"
         guard let subscriptionId = try await beforeSending({ try await currentSubscriptionId(account, identity) }) else { return (noSubscription, nil) }
-        let outcome = try await Writes.release(auth, subscriptionId: subscriptionId, stationNumber: stationNumber, standNumber: standNumber, bikeNumber: bikeNumber, http: http)
+        let outcome = try await Writes.release(auth, subscriptionId: subscriptionId, stationNumber: stationNumber, standNumber: standNumber, bikeNumber: bikeNumber, http: try await http(identity))
         if outcome.httpStatus == 0 { return (outcome, nil) }
         await client.pause(2)
         async let ongoing = try? RawTrip.list(try await read("\(account)/trips/ongoing", identity, accept: "application/vnd.trip.v6+json"))
@@ -77,24 +80,24 @@ extension VelovAPI {
     }
 
     public func rate(_ identity: Identity, tripId: String, bikeNumber: Int, vote: RateVote) async throws -> Outcome {
-        try await Writes.rate(try await writer(identity), tripId: tripId, bikeNumber: bikeNumber, vote: vote, http: http)
+        try await Writes.rate(try await writer(identity), tripId: tripId, bikeNumber: bikeNumber, vote: vote, http: try await http(identity))
     }
 
     public func setAutoSpend(_ identity: Identity, _ value: Bool) async throws -> (outcome: Outcome, autoSpend: Bool?) {
-        try await Writes.setAutoSpend(try await writer(identity), value, http: http)
+        try await Writes.setAutoSpend(try await writer(identity), value, http: try await http(identity))
     }
 
     public func setFavorite(_ identity: Identity, station: Int, on: Bool) async throws -> Outcome {
-        try await Writes.setFavorite(try await writer(identity), station: station, on: on, http: http)
+        try await Writes.setFavorite(try await writer(identity), station: station, on: on, http: try await http(identity))
     }
 
     public func receipt(_ identity: Identity, subscriptionId: String, periodId: String) async throws -> (outcome: Outcome, filename: String?, pdf: Data?) {
-        try await Writes.receipt(try await writer(identity), subscriptionId: subscriptionId, periodId: periodId, http: http)
+        try await Writes.receipt(try await writer(identity), subscriptionId: subscriptionId, periodId: periodId, http: try await http(identity))
     }
 
     public func updateProfile(_ identity: Identity, _ body: ProfileBody) async throws -> Outcome {
         if body.problem() != nil { return .refusal("local.profile.invalid", "Coordonnées invalides.") }
-        return try await Writes.setProfile(try await writer(identity), body, http: http)
+        return try await Writes.setProfile(try await writer(identity), body, http: try await http(identity))
     }
 
     public func setAutoRenewal(_ identity: Identity, subscriptionId: String, autoRenewal: Bool) async throws -> AutoRenewalResult {
@@ -106,7 +109,7 @@ extension VelovAPI {
             return AutoRenewalResult(outcome: .refusal("local.renewal.not.allowed", "Le renouvellement automatique ne peut pas être modifié pour cet abonnement."),
                                      autoRenewal: before.autoRenewal, autoRenewalAllowed: before.allowed, verified: true)
         }
-        let outcome = try await Writes.setAutoRenewal(auth, subscriptionId: subscriptionId, autoRenewal: autoRenewal, http: http)
+        let outcome = try await Writes.setAutoRenewal(auth, subscriptionId: subscriptionId, autoRenewal: autoRenewal, http: try await http(identity))
         guard outcome.ok else { return AutoRenewalResult(outcome: outcome, autoRenewal: nil, autoRenewalAllowed: false, verified: false) }
         guard let after = try? await readState() else { return AutoRenewalResult(outcome: outcome, autoRenewal: nil, autoRenewalAllowed: false, verified: false) }
         return AutoRenewalResult(outcome: outcome, autoRenewal: after.autoRenewal, autoRenewalAllowed: after.allowed, verified: true)
@@ -142,12 +145,12 @@ extension VelovAPI {
             return .refusal("local.via.not.full", "Cette station n’est plus pleine ou est fermée. Choisissez-en une autre.")
         }
         let target: ViaStation = Guesses.viaStationIdentifier == .uuid ? .uuid(uuid) : .number(number)
-        return try await Writes.via(auth, subscriptionId: renting[0], station: target, http: http)
+        return try await Writes.via(auth, subscriptionId: renting[0], station: target, http: try await http(identity))
     }
 
     public func contactSupport(_ identity: Identity, _ body: ContactBody) async throws -> Outcome {
         guard body.isValid else { return .refusal("local.contact.invalid", "Votre message est vide ou trop long.") }
-        return try await Writes.contactMail(try await writer(identity), body, http: http)
+        return try await Writes.contactMail(try await writer(identity), body, http: try await http(identity))
     }
 
     public func consumePromoCode(_ identity: Identity, expectedCost: Int) async throws -> PromoResult {
@@ -166,6 +169,6 @@ extension VelovAPI {
         if balance < cost {
             return PromoResult(outcome: .refusal("local.promo.balance", "Votre solde de points est insuffisant."), promoCode: nil)
         }
-        return try await Writes.promoCode(auth, http: http)
+        return try await Writes.promoCode(auth, http: try await http(identity))
     }
 }

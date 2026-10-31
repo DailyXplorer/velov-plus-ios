@@ -68,12 +68,10 @@ struct ProfilePage: View {
         .onChange(of: profile?.email, initial: true) { if draft == nil, let profile { draft = ProfileDraft(profile) } }
         .sheet(item: $review, onDismiss: { if saved { dismiss() } }) { review in
             WriteDialog(title: "Enregistrer les modifications\u{a0}?", key: OperationKey.profile, intent: profileIntent(review.body), run: {
-                let outcome = await attempt { try await model.service.updateProfile(review.body) }
-                if outcome.ok { done() }
-                return outcome
+                await attempt { try await model.service.updateProfile(review.body) }
             }, check: { intent in
                 profileCheck(intent, after: try await model.service.dashboard().profile)
-            }, verified: { _ in done() })
+            }, done: { _ in done() })
         }
     }
 
@@ -125,6 +123,7 @@ struct AutoRenewalSetting: View {
     @Environment(AppModel.self) private var model
     @State private var asking = false
     @State private var saved: AutoRenewalResult?
+    @State private var answer: AutoRenewalResult?
 
     private var actual: Bool? { renewalShown(subscription, after: saved).value }
     private var canChange: Bool { renewalShown(subscription, after: saved).canChange }
@@ -158,14 +157,12 @@ struct AutoRenewalSetting: View {
                     let outcome = await attempt { throw error }
                     value = AutoRenewalResult(outcome: outcome, autoRenewal: nil, autoRenewalAllowed: false, verified: false)
                 }
-                if value.outcome.ok {
-                    saved = value
-                    Task { await model.loadDashboard() }
-                }
+                answer = value
                 return value.outcome
             }, check: { intent in
                 renewalCheck(try await model.service.dashboard(), subscriptionId: id, wanted: Intent.wanted(intent) ?? next)
-            }, verified: { _ in
+            }, done: { _ in
+                saved = answer
                 Task { await model.loadDashboard() }
             }) {
                 if next { Text("Votre abonnement sera renouvelé et facturé à son échéance.").fixedSize(horizontal: false, vertical: true) }
@@ -206,11 +203,14 @@ struct ReceiptRow: View {
         Task {
             defer { pending = false }
             var pdf: Data?, name: String?
-            let outcome = await attempt {
-                let answer = try await model.service.receipt(subscriptionId: receipt.subscriptionId, periodId: receipt.periodId)
-                (pdf, name) = (answer.pdf, answer.filename)
-                return answer.outcome
+            let answered = await model.inSession {
+                await attempt {
+                    let answer = try await model.service.receipt(subscriptionId: receipt.subscriptionId, periodId: receipt.periodId)
+                    (pdf, name) = (answer.pdf, answer.filename)
+                    return answer.outcome
+                }
             }
+            guard case .success(let outcome)? = answered else { return }
             guard outcome.ok, let pdf else { return model.showToast(outcome.message ?? "Le reçu n’a pas pu être téléchargé.") }
             let url = FileManager.default.temporaryDirectory.appending(path: name ?? "recu-velov.pdf")
             do {
@@ -244,10 +244,8 @@ private struct ContactDialog: View {
     var body: some View {
         WriteDialog(title: "Envoyer au service client\u{a0}?", key: model.operations.digest.map(OperationKey.contact), ready: draft != nil, run: { [draft] in
             guard let draft else { return Outcome.refusal("local.empty", "Votre message est vide ou trop long.") }
-            let outcome = await attempt { try await model.service.contactSupport(draft) }
-            if outcome.ok { sent() }
-            return outcome
-        }, restart: Restart(title: "Écrire un nouveau message", note: "Votre premier message est peut-être déjà arrivé.", action: writeAgain))
+            return await attempt { try await model.service.contactSupport(draft) }
+        }, done: { _ in sent() }, restart: Restart(title: "Écrire un nouveau message", note: "Votre premier message est peut-être déjà arrivé.", action: writeAgain))
     }
 }
 

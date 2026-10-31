@@ -100,10 +100,13 @@ public final class SessionGeneration {
     }
 
     public func unchanged<T>(_ work: () async -> T) async -> T? {
-        await work()
+        let started = current
+        let value = await work()
+        return started == current ? value : nil
     }
 
     public func load<T>(_ fetch: () async throws -> T) async -> Result<T, Error>? {
+        guard open else { return nil }
         let started = current
         let result: Result<T, Error>
         do { result = .success(try await fetch()) } catch { result = .failure(error) }
@@ -158,9 +161,13 @@ public actor SessionManager {
 
     public func identity() async throws -> Identity {
         guard var current = session else { throw VelovError.sessionRevoked }
+        let started = generation
         if current.accessExpiresAt.timeIntervalSince(now()) < 30 { current = try await renew(current) }
-        return Identity(accessToken: current.tokens.accessToken, email: try accountEmail(accessToken: current.tokens.accessToken))
+        return Identity(accessToken: current.tokens.accessToken, email: try accountEmail(accessToken: current.tokens.accessToken),
+                        live: { await self.isCurrent(started) })
     }
+
+    private func isCurrent(_ started: Int) -> Bool { started == generation && session != nil }
 
     private func renew(_ expired: StoredSession) async throws -> StoredSession {
         let started = generation

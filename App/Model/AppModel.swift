@@ -102,7 +102,7 @@ final class AppModel {
     private var openSheets = 0
     private var queuedEnded: Trip?
     private var greeted = false
-    @ObservationIgnored private let session = SessionGeneration()
+    @ObservationIgnored private let session = SessionGeneration(open: false)
     @ObservationIgnored private lazy var forgetter = Forgetter { [service] in await service.forgetSession() }
     @ObservationIgnored private let bookingsFlight = SingleFlight()
     private let dashboardLoad = LatestLoad()
@@ -189,6 +189,7 @@ final class AppModel {
         switch StartMode(hasSession: await service.hasSession(), guest: guestStore.isOn) {
         case .session:
             operations.use(account: await service.accountEmail())
+            session.begin()
             phase = .loading
             refreshAll()
         case .guest:
@@ -296,6 +297,10 @@ final class AppModel {
                 break
             }
         }
+    }
+
+    func inSession<T>(_ fetch: () async throws -> T) async -> Result<T, Error>? {
+        await session.load(fetch)
     }
 
     func runOnce(_ key: String, meta: [String: String] = [:], _ send: () async throws -> Outcome) async -> Operations.Run {
@@ -465,6 +470,7 @@ final class AppModel {
         endSession()
         await forgetter.settled()
         try await service.signIn(email: email, code: code)
+        session.begin()
         guestStore.remember(false)
         sheet = nil
         queuedEnded = nil
@@ -483,7 +489,7 @@ final class AppModel {
     func logout() async {
         endSession()
         dockWatch.stop()
-        let confirmed = await service.logout()
+        guard let confirmed = await session.unchanged({ await service.logout() }) else { return }
         signOut(confirmed ? nil : Messages.remoteLogoutUnconfirmed)
     }
 

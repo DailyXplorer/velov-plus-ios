@@ -210,7 +210,7 @@ struct WriteDialog<Question: View>: View {
     let intent: [String: String]
     let run: () async -> Outcome
     let check: IntentCheck?
-    let verified: ([String: String]) -> Void
+    let done: ([String: String]) -> Void
     let restart: Restart?
     let question: () -> Question
     @Environment(AppModel.self) private var model
@@ -220,10 +220,10 @@ struct WriteDialog<Question: View>: View {
     @State private var checking = false
 
     init(title: String, key: String?, ready: Bool = true, intent: [String: String] = [:], run: @escaping () async -> Outcome,
-         check: IntentCheck? = nil, verified: @escaping ([String: String]) -> Void = { _ in }, restart: Restart? = nil,
+         check: IntentCheck? = nil, done: @escaping ([String: String]) -> Void = { _ in }, restart: Restart? = nil,
          @ViewBuilder question: @escaping () -> Question) {
         self.title = title; self.key = key; self.ready = ready; self.intent = intent; self.run = run
-        self.check = check; self.verified = verified; self.restart = restart; self.question = question
+        self.check = check; self.done = done; self.restart = restart; self.question = question
     }
 
     private var entry: Operations.Entry? { key.flatMap { model.operations.get($0) } }
@@ -282,6 +282,7 @@ struct WriteDialog<Question: View>: View {
             case .finished(let outcome):
                 Haptics.result(outcome)
                 if outcome.ok {
+                    done(intent)
                     dismiss()
                 } else if !outcome.isUncertain {
                     refused = outcome
@@ -302,7 +303,7 @@ struct WriteDialog<Question: View>: View {
             switch settled {
             case .done?:
                 Haptics.success()
-                verified(held.meta)
+                done(held.meta)
                 dismiss()
             case .refused(let answer)?:
                 Haptics.refused()
@@ -316,8 +317,8 @@ struct WriteDialog<Question: View>: View {
 
 extension WriteDialog where Question == EmptyView {
     init(title: String, key: String?, ready: Bool = true, intent: [String: String] = [:], run: @escaping () async -> Outcome,
-         check: IntentCheck? = nil, verified: @escaping ([String: String]) -> Void = { _ in }, restart: Restart? = nil) {
-        self.init(title: title, key: key, ready: ready, intent: intent, run: run, check: check, verified: verified, restart: restart) { EmptyView() }
+         check: IntentCheck? = nil, done: @escaping ([String: String]) -> Void = { _ in }, restart: Restart? = nil) {
+        self.init(title: title, key: key, ready: ready, intent: intent, run: run, check: check, done: done, restart: restart) { EmptyView() }
     }
 }
 

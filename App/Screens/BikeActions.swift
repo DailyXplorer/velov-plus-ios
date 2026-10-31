@@ -129,10 +129,13 @@ struct BikeActionSheet: View {
         let key = key(.unlock)
         if Date().timeIntervalSince(since) < Reconcile.dockWindow {
             watching = true
-            let trip = await TechnicalJournal.$operation.withValue(key) { try? await model.service.watchUnlock(bikeNumber: place.bikeNumber) }
+            var trip: Trip?
+            let settled = await model.operations.settleHeld(key) { _ in
+                trip = try await TechnicalJournal.$operation.withValue(key) { try await model.service.watchUnlock(bikeNumber: place.bikeNumber) }
+                return trip == nil ? .unknown : .applied
+            }
             watching = false
-            if let trip, let held = model.operations.get(key), held.status == .uncertain {
-                model.operations.clear(key, held: held)
+            if case .done? = settled, let trip {
                 Haptics.success()
                 model.unlocked(bookingId: bookingId, ride: place.ride(trip))
                 done(.unlock)

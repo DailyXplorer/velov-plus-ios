@@ -543,11 +543,13 @@ final class OperationsTests: XCTestCase {
         doRelease.yield()
         let dropped = await late.value
         XCTAssertNil(dropped)
+        generation.begin()
         let failed = await generation.load { () async throws -> String in
             generation.invalidate()
             throw VelovError.sessionRevoked
         }
         XCTAssertNil(failed)
+        generation.begin()
         guard case .success(let fresh)? = await generation.load({ "new account" }) else { return XCTFail("a current answer is kept") }
         XCTAssertEqual(fresh, "new account")
     }

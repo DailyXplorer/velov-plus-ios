@@ -178,18 +178,10 @@ struct AutoSpendSetting: View {
         .sheet(isPresented: $asking) {
             let next = model.operations.get(OperationKey.autoSpend).flatMap { Intent.wanted($0.meta) } ?? self.next
             WriteDialog(title: next ? "Activer l’utilisation automatique\u{a0}?" : "Désactiver l’utilisation automatique\u{a0}?", key: OperationKey.autoSpend, intent: Intent.wanted(next), run: {
-                var answered: Bool?
-                let owner = model.operations.digest
-                let outcome = await attempt {
-                    let result = try await model.service.setAutoSpend(next)
-                    answered = result.autoSpend
-                    return result.outcome
-                }
-                if outcome.ok, model.operations.digest == owner { model.setAutoSpend(answered ?? next) }
-                return outcome
+                await attempt { try await model.service.setAutoSpend(next).outcome }
             }, check: { intent in
                 autoSpendCheck(try await model.service.dashboard(), Intent.wanted(intent) ?? next)
-            }, verified: { intent in
+            }, done: { intent in
                 model.setAutoSpend(Intent.wanted(intent) ?? next)
             }) {
                 Text(next ? "Vos points régleront automatiquement les minutes au-delà de la période gratuite."

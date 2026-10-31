@@ -157,7 +157,8 @@ public func endSession(refreshToken: String?, idToken: String?, http: HTTPTransp
         if let refreshToken {
             let request = makeRequest(URL(string: "\(Cyclocity.oidc)/logout")!, method: "POST", headers: ["Content-Type": "application/x-www-form-urlencoded"],
                                       body: formBody([("client_id", Cyclocity.clientId), ("refresh_token", refreshToken)]), timeout: 10)
-            return try await http.send(request, followRedirects: false).ok
+            let response = try await http.send(request, followRedirects: false)
+            return response.ok && response.body.isEmpty
         }
         guard let idToken else { return true }
         var components = URLComponents(string: "\(Cyclocity.oidc)/logout")!

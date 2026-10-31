@@ -108,7 +108,7 @@ final class Review3Tests: XCTestCase {
         for await _ in started { break }
         session.invalidate()
         cache.clear()
-        session.invalidate()
+        session.begin()
         doRelease.yield()
         let late = await first.value
         XCTAssertNil(late, "the answer for A is dropped")

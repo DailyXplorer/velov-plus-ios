@@ -169,7 +169,7 @@ public struct ReadClient: Sendable {
         self.pause = pause
     }
 
-    public func fetchTransient(_ request: URLRequest, attempts: Int = 3) async throws -> HTTPResponse {
+    public func fetchTransient(_ request: URLRequest, attempts: Int = 3, before: @Sendable () async throws -> Void = {}) async throws -> HTTPResponse {
         let method = (request.httpMethod ?? "GET").uppercased()
         let url = request.url?.absoluteString ?? ""
         guard method == "GET" || (method == "POST" && url.hasSuffix("/client_tokens")) else {
@@ -178,6 +178,7 @@ public struct ReadClient: Sendable {
         var request = request
         request.timeoutInterval = Self.attemptTimeout
         for attempt in 1... {
+            try await before()
             let response = try await transport.send(request)
             if attempt >= attempts || ![502, 503, 504].contains(response.status) { return response }
             await pause(Double(attempt) * 0.4)
@@ -217,10 +218,11 @@ public actor AppToken {
     }
 }
 
-public func getWithAppToken(_ client: ReadClient, _ tokens: AppToken, _ url: URL, headers: @Sendable (String) -> [String: String]) async throws -> HTTPResponse {
+public func getWithAppToken(_ client: ReadClient, _ tokens: AppToken, _ url: URL, before: @Sendable () async throws -> Void = {},
+                            headers: @Sendable (String) -> [String: String]) async throws -> HTTPResponse {
     for attempt in 1... {
         let token = try await tokens.get()
-        let response = try await client.fetchTransient(makeRequest(url, headers: headers(token), timeout: ReadClient.attemptTimeout))
+        let response = try await client.fetchTransient(makeRequest(url, headers: headers(token), timeout: ReadClient.attemptTimeout), before: before)
         if response.status != 401 || attempt > 1 { return response }
         await tokens.drop(token)
     }

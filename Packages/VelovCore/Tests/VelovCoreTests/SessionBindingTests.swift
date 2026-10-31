@@ -85,6 +85,21 @@ final class SessionBindingTests: XCTestCase {
         XCTAssertEqual(renewal.calls.filter { $0.url.contains("/subscriptions?periods=CURRENT") }.count, 1, "the state is not read back for a session that ended")
     }
 
+    func testAnAccountReadIsNeverRetriedOnceItsSessionEnded() async {
+        for reply in [Reply.status(503), .status(401)] {
+            let ended = Ended()
+            let server = MockServer { call, _ in
+                if call.url.hasSuffix("/client_tokens") { return .json(["accessToken": "app"]) }
+                ended.end()
+                return reply
+            }
+            do { _ = try await api(server).accountId(identity(ended)); XCTFail("\(reply)") } catch {
+                XCTAssertEqual((error as? VelovError)?.revoked, true, "\(reply)")
+            }
+            XCTAssertEqual(server.calls.filter { $0.header("Identity") != nil }.count, 1, "\(reply): a guest never retries with the credentials of the session it left")
+        }
+    }
+
     func testAnIdentityIsLiveOnlyWhileItsSessionIsTheStoredOne() async throws {
         let store = InMemoryStore()
         let tokens = Tokens(accessToken: accessToken(expires: Date().addingTimeInterval(600)), refreshToken: "refresh", idToken: "identity", expiresIn: 600, refreshExpiresIn: 0)

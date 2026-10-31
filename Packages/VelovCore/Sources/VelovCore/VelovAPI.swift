@@ -65,8 +65,9 @@ public final class VelovAPI: Sendable {
     }
 
     func read(_ path: String, _ identity: Identity, accept: String = "application/json") async throws -> JSON {
-        guard await identity.live() else { throw VelovError.sessionRevoked }
-        let response = try await getWithAppToken(client, appToken, URL(string: "\(Cyclocity.base)\(path)")!) { token in
+        let response = try await getWithAppToken(client, appToken, URL(string: "\(Cyclocity.base)\(path)")!, before: {
+            guard await identity.live() else { throw VelovError.sessionRevoked }
+        }) { token in
             ["Authorization": "Taknv1 \(token)", "Identity": identity.accessToken, "Accept": accept]
         }
         if response.status == 401 { throw VelovError(.expired, Messages.sessionExpired) }

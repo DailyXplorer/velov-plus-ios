@@ -273,6 +273,8 @@ struct WriteDialog<Question: View>: View {
         let operations = model.operations
         Task {
             switch await model.runOnce(key, meta: intent, run) {
+            case .superseded:
+                break
             case .unsaved:
                 notice = Messages.unsaved
             case .busy:

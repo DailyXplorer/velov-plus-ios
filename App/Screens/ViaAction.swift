@@ -141,6 +141,7 @@ struct ViaSheet: View {
                 await attempt { try await model.service.requestExtraTime(stationNumber: station.number) }
             }
             switch result {
+            case .superseded: break
             case .unsaved: notice = Messages.unsaved
             case .busy: if model.operations.get(operationKey) == nil { notice = Messages.busy }
             case .finished(let outcome):

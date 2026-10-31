@@ -174,6 +174,7 @@ struct BikeActionSheet: View {
             }
             let outcome: Outcome
             switch result {
+            case .superseded: return
             case .unsaved: notice = Messages.unsaved; return
             case .busy: if model.operations.get(key) == nil { notice = Messages.busy }; return
             case .finished(let answer): outcome = answer

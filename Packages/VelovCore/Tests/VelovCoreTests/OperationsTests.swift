@@ -162,6 +162,37 @@ final class OperationsTests: XCTestCase {
         XCTAssertFalse(operations.sending)
     }
 
+    func testAWriteAnswerArrivingAfterTheSessionChangedReachesNoOne() async {
+        let clock = Clock()
+        let session = SessionGeneration()
+        let backing = InMemoryOperationBacking()
+        let operations = Operations(backing: backing, account: "person@example.com", session: session, now: { clock.now })
+        let expired = Outcome(ok: false, httpStatus: 401)
+        let late = await operations.runOnce("unlock:7") {
+            session.invalidate()
+            operations.use(account: "other@example.com")
+            return expired
+        }
+        XCTAssertEqual(late, .superseded, "a 401 to the old session signs the next account out of nothing")
+        let success = await operations.runOnce("book:2") {
+            session.invalidate()
+            operations.use(account: nil)
+            return Outcome(ok: true, httpStatus: 200)
+        }
+        XCTAssertEqual(success, .superseded, "a late success starts no tracking for a guest")
+        XCTAssertEqual(store(backing, clock).get("unlock:7")?.outcome, expired, "the uncertain write stays with the account that sent it")
+
+        operations.use(account: "person@example.com")
+        let checked = await operations.settleHeld("unlock:7") { _ in
+            session.invalidate()
+            return .applied
+        }
+        XCTAssertNil(checked, "a check answered after the session changed settles nothing")
+        XCTAssertEqual(operations.get("unlock:7")?.status, .uncertain)
+        let current = await operations.runOnce("book:3") { Outcome(ok: true, httpStatus: 200) }
+        XCTAssertEqual(current, .finished(Outcome(ok: true, httpStatus: 200)))
+    }
+
     func testUncertainFollowsTheWebRules() {
         XCTAssertFalse(Outcome(ok: false, httpStatus: 200, transactionState: "ABORT").isUncertain)
         XCTAssertFalse(Outcome(ok: false, httpStatus: 0, code: "local.no.subscription").isUncertain)

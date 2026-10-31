@@ -65,18 +65,20 @@ public final class Operations {
     }
 
     public enum Began: Equatable, Sendable { case started, busy, unsaved }
-    public enum Run: Equatable, Sendable { case busy, unsaved, finished(Outcome) }
+    public enum Run: Equatable, Sendable { case busy, unsaved, superseded, finished(Outcome) }
 
     @ObservationIgnored private let backing: OperationBacking?
     @ObservationIgnored private let now: () -> Date
+    @ObservationIgnored private let session: SessionGeneration?
     @ObservationIgnored private var running: [String: String] = [:]
     @ObservationIgnored private var memory: [String: Entry] = [:]
     public private(set) var digest: String?
     public private(set) var version = 0
 
-    public init(backing: OperationBacking?, account: String? = nil, now: @escaping () -> Date = Date.init) {
+    public init(backing: OperationBacking?, account: String? = nil, session: SessionGeneration? = nil, now: @escaping () -> Date = Date.init) {
         self.backing = backing
         self.now = now
+        self.session = session
         digest = account.map(accountDigest)
     }
 

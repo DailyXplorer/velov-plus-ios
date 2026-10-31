@@ -136,7 +136,7 @@ final class AppModel {
         self.snapshot = snapshot
         self.promoBacking = promoBacking
         self.guestStore = guestStore
-        operations = Operations(backing: operationBacking)
+        operations = Operations(backing: operationBacking, session: session)
         switch snapshot {
         case .trips?, .tripSheet?, .rateCard?, .bikePage?: page = .trips
         case .stats?, .statsCharts?, .statsTipFirst?, .statsTipMiddle?, .statsTipLast?, .statsHeatmap?, .statsHeatTip?, .statsDonut?, .statsRecords?, .statsBike?, .statsEnd?: page = .trips

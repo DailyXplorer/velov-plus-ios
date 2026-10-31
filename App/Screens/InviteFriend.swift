@@ -172,6 +172,7 @@ struct InviteFriend: View {
                 return answer.outcome
             }
             switch result {
+            case .superseded: break
             case .unsaved: warning = Messages.unsaved
             case .busy: if model.operations.get(operationKey) == nil { warning = Messages.busy }
             case .finished(let answer):

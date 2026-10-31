@@ -74,14 +74,34 @@ public struct StoredSession: Codable, Equatable, Sendable {
 public struct Identity: Sendable {
     public let accessToken: String
     public let email: String
+    let live: @Sendable () async -> Bool
+
+    public init(accessToken: String, email: String, live: @escaping @Sendable () async -> Bool = { true }) {
+        self.accessToken = accessToken
+        self.email = email
+        self.live = live
+    }
 }
 
 @MainActor
 public final class SessionGeneration {
     public private(set) var current = 0
-    public init() {}
+    public private(set) var open: Bool
+    public init(open: Bool = true) { self.open = open }
 
-    public func invalidate() { current += 1 }
+    public func begin() {
+        current += 1
+        open = true
+    }
+
+    public func invalidate() {
+        current += 1
+        open = false
+    }
+
+    public func unchanged<T>(_ work: () async -> T) async -> T? {
+        await work()
+    }
 
     public func load<T>(_ fetch: () async throws -> T) async -> Result<T, Error>? {
         let started = current

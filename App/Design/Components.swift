@@ -171,7 +171,7 @@ struct CardTag: View {
     private var metrics: (gap: CGFloat, icon: CGFloat, glyph: CGFloat, font: Typo.Caps, leading: CGFloat, trailing: CGFloat, vertical: CGFloat) {
         switch size {
         case .regular: (10, 28, 13, .label, 7, 16, 7)
-        case .stat: (7, 22, 12, .tag, 4, 10, 4)
+        case .stat: (5, 22, 12, .tag, 4, 8, 4)
         case .pick: (6, 20, 11, .tag, 3, 10, 3)
         }
     }

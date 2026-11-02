@@ -441,10 +441,10 @@ private struct Heatmap: View {
                 .foregroundStyle(active ? Palette.redDeep : Palette.mist)
                 .cornerRadius(3)
             if cell.count > 0, !active {
-                let inner = (side * (0.4 + 0.6 * Double(cell.count) / Double(max))).rounded()
+                let inner = side.rounded()
                 RectangleMark(x: .value("Heure", Double(cell.hour) + 0.5), y: .value("Jour", Double(6 - cell.day) + 0.5), width: .fixed(inner), height: .fixed(inner))
-                    .foregroundStyle(Palette.red)
-                    .cornerRadius(3 * inner / side)
+                    .foregroundStyle(Palette.red.opacity(0.4 + 0.6 * Double(cell.count) / Double(max)))
+                    .cornerRadius(3)
             }
         }
         .chartXScale(domain: 0...24)

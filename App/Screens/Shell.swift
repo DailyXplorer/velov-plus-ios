@@ -184,8 +184,6 @@ extension PushedPage where Header == PageTitle {
 }
 
 private struct BarBands: ViewModifier {
-    @Environment(\.tabBarBand) private var band
-    @Environment(\.tabBarClearance) private var clearance
     @State private var top: CGFloat = 0
 
     func body(content: Content) -> some View {
@@ -195,15 +193,6 @@ private struct BarBands: ViewModifier {
                 VStack(spacing: 0) {
                     Palette.white.frame(height: top)
                     Spacer(minLength: 0)
-                    if band > 0 {
-                        ZStack {
-                            LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .gray, location: 0.3)], startPoint: .top, endPoint: .bottom)
-                                .blendMode(.saturation)
-                            LinearGradient(stops: [.init(color: Palette.white.opacity(0), location: 0), .init(color: Palette.white.opacity(0.75), location: 0.5), .init(color: Palette.white, location: 1)], startPoint: .top, endPoint: .bottom)
-                        }
-                        .frame(height: Space.actions)
-                        Palette.white.frame(height: clearance)
-                    }
                 }
                 .ignoresSafeArea(.container)
                 .allowsHitTesting(false)

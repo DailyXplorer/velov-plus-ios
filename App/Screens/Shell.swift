@@ -144,7 +144,6 @@ struct PushedPage<Header: View, Content: View>: View {
 
     var body: some View {
         let sending = model.operations.sending
-        let hitWidth = extra != nil && close != nil ? Layout.barHit : Layout.hit
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header().padding(.top, Space.label).padding(.bottom, Layout.headerBottom)
@@ -167,10 +166,10 @@ struct PushedPage<Header: View, Content: View>: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 0) {
                         if let extra {
-                            IconButton(icon: extra.icon, pending: extra.pending, hitWidth: hitWidth, label: extra.label, action: extra.action)
+                            IconButton(icon: extra.icon, pending: extra.pending, label: extra.label, action: extra.action)
                         }
                         if let close {
-                            IconButton(icon: .x, hitWidth: hitWidth, label: "Fermer", action: close).disabled(sending)
+                            IconButton(icon: .x, label: "Fermer", action: close).disabled(sending)
                         }
                     }
                 }

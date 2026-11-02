@@ -289,6 +289,7 @@ struct IconButton: View {
     var size: CGFloat = Layout.glyph
     var color: Color = Palette.inkSoft
     var pending = false
+    var hitWidth: CGFloat = Layout.hit
     let label: String
     let action: () -> Void
     @Environment(\.isEnabled) private var enabled
@@ -296,7 +297,7 @@ struct IconButton: View {
         Button(action: action) {
             Group { if pending { Spinner(size: size) } else { Icon(icon, weight, size: size) } }
                 .foregroundStyle(enabled || pending ? color : Palette.disabledInk)
-                .frame(width: Layout.hit, height: Layout.hit).contentShape(Rectangle())
+                .frame(width: hitWidth, height: Layout.hit).contentShape(Rectangle())
         }
         .buttonStyle(.press)
         .disabled(pending)

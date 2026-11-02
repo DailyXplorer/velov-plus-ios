@@ -23,6 +23,7 @@ enum Layout {
     static let control: CGFloat = 44
     static let largeControl: CGFloat = 48
     static let hit: CGFloat = 44
+    static let barHit: CGFloat = 32
     static let glyph: CGFloat = 20
     static let iconGap: CGFloat = 10
     static let mapKitMargin: CGFloat = 11
